@@ -675,14 +675,24 @@
             roofPeak.position.set(0, wallHeight + 2.5, 0);
             barnGroup.add(roofPeak);
             
-            // Alınlık (üçgen) - ÖN ve ARKA (duvarla aynı kırmızı)
-            const gableGeo = new THREE.BoxGeometry(width, 2.5, 0.5);
-            const gableFront = new THREE.Mesh(gableGeo, wallMat);
-            gableFront.position.set(0, wallHeight + 1.25, depth / 2 - 0.1);
+            // Alınlık (ÜÇGEN) - ÖN ve ARKA. Gerçek üçgen şekil kullanılıyor ki
+            // ön/arka duvarın GÖVDESİ (dikdörtgen kısmı) yan duvarla AYNI YÜKSEKLİKTE (wallHeight) kalsın;
+            // üstteki üçgen sadece çatı boşluğunu kapatır, duvar gibi "büyük" görünmez.
+            function createGableTriangle(baseZ) {
+                const shape = new THREE.Shape();
+                shape.moveTo(-width / 2, 0);
+                shape.lineTo(width / 2, 0);
+                shape.lineTo(0, 2.5);
+                shape.lineTo(-width / 2, 0);
+                const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: false });
+                const mesh = new THREE.Mesh(geo, wallMat);
+                mesh.position.set(0, wallHeight, baseZ);
+                return mesh;
+            }
+            const gableFront = createGableTriangle(depth / 2 - 0.35);
             barnGroup.add(gableFront);
             
-            const gableBack = new THREE.Mesh(gableGeo, wallMat);
-            gableBack.position.set(0, wallHeight + 1.25, -depth / 2 + 0.1);
+            const gableBack = createGableTriangle(-depth / 2 - 0.15);
             barnGroup.add(gableBack);
             
             // TAVAN KİRİŞLERİ
@@ -828,6 +838,9 @@
 
                 troughGroup.position.set(px, 0, pz);
                 barnGroup.add(troughGroup);
+
+                // ÇARPIŞMA - su yalağının içinden geçilmesin
+                buildings.push({ x: x + px, z: z + pz, halfW: 1.65, halfD: 1.05 });
             }
             createTrough(-width / 2 + 3.5, depth / 2 - 5);
             createTrough(width / 2 - 3.5, depth / 2 - 5);
@@ -839,6 +852,17 @@
             // Sağ tarafta 2 bölme (boş)
             createEmptyStall(barnGroup, width / 2 - 4, -depth / 2 + 5, woodMat);
             createEmptyStall(barnGroup, width / 2 - 4, -depth / 2 + 12, woodMat);
+
+            // ÇARPIŞMA - at bölmelerinin içinden geçilmesin (stallW=3.5, stallD=5)
+            const stallCollisionPositions = [
+                [-width / 2 + 4, -depth / 2 + 5],
+                [-width / 2 + 4, -depth / 2 + 12],
+                [width / 2 - 4, -depth / 2 + 5],
+                [width / 2 - 4, -depth / 2 + 12]
+            ];
+            for (const [sx, sz] of stallCollisionPositions) {
+                buildings.push({ x: x + sx, z: z + sz, halfW: 1.75, halfD: 2.5 });
+            }
 
             // AHIR İÇİ 4 ADET DESTEK DİREĞİ - kapının hemen arkasındaki boş orta alanı doldurur,
             // ortadaki geçiş yolu (x ekseni merkez) açık kalır
@@ -858,6 +882,9 @@
                 const postCap = new THREE.Mesh(postCapGeo, trimMat);
                 postCap.position.set(px, wallHeight, pz);
                 barnGroup.add(postCap);
+
+                // ÇARPIŞMA - direğin içinden geçilmesin
+                buildings.push({ x: x + px, z: z + pz, halfW: 0.42, halfD: 0.42 });
             }
             
             // EĞERLER VE HALATLAR (Duvarda)
@@ -1847,8 +1874,8 @@
         function startGame(mode) {
             controlMode = mode;
             initWebSocket();
-            // AHIRIN İÇİNDE SPAWN (samanların yanına)
-            playerDonkey.position.set(SPAWN_X - 6, 0, SPAWN_Z - 6);
+            // AHIRIN İÇİNDE SPAWN (direk/yalak/bölmelere çarpmayan güvenli açık alan)
+            playerDonkey.position.set(SPAWN_X, 0, SPAWN_Z - 2);
             gameStarted = true;
             cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
@@ -2389,13 +2416,14 @@
                 // KAPI YAKINLIK KONTROLÜ
                 const doorX = SPAWN_X;
                 const doorZ = SPAWN_Z + 11; // depth/2 = 11
+                const DOOR_INTERACT_DIST = 4.5; // mesafe kısaltıldı (önceden 8 idi)
                 
                 const distToDoorReal = Math.sqrt(
                     (playerDonkey.position.x - doorX) ** 2 + 
                     (playerDonkey.position.z - doorZ) ** 2
                 );
                 
-                if (distToDoorReal < 8 && !doorOpen) {
+                if (distToDoorReal < DOOR_INTERACT_DIST && !doorOpen) {
                     playerNearDoor = true;
                     if (controlMode === 'pc') {
                         interactPromptEl.style.display = 'block';
@@ -2404,7 +2432,7 @@
                         mobOpenBtn.style.display = 'flex';
                         mobOpenBtn.textContent = '🔓 AÇ';
                     }
-                } else if (distToDoorReal < 8 && doorOpen) {
+                } else if (distToDoorReal < DOOR_INTERACT_DIST && doorOpen) {
                     playerNearDoor = true;
                     if (controlMode === 'pc') {
                         interactPromptEl.style.display = 'block';
