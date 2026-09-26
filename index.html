@@ -196,7 +196,6 @@
                                 }
                                 const pData = serverPlayers[id];
                                 
-                                // Pozisyonu direkt ata (hızlı senkron)
                                 otherPlayers[id].position.set(pData.x, pData.y, pData.z);
                                 otherPlayers[id].rotation.y = pData.yaw || 0;
                                 
@@ -204,7 +203,6 @@
                                     otherPlayers[id].userData.neckHeadGroup.rotation.x = pData.pitch || 0;
                                 }
                                 
-                                // EĞİLME: Lerp katsayısını 0.5 yaptık (daha hızlı tepki)
                                 const targetScale = pData.isCrouching ? 0.6 : 1.0;
                                 otherPlayers[id].scale.y += (targetScale - otherPlayers[id].scale.y) * 0.5;
                             }
@@ -437,31 +435,28 @@
                     if (keys.d) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
                 } else {
                     if (joystickActive) {
-                        // Kamera vektörleri (yaw=0 için):
-                        // İleri: (0, 1) -> moveX=0, moveZ=+1
-                        // Sağ:   (1, 0) -> moveX=+1, moveZ=0
-                        // Yani:
-                        // ileriGeri = -joystickMoveZ (yukarı=-1 -> ileri=+1)
-                        // sagSol    = -joystickMoveX (sağ=+1 -> sağa gitmek için moveX=+1 olmalı ama right vektörü...)
+                        // Joystick değerleri:
+                        // joystickMoveX: Sağ(+1), Sol(-1)
+                        // joystickMoveZ: Yukarı(-1), Aşağı(+1)
                         
-                        // Basitçe dünya koordinatına çevirelim:
-                        // moveX = sin(yaw) * ileriGeri + cos(yaw) * sagSol
-                        // moveZ = cos(yaw) * ileriGeri - sin(yaw) * sagSol
+                        // Kameranın baktığı yön:
+                        // İleri: (sin(yaw), cos(yaw))
+                        // Sağ:   (cos(yaw), -sin(yaw))  -- Bu yön yaw=0 için (1, 0) yani +X
                         
-                        const ileriGeri = -joystickMoveZ; // Yukarı(-1) -> +1 ileri
-                        const sagSol = joystickMoveX;     // Sağ(+1) -> +1 sağ
+                        // Biz sağa gitmek istiyoruz: joystickMoveX pozitif olduğunda +X yönünde gitmeli.
+                        // +X yönü = right vektörü = (cos(yaw), -sin(yaw))
+                        // Yani moveX += cos(yaw) * sagSol, moveZ += -sin(yaw) * sagSol
+                        // sagSol = joystickMoveX (sağa çekince +1)
                         
-                        // Şimdi kontrol edelim (yaw=0):
-                        // Sağa çekince: joystickMoveX=+1, joystickMoveZ=0
-                        // ileriGeri=0, sagSol=+1
-                        // moveX = 0*0 + 1*1 = +1  (doğru, sağa gider)
-                        // moveZ = 1*0 - 0*1 = 0   (doğru)
+                        // İleri gitmek istiyoruz: joystickMoveZ negatif olduğunda (yukarı) ileri gitmeli.
+                        // İleri yön = (sin(yaw), cos(yaw))
+                        // ileriGeri = -joystickMoveZ (yukarı=-1 -> +1 ileri)
+                        // moveX += sin(yaw) * ileriGeri, moveZ += cos(yaw) * ileriGeri
                         
-                        // Yukarı çekince: joystickMoveX=0, joystickMoveZ=-1
-                        // ileriGeri=+1, sagSol=0
-                        // moveX = 0*1 + 1*0 = 0
-                        // moveZ = 1*1 - 0*0 = +1  (doğru, ileri gider)
+                        const ileriGeri = -joystickMoveZ;
+                        const sagSol = joystickMoveX; // Sağa çekince +1
                         
+                        // BİRLEŞTİR:
                         moveX = (Math.sin(yaw) * ileriGeri + Math.cos(yaw) * sagSol) * speed * 1.5;
                         moveZ = (Math.cos(yaw) * ileriGeri - Math.sin(yaw) * sagSol) * speed * 1.5;
                         
