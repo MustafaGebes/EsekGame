@@ -83,11 +83,8 @@
     <div id="info">W,A,S,D: Yürü | Fare: Etrafa Bak | Space: Zıpla</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
 
     <script>
-        const socket = io();
-
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
 
@@ -173,7 +170,6 @@
         let yaw = 0, pitch = 0.3, velocityY = 0;
         let isGrounded = true;
         const keys = { w: false, a: false, s: false, d: false };
-        const otherPlayers = {};
 
         document.getElementById('startBtn').addEventListener('click', () => {
             document.getElementById('menu').style.display = 'none';
@@ -211,40 +207,6 @@
             if (k === 'd') keys.d = false;
         });
 
-        // --- SOCKET.IO ONLINE SENKRONİZASYON ---
-        socket.on('currentPlayers', (players) => {
-            Object.keys(players).forEach((id) => {
-                if (id !== socket.id) {
-                    addOtherPlayer(players[id]);
-                }
-            });
-        });
-
-        socket.on('newPlayer', (playerInfo) => {
-            addOtherPlayer(playerInfo);
-        });
-
-        socket.on('playerDisconnected', (id) => {
-            if (otherPlayers[id]) {
-                scene.remove(otherPlayers[id]);
-                delete otherPlayers[id];
-            }
-        });
-
-        socket.on('playerMoved', (playerInfo) => {
-            if (otherPlayers[playerInfo.id]) {
-                otherPlayers[playerInfo.id].position.set(playerInfo.x, playerInfo.y, playerInfo.z);
-                otherPlayers[playerInfo.id].rotation.y = playerInfo.rotation;
-            }
-        });
-
-        function addOtherPlayer(info) {
-            const donkey = createDonkeyModel();
-            donkey.position.set(info.x, info.y, info.z);
-            scene.add(donkey);
-            otherPlayers[info.id] = donkey;
-        }
-
         // Oyun Döngüsü
         function animate() {
             requestAnimationFrame(animate);
@@ -269,26 +231,18 @@
                     isGrounded = true;
                 }
 
-                // Konumumuzu sunucuya bildir
-                socket.emit('playerMovement', {
-                    x: playerDonkey.position.x,
-                    y: playerDonkey.position.y,
-                    z: playerDonkey.position.z,
-                    rotation: yaw
-                });
-
-                // --- DÜZELTİLMİŞ 3. ŞAHIS KAMERA (ARKADAN ÖNE BAKIŞ) ---
+                // --- ARKADAN BAKIŞ 3. ŞAHIS KAMERA ---
                 const distance = 6; // Eşeğe uzaklık
                 const heightOffset = 2.5; // Yükseklik
 
-                // Kameranın eşeğin arkasında kalmasını sağlayan hesaplama
+                // Kameranın eşeğin tam arkasında kalmasını sağlayan hesaplama
                 const camX = playerDonkey.position.x - Math.sin(yaw) * distance;
                 const camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
                 const camY = playerDonkey.position.y + heightOffset + (pitch * 3);
 
                 camera.position.set(camX, camY, camZ);
                 
-                // Kameranın eşeğin arkasından öne (yüzüne/gövdesine) doğru bakması
+                // Kameranın eşeğin arkasından öne doğru bakması
                 const lookAtTarget = new THREE.Vector3(
                     playerDonkey.position.x,
                     playerDonkey.position.y + 1.5,
