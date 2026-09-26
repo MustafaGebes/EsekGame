@@ -83,7 +83,6 @@
         #hud div { margin: 2px 0; }
         #hud .label { color: #ffd700; font-weight: bold; }
 
-        /* CROSSHAIR */
         #crosshair {
             position: absolute;
             top: 50%;
@@ -313,7 +312,6 @@
         );
         scene.add(moonMesh);
 
-        // === YILDIZLAR ===
         const starGeometry = new THREE.BufferGeometry();
         const starCount = 1500;
         const starPositions = new Float32Array(starCount * 3);
@@ -846,7 +844,8 @@
             if (settingsPanel.style.display === 'block') return;
             
             if (cameraMode === 'first') {
-                // 1. ŞAHIS: direkt fare hareketi ile dön (basılı tutmaya gerek yok)
+                // 1. ŞAHIS: direkt fare hareketi ile dön
+                // Fareyi yukarı hareket ettirince movementY negatif olur, bu yüzden -= kullanıyoruz
                 yaw -= e.movementX * 0.005 * sensitivity;
                 pitch -= e.movementY * 0.005 * sensitivity;
                 pitch = Math.max(-1.2, Math.min(1.4, pitch));
@@ -1326,8 +1325,10 @@
                     
                     camera.position.set(eyeX, eyeY, eyeZ);
                     
+                    // DÜZELTİLDİ: Artık + kullanıyoruz
+                    // pitch pozitif = yukarı bak, pitch negatif = aşağı bak
                     const lookX = eyeX + Math.sin(yaw) * Math.cos(pitch);
-                    const lookY = eyeY - Math.sin(pitch);
+                    const lookY = eyeY + Math.sin(pitch);
                     const lookZ = eyeZ + Math.cos(yaw) * Math.cos(pitch);
                     
                     camera.lookAt(new THREE.Vector3(lookX, lookY, lookZ));
