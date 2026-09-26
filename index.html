@@ -842,13 +842,24 @@
         });
         document.addEventListener('mouseup', () => { isMouseDown = false; });
         document.addEventListener('mousemove', (e) => {
-            if (!gameStarted || !isMouseDown || controlMode !== 'pc') return;
+            if (!gameStarted || controlMode !== 'pc') return;
             if (settingsPanel.style.display === 'block') return;
-            yaw -= (e.clientX - mouseX) * 0.005 * sensitivity;
-            pitch -= (e.clientY - mouseY) * 0.005 * sensitivity;
-            pitch = Math.max(-1.2, Math.min(1.4, pitch));
-            mouseX = e.clientX;
-            mouseY = e.clientY;
+            
+            if (cameraMode === 'first') {
+                // 1. ŞAHIS: direkt fare hareketi ile dön (basılı tutmaya gerek yok)
+                yaw -= e.movementX * 0.005 * sensitivity;
+                pitch -= e.movementY * 0.005 * sensitivity;
+                pitch = Math.max(-1.2, Math.min(1.4, pitch));
+            } else {
+                // 3. ŞAHIS: sadece basılıysa dön
+                if (isMouseDown) {
+                    yaw -= (e.clientX - mouseX) * 0.005 * sensitivity;
+                    pitch -= (e.clientY - mouseY) * 0.005 * sensitivity;
+                    pitch = Math.max(-1.2, Math.min(1.4, pitch));
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                }
+            }
         });
 
         const joystickZone = document.getElementById('joystickZone');
