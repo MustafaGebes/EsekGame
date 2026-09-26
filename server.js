@@ -1,5 +1,3 @@
-// Eşek Game Node.js sunucusu
-
 const http = require("http");
 const WebSocket = require("ws");
 const fs = require("fs");
@@ -14,31 +12,34 @@ const mime = {
 };
 
 const server = http.createServer((req, res) => {
-  let u = decodeURIComponent(req.url.split("?")[0]);
+  let url = decodeURIComponent(req.url.split("?")[0]);
 
-  if (u === "/") {
-    u = "/EsekGame.html";
+  if (url === "/") {
+    url = "/EsekGame.html";
   }
 
-  const f = path.join(__dirname, u);
+  const filePath = path.join(__dirname, url);
 
-  if (!f.startsWith(__dirname)) {
+  if (!filePath.startsWith(__dirname)) {
     res.writeHead(403);
-    return res.end("Forbidden");
+    res.end("Forbidden");
+    return;
   }
 
-  fs.readFile(f, (e, d) => {
-    if (e) {
+  fs.readFile(filePath, (error, data) => {
+    if (error) {
       res.writeHead(404);
-      return res.end("Bulunamadı");
+      res.end("Bulunamadı");
+      return;
     }
 
     res.writeHead(200, {
       "Content-Type":
-        mime[path.extname(f)] || "application/octet-stream"
+        mime[path.extname(filePath)] ||
+        "application/octet-stream"
     });
 
-    res.end(d);
+    res.end(data);
   });
 });
 
@@ -47,23 +48,23 @@ const wss = new WebSocket.Server({ server });
 function broadcast() {
   const data = Object.fromEntries(players);
 
-  for (const c of wss.clients) {
-    if (c.readyState === WebSocket.OPEN) {
-      c.send(
+  for (const client of wss.clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(
         JSON.stringify({
           type: "players",
           players: data,
-          me: c.esekId
+          me: client.esekId
         })
       );
     }
   }
 }
 
-wss.on("connection", (s) => {
+wss.on("connection", (socket) => {
   const id = Math.random().toString(36).slice(2, 9);
 
-  s.esekId = id;
+  socket.esekId = id;
 
   players.set(id, {
     x: 0,
@@ -72,33 +73,35 @@ wss.on("connection", (s) => {
 
   broadcast();
 
-  s.on("message", (raw) => {
+  socket.on("message", (raw) => {
     try {
-      const d = JSON.parse(raw);
+      const data = JSON.parse(raw);
 
-      if (d.type === "move") {
-        const p = players.get(id);
+      if (data.type === "move") {
+        const player = players.get(id);
 
-        if (!p) return;
+        if (!player) {
+          return;
+        }
 
-        p.x = Math.max(
+        player.x = Math.max(
           -14,
-          Math.min(14, Number(d.x) || 0)
+          Math.min(14, Number(data.x) || 0)
         );
 
-        p.z = Math.max(
+        player.z = Math.max(
           -14,
-          Math.min(14, Number(d.z) || 0)
+          Math.min(14, Number(data.z) || 0)
         );
 
         broadcast();
       }
-    } catch (err) {
-      // Hatalı mesajları görmezden gel
+    } catch (error) {
+      // Geçersiz mesajı görmezden gel
     }
   });
 
-  s.on("close", () => {
+  socket.on("close", () => {
     players.delete(id);
     broadcast();
   });
@@ -107,5 +110,7 @@ wss.on("connection", (s) => {
 const PORT = Number(process.env.PORT) || 8080;
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`EŞEK GAME ONLINE SUNUCUSU - port ${PORT}`);
+  console.log(
+    `EŞEK GAME ONLINE SUNUCUSU - port ${PORT}`
+  );
 });
