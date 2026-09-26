@@ -107,7 +107,5 @@ wss.on("connection", (s) => {
 const PORT = Number(process.env.PORT) || 8080;
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(
-    `EŞEK GAME ONLINE SUNUCUSU - port ${PORT}`
-  );
+  console.log(`EŞEK GAME ONLINE SUNUCUSU - port ${PORT}`);
 });
