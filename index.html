@@ -83,6 +83,51 @@
         #hud div { margin: 2px 0; }
         #hud .label { color: #ffd700; font-weight: bold; }
 
+        /* CROSSHAIR */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+            z-index: 18;
+            display: none;
+        }
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 3px rgba(0,0,0,0.8);
+        }
+        #crosshair::before {
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            transform: translateY(-50%);
+        }
+        #crosshair::after {
+            top: 0;
+            left: 50%;
+            width: 2px;
+            height: 100%;
+            transform: translateX(-50%);
+        }
+        #crosshair .dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 3px rgba(0,0,0,0.8);
+        }
+
         #settingsPanel {
             position: absolute;
             top: 50%;
@@ -176,6 +221,10 @@
         <div><span class="label">Kamera:</span> <span id="hudCam">3. Şahıs</span></div>
     </div>
 
+    <div id="crosshair">
+        <div class="dot"></div>
+    </div>
+
     <div id="settingsPanel">
         <h3>⚙️ Ayarlar</h3>
         <label>Görüş Mesafesi (Chunk): <span class="value-display" id="chunkValue">150</span></label>
@@ -219,7 +268,6 @@
         let viewDistance = 150;
         let sensitivity = 1.0;
 
-        // KAMERA MODU: 'third' veya 'first'
         let cameraMode = 'third';
 
         const scene = new THREE.Scene();
@@ -623,6 +671,7 @@
         const hudChunkEl = document.getElementById('hudChunk');
         const hudCamEl = document.getElementById('hudCam');
         const mobViewBtn = document.getElementById('mobViewBtn');
+        const crosshairEl = document.getElementById('crosshair');
 
         const settingsPanel = document.getElementById('settingsPanel');
         const chunkSlider = document.getElementById('chunkSlider');
@@ -655,14 +704,21 @@
             sensValue.textContent = sensitivity.toFixed(1);
         });
 
-        // KAMERA MODU DEĞİŞTİRME
         function toggleCameraMode() {
             if (cameraMode === 'third') {
                 cameraMode = 'first';
                 hudCamEl.textContent = '1. Şahıs';
+                crosshairEl.style.display = 'block';
+                if (controlMode === 'pc') {
+                    document.body.style.cursor = 'none';
+                }
             } else {
                 cameraMode = 'third';
                 hudCamEl.textContent = '3. Şahıs';
+                crosshairEl.style.display = 'none';
+                if (controlMode === 'pc') {
+                    document.body.style.cursor = 'default';
+                }
             }
         }
 
@@ -673,8 +729,10 @@
             initWebSocket();
             playerDonkey.position.set(0, 0, 0);
             gameStarted = true;
-            cameraMode = 'third'; // Her zaman 3. şahıstan başla
+            cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
+            crosshairEl.style.display = 'none';
+            document.body.style.cursor = 'default';
             menuEl.style.display = 'none';
             playerDonkey.visible = true;
             hudEl.style.display = 'block';
@@ -699,6 +757,14 @@
             hudEl.style.display = 'block';
             infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
             mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
+
+            if (cameraMode === 'first') {
+                crosshairEl.style.display = 'block';
+                if (controlMode === 'pc') document.body.style.cursor = 'none';
+            } else {
+                crosshairEl.style.display = 'none';
+                document.body.style.cursor = 'default';
+            }
         });
 
         returnMenuBtn.addEventListener('click', () => {
@@ -710,6 +776,8 @@
             mobileControlsEl.style.display = 'none';
             hudEl.style.display = 'none';
             settingsPanel.style.display = 'none';
+            crosshairEl.style.display = 'none';
+            document.body.style.cursor = 'default';
             playerDonkey.visible = false;
             if (ws) { ws.close(); ws = null; }
             for (let id in otherPlayers) {
@@ -731,6 +799,8 @@
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
                 hudEl.style.display = 'none';
+                crosshairEl.style.display = 'none';
+                document.body.style.cursor = 'default';
                 playerDonkey.visible = false;
                 return;
             }
@@ -743,7 +813,6 @@
             if (k === 'd') keys.d = true;
             if (k === 'c') keys.c = true;
             if (k === 'shift') keys.shift = true;
-            // T tuşu ile kamera değiştir
             if (k === 't') {
                 toggleCameraMode();
             }
@@ -800,6 +869,8 @@
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
                 hudEl.style.display = 'none';
+                crosshairEl.style.display = 'none';
+                document.body.style.cursor = 'default';
                 playerDonkey.visible = false;
             }
         });
@@ -1216,11 +1287,9 @@
                     }));
                 }
 
-                // ========== KAMERA POZİSYONU ==========
                 const isCrouchNow = isCrouching;
                 
                 if (cameraMode === 'third') {
-                    // 3. ŞAHIS: Eşeğin arkasından
                     const distance = 6;
                     const heightOffset = isCrouchNow ? 1.8 : 2.5;
                     
@@ -1228,7 +1297,6 @@
                     let camY = playerDonkey.position.y + heightOffset + (pitch * 2.5);
                     let camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
                     
-                    // Çimenin içinden geçmesini engelle: minimum Y
                     if (camY < 0.8) camY = 0.8;
                     
                     camera.position.set(camX, camY, camZ);
@@ -1238,7 +1306,6 @@
                         playerDonkey.position.z
                     ));
                 } else {
-                    // 1. ŞAHIS: Eşeğin gözünden
                     const eyeHeight = isCrouchNow ? 1.2 : 2.0;
                     const eyeForward = 0.5;
                     
@@ -1248,18 +1315,13 @@
                     
                     camera.position.set(eyeX, eyeY, eyeZ);
                     
-                    // Bakış yönü: pitch'e göre
                     const lookX = eyeX + Math.sin(yaw) * Math.cos(pitch);
                     const lookY = eyeY - Math.sin(pitch);
                     const lookZ = eyeZ + Math.cos(yaw) * Math.cos(pitch);
                     
                     camera.lookAt(new THREE.Vector3(lookX, lookY, lookZ));
-                    
-                    // 1. şahısta kendi eşeğimizi görünmez yap
-                    // (Ama diğer oyuncular görünsün)
                 }
                 
-                // 1. şahısta kendi eşeğimizi gizle
                 if (cameraMode === 'first') {
                     playerDonkey.visible = false;
                 } else {
