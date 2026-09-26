@@ -269,6 +269,10 @@
 
         let cameraMode = 'third';
 
+        // SPAWN NOKTASI (ahir önü)
+        const SPAWN_X = 180;
+        const SPAWN_Z = 180;
+
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
         scene.fog = new THREE.Fog(0x87ceeb, viewDistance * 0.7, viewDistance);
@@ -454,9 +458,154 @@
         }
 
         // ==========================================
-        // ŞEHİR (TAM SİMETRİK VE ORTALANMIŞ)
+        // AHIR (Spawn Noktası)
         // ==========================================
-        // Şehir merkezini dağlardan uzak tut (içeri al)
+        const buildings = [];
+
+        function createBarn(x, z) {
+            const barnGroup = new THREE.Group();
+            
+            // Ahır yüksekliği ve boyutu
+            const width = 16;
+            const depth = 12;
+            const wallHeight = 6;
+            
+            // Ana gövde (tahta rengi)
+            const wallMat = new THREE.MeshLambertMaterial({ color: 0x8b3a1a }); // koyu kahverengi tahta
+            const wallGeo = new THREE.BoxGeometry(width, wallHeight, depth);
+            const wall = new THREE.Mesh(wallGeo, wallMat);
+            wall.position.y = wallHeight / 2;
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            barnGroup.add(wall);
+            
+            // Çatı (kırmızı - üçgen prizma)
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x8b1a1a });
+            const roofGeo = new THREE.ConeGeometry(Math.sqrt(width * width + depth * depth) / 2, 5, 4);
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = wallHeight + 2.5;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            barnGroup.add(roof);
+            
+            // Kapı (ahşap çift kapı)
+            const doorMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
+            const doorGeo = new THREE.PlaneGeometry(4, 4);
+            const door = new THREE.Mesh(doorGeo, doorMat);
+            door.position.set(0, 2, depth / 2 + 0.01);
+            barnGroup.add(door);
+            
+            // Kapı ortası çizgi (iki kanat)
+            const doorLineMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+            const doorLineGeo = new THREE.PlaneGeometry(0.15, 4);
+            const doorLine = new THREE.Mesh(doorLineGeo, doorLineMat);
+            doorLine.position.set(0, 2, depth / 2 + 0.02);
+            barnGroup.add(doorLine);
+            
+            // Kapı kolları
+            const handleMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const handleGeo = new THREE.CircleGeometry(0.15, 8);
+            const handle1 = new THREE.Mesh(handleGeo, handleMat);
+            handle1.position.set(-0.4, 2, depth / 2 + 0.03);
+            barnGroup.add(handle1);
+            const handle2 = new THREE.Mesh(handleGeo, handleMat);
+            handle2.position.set(0.4, 2, depth / 2 + 0.03);
+            barnGroup.add(handle2);
+            
+            // Pencere (küçük, ön yüzde)
+            const windowMat2 = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
+            const winGeo = new THREE.PlaneGeometry(1.5, 1.5);
+            const win = new THREE.Mesh(winGeo, windowMat2);
+            win.position.set(-5, 4.5, depth / 2 + 0.01);
+            barnGroup.add(win);
+            const win2 = new THREE.Mesh(winGeo, windowMat2);
+            win2.position.set(5, 4.5, depth / 2 + 0.01);
+            barnGroup.add(win2);
+            
+            // Yonca/at nalı sembolü (dekoratif) - kapı üstünde
+            const horseshoeMat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
+            const horseshoeGeo = new THREE.RingGeometry(0.6, 0.9, 12, 1, 0, Math.PI);
+            const horseshoe = new THREE.Mesh(horseshoeGeo, horseshoeMat);
+            horseshoe.position.set(0, 5.2, depth / 2 + 0.02);
+            barnGroup.add(horseshoe);
+            
+            // Saman balyaları (ahırın önünde)
+            const hayMat = new THREE.MeshLambertMaterial({ color: 0xddc060 });
+            const hayGeo = new THREE.BoxGeometry(2, 1.5, 1.5);
+            const hay1 = new THREE.Mesh(hayGeo, hayMat);
+            hay1.position.set(-8, 0.75, 4);
+            hay1.castShadow = true;
+            barnGroup.add(hay1);
+            const hay2 = new THREE.Mesh(hayGeo, hayMat);
+            hay2.position.set(-8, 0.75, 6);
+            hay2.castShadow = true;
+            barnGroup.add(hay2);
+            const hay3 = new THREE.Mesh(hayGeo, hayMat);
+            hay3.position.set(-8, 2.25, 4);
+            hay3.castShadow = true;
+            barnGroup.add(hay3);
+            
+            // Çit (ahırın etrafında)
+            const fenceMat = new THREE.MeshLambertMaterial({ color: 0x6a4a2a });
+            const fencePostGeo = new THREE.BoxGeometry(0.3, 2, 0.3);
+            const fenceCount = 12;
+            for (let i = 0; i < fenceCount; i++) {
+                const fencePost = new THREE.Mesh(fencePostGeo, fenceMat);
+                const angle = (i / fenceCount) * Math.PI * 2;
+                fencePost.position.set(
+                    Math.cos(angle) * 20,
+                    1,
+                    Math.sin(angle) * 20
+                );
+                fencePost.castShadow = true;
+                barnGroup.add(fencePost);
+            }
+            
+            // Çit yatay çubuklar (daire şeklinde değil, kare çit)
+            const railMat = new THREE.MeshLambertMaterial({ color: 0x6a4a2a });
+            // Sol taraf
+            const railGeo1 = new THREE.BoxGeometry(0.15, 0.15, 40);
+            const rail1 = new THREE.Mesh(railGeo1, railMat);
+            rail1.position.set(-20, 1.5, 0);
+            barnGroup.add(rail1);
+            // Sağ taraf
+            const rail2 = new THREE.Mesh(railGeo1, railMat);
+            rail2.position.set(20, 1.5, 0);
+            barnGroup.add(rail2);
+            // Ön taraf
+            const railGeo2 = new THREE.BoxGeometry(40, 0.15, 0.15);
+            const rail3 = new THREE.Mesh(railGeo2, railMat);
+            rail3.position.set(0, 1.5, -20);
+            barnGroup.add(rail3);
+            // Arka taraf (kapı boşluğu için iki parça)
+            const rail4a = new THREE.Mesh(new THREE.BoxGeometry(15, 0.15, 0.15), railMat);
+            rail4a.position.set(-12, 1.5, 20);
+            barnGroup.add(rail4a);
+            const rail4b = new THREE.Mesh(new THREE.BoxGeometry(15, 0.15, 0.15), railMat);
+            rail4b.position.set(12, 1.5, 20);
+            barnGroup.add(rail4b);
+            
+            barnGroup.position.set(x, 0, z);
+            scene.add(barnGroup);
+            
+            // Ahır çarpışması (oyuncu içinden geçemez)
+            buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
+            
+            // Çit çarpışması (4 kenar)
+            buildings.push({ x: x - 20, z: z, halfW: 0.5, halfD: 20 });
+            buildings.push({ x: x + 20, z: z, halfW: 0.5, halfD: 20 });
+            buildings.push({ x: x, z: z - 20, halfW: 20, halfD: 0.5 });
+            // Arka çit kapı boşluklu (iki parça)
+            buildings.push({ x: x - 12, z: z + 20, halfW: 7.5, halfD: 0.5 });
+            buildings.push({ x: x + 12, z: z + 20, halfW: 7.5, halfD: 0.5 });
+        }
+
+        // Ahırı SPAWN noktasına koy
+        createBarn(SPAWN_X, SPAWN_Z);
+
+        // ==========================================
+        // ŞEHİR (SİMETRİK)
+        // ==========================================
         const CITY_CENTER_X = -100;
         const CITY_CENTER_Z = -100;
         
@@ -466,26 +615,18 @@
         const BLOCK_TOTAL = BLOCK_INNER + SIDEWALK_WIDTH * 2;
         const GRID_STEP = BLOCK_TOTAL + ROAD_WIDTH;
 
-        // 5x5 grid
         const gridCount = 5;
         const cityWidth = gridCount * BLOCK_TOTAL + (gridCount + 1) * ROAD_WIDTH;
         
-        // ÖNEMLİ: Grid'i CITY_CENTER etrafında simetrik hizala
-        // En dıştaki yolun merkezi CITY_CENTER - cityWidth/2 + ROAD_WIDTH/2
-        // İlk bloğun merkezi ise: yolun merkezinden ROAD_WIDTH/2 + BLOCK_TOTAL/2 uzakta
         const firstBlockCenterX = CITY_CENTER_X - cityWidth / 2 + ROAD_WIDTH + BLOCK_TOTAL / 2;
         const firstBlockCenterZ = CITY_CENTER_Z - cityWidth / 2 + ROAD_WIDTH + BLOCK_TOTAL / 2;
-
-        const buildings = [];
 
         // --- YOLLAR VE KALDIRIMLAR ---
         const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
         const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
         const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-        // Yatay yollar (6 tane: 0, 1, 2, 3, 4, 5)
         for (let i = 0; i <= gridCount; i++) {
-            // Yolun merkezi: CITY_CENTER_X - cityWidth/2 + ROAD_WIDTH/2 + i*(ROAD_WIDTH + BLOCK_TOTAL)
             const roadZ = CITY_CENTER_Z - cityWidth / 2 + ROAD_WIDTH / 2 + i * (ROAD_WIDTH + BLOCK_TOTAL);
             const roadGeo = new THREE.PlaneGeometry(cityWidth, ROAD_WIDTH);
             roadGeo.rotateX(-Math.PI / 2);
@@ -494,7 +635,6 @@
             road.receiveShadow = true;
             scene.add(road);
             
-            // Kesikli çizgi
             const dashCount = Math.floor(cityWidth / 6);
             for (let d = 0; d < dashCount; d++) {
                 const dashGeo = new THREE.PlaneGeometry(3, 0.4);
@@ -509,7 +649,6 @@
             }
         }
 
-        // Dikey yollar
         for (let i = 0; i <= gridCount; i++) {
             const roadX = CITY_CENTER_X - cityWidth / 2 + ROAD_WIDTH / 2 + i * (ROAD_WIDTH + BLOCK_TOTAL);
             const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, cityWidth);
@@ -533,7 +672,6 @@
             }
         }
 
-        // Kaldırımlar (her bloğun etrafında)
         for (let bx = 0; bx < gridCount; bx++) {
             for (let bz = 0; bz < gridCount; bz++) {
                 const blockCenterX = firstBlockCenterX + bx * GRID_STEP;
@@ -642,7 +780,6 @@
             body.receiveShadow = true;
             group.add(body);
             
-            // Çatı - tam oturur
             const roofMat = new THREE.MeshLambertMaterial({ color: 0x8b3a3a });
             const roofRadius = Math.sqrt(width * width + depth * depth) / 2;
             const roofGeo = new THREE.ConeGeometry(roofRadius, 4, 4);
@@ -800,7 +937,6 @@
             sign.position.set(-width / 2 + width * 0.25, 5.5, -depth / 2 + depth * 0.25 + depth * 0.2 + 0.15);
             group.add(sign);
             
-            // Canopy
             const canopyMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
             const canopyGeo = new THREE.BoxGeometry(width * 0.6, 0.5, depth * 0.35);
             const canopy = new THREE.Mesh(canopyGeo, canopyMat);
@@ -852,7 +988,6 @@
             const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
             const leafMat = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
             
-            // Simetrik ağaç yerleşimi (4 köşe)
             const treePositions = [
                 [-width/3, -depth/3],
                 [ width/3, -depth/3],
@@ -872,7 +1007,6 @@
                 group.add(leaf);
             }
             
-            // Merkez bank
             const benchMat = new THREE.MeshLambertMaterial({ color: 0x6a4a2a });
             const benchGroup = new THREE.Group();
             const seatGeo = new THREE.BoxGeometry(3, 0.3, 0.8);
@@ -896,18 +1030,14 @@
             scene.add(group);
         }
 
-        // --- SİMETRİK BLOK MATRİSİ (5x5) ---
-        // S=Skyscraper, H=Ev, D=Dükkan, P=Park, O=Otopark, B=Benzin, M=Anıt
-        // Tam simetrik: satır 0 = satır 4 (ters), satır 1 = satır 3 (ters)
         const blockTypes = [
-            ['S', 'H', 'D', 'H', 'S'],  // üst
-            ['H', 'P', 'H', 'P', 'H'],  // üst-orta
-            ['D', 'H', 'M', 'H', 'D'],  // orta (simetri ekseni)
-            ['H', 'P', 'H', 'P', 'H'],  // alt-orta
-            ['S', 'H', 'B', 'H', 'S']   // alt (üst ile simetrik)
+            ['S', 'H', 'D', 'H', 'S'],
+            ['H', 'P', 'H', 'P', 'H'],
+            ['D', 'H', 'M', 'H', 'D'],
+            ['H', 'P', 'H', 'P', 'H'],
+            ['S', 'H', 'B', 'H', 'S']
         ];
 
-        // 4'lü ev grubu
         function createHouseQuad(centerX, centerZ) {
             const gap = 2;
             const w = (BLOCK_INNER - 10 - gap) / 2;
@@ -919,7 +1049,6 @@
             createHouse(centerX + w / 2 + gap / 2, centerZ + d / 2 + gap / 2, w, d, colors[3]);
         }
 
-        // 2'li ev grubu
         function createHousePair(centerX, centerZ) {
             const gap = 2.5;
             const w = (BLOCK_INNER - 12 - gap) / 2;
@@ -936,7 +1065,6 @@
                 
                 const type = blockTypes[bz][bx];
                 
-                // Kullanılabilir alan (kaldırımdan 6 birim içerde, bina tam oturur)
                 const usableW = BLOCK_INNER - 12;
                 const usableD = BLOCK_INNER - 12;
                 
@@ -1007,7 +1135,7 @@
             }
         }
 
-        // --- SOKAK LAMBALARI (her yol kavşağına) ---
+        // --- SOKAK LAMBALARI ---
         const lampPoleMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
         const lampLightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
 
@@ -1026,13 +1154,11 @@
             scene.add(lampGroup);
         }
 
-        // Her yol kavşağının 4 köşesine lamba
         for (let i = 0; i <= gridCount; i++) {
             for (let j = 0; j <= gridCount; j++) {
                 const interX = CITY_CENTER_X - cityWidth / 2 + ROAD_WIDTH / 2 + i * (ROAD_WIDTH + BLOCK_TOTAL);
                 const interZ = CITY_CENTER_Z - cityWidth / 2 + ROAD_WIDTH / 2 + j * (ROAD_WIDTH + BLOCK_TOTAL);
                 
-                // Kavşak köşelerindeki kaldırım noktaları
                 const cornerOffset = ROAD_WIDTH / 2 + SIDEWALK_WIDTH / 2 - 0.5;
                 createStreetLamp(interX - cornerOffset, interZ - cornerOffset);
                 createStreetLamp(interX + cornerOffset, interZ - cornerOffset);
@@ -1041,7 +1167,7 @@
             }
         }
 
-        // Şehir dışı ağaçlar (şehirden uzak)
+        // Şehir dışı ağaçlar
         const treeTrunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
         const treeLeafMat = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
 
@@ -1061,7 +1187,6 @@
             scene.add(treeGroup);
         }
 
-        // Şehir sınırının dışına ağaçlar
         const CITY_RADIUS = cityWidth / 2 + 30;
         for (let i = 0; i < 300; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -1069,11 +1194,13 @@
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
             
-            // Şehir merkezinden uzak mı?
             const distToCity = Math.sqrt((x - CITY_CENTER_X) ** 2 + (z - CITY_CENTER_Z) ** 2);
             if (distToCity < CITY_RADIUS) continue;
             
-            // Dağlardan uzak mı?
+            // Ahır yakınlarına ağaç koyma
+            const distToBarn = Math.sqrt((x - SPAWN_X) ** 2 + (z - SPAWN_Z) ** 2);
+            if (distToBarn < 30) continue;
+            
             let tooCloseToMountain = false;
             for (let m of mountains) {
                 const dx = x - m.x;
@@ -1373,7 +1500,8 @@
         function startGame(mode) {
             controlMode = mode;
             initWebSocket();
-            playerDonkey.position.set(0, 0, 0);
+            // SPAWN NOKTASI (ahir önü)
+            playerDonkey.position.set(SPAWN_X, 0, SPAWN_Z + 25);
             gameStarted = true;
             cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
