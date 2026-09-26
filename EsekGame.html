@@ -3,142 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eşek Game - Cross-Platform Online</title>
+    <title>Eşek Game - Online</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #1a1a1a;
-            font-family: Arial, sans-serif;
-            user-select: none;
-        }
-
-        #menu {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 20;
-        }
-
-        h1 {
-            color: #ffd700;
-            font-size: 64px;
-            margin: 0;
-            text-shadow: 3px 3px 6px #000;
-        }
-
-        h2 {
-            color: #ffffff;
-            font-size: 24px;
-            margin: 10px 0 20px 0;
-            font-weight: 300;
-        }
-
-        .section-title {
-            color: #aaaaaa;
-            font-size: 18px;
-            margin: 15px 0 5px 0;
-        }
-
-        .btn {
-            padding: 12px 35px;
-            font-size: 20px;
-            font-weight: bold;
-            color: #ffffff;
-            background-color: #4CAF50;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            transition: transform 0.2s;
-            margin: 8px;
-            min-width: 250px;
-        }
-
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: Arial, sans-serif; user-select: none; }
+        #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.85); z-index: 20; }
+        h1 { color: #ffd700; font-size: 64px; margin: 0; text-shadow: 3px 3px 6px #000; }
+        h2 { color: #ffffff; font-size: 24px; margin: 10px 0 20px 0; font-weight: 300; }
+        .section-title { color: #aaaaaa; font-size: 18px; margin: 15px 0 5px 0; }
+        .btn { padding: 12px 35px; font-size: 20px; font-weight: bold; color: #ffffff; background-color: #4CAF50; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: transform 0.2s; margin: 8px; min-width: 250px; }
         .btn:hover { transform: scale(1.05); }
         .btn-red { background-color: #f44336; }
         .btn-blue { background-color: #2196F3; }
-
-        #info {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
-            text-align: center;
-            color: #ffffff;
-            font-size: 16px;
-            pointer-events: none;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
-            display: none;
-            z-index: 15;
-        }
-
-        #mobileControls {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none;
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        #joystickZone {
-            position: absolute;
-            bottom: 40px;
-            left: 40px;
-            width: 130px;
-            height: 130px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.4);
-            border-radius: 50%;
-            pointer-events: auto;
-            touch-action: none;
-        }
-
-        #joystickKnob {
-            position: absolute;
-            top: 40px;
-            left: 40px;
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-
-        .mob-btn-group {
-            position: absolute;
-            bottom: 40px;
-            right: 40px;
-            display: flex;
-            gap: 15px;
-            pointer-events: auto;
-        }
-
-        .mob-btn {
-            width: 70px;
-            height: 70px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 2px solid #ffffff;
-            color: #ffffff;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-
+        #info { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #ffffff; font-size: 16px; pointer-events: none; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); display: none; z-index: 15; }
+        #mobileControls { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; pointer-events: none; z-index: 10; }
+        #joystickZone { position: absolute; bottom: 40px; left: 40px; width: 130px; height: 130px; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; pointer-events: auto; touch-action: none; }
+        #joystickKnob { position: absolute; top: 40px; left: 40px; width: 50px; height: 50px; background: rgba(255, 255, 255, 0.7); border-radius: 50%; pointer-events: none; }
+        .mob-btn-group { position: absolute; bottom: 40px; right: 40px; display: flex; gap: 15px; pointer-events: auto; }
+        .mob-btn { width: 70px; height: 70px; background: rgba(0, 0, 0, 0.5); border: 2px solid #ffffff; color: #ffffff; font-size: 18px; font-weight: bold; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         .mob-btn:active { background: rgba(255, 255, 255, 0.4); }
     </style>
 </head>
@@ -175,12 +56,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
+        // --- AYARLAR ---
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        // Eğer localhost'ta çalışıyorsanız portu otomatik alır, Render'da ise kendi domainini kullanır.
+        const wsUrl = `${protocol}//${window.location.host}`;
+        
         let ws = null;
         let myId = null;
-        const otherPlayers = {};
+        const otherPlayers = {}; // Diğer oyuncuları tutar
         let controlMode = 'pc';
 
+        // --- THREE.JS SAHNE KURULUMU ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
 
@@ -196,12 +82,14 @@
         dirLight.castShadow = true;
         scene.add(dirLight);
 
+        // Zemin
         const terrainGeo = new THREE.PlaneGeometry(500, 500, 100, 100);
         terrainGeo.rotateX(-Math.PI / 2);
         const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0x3d8c28 }));
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
+        // --- EŞEK MODELİ OLUŞTURMA FONKSİYONU ---
         function createDonkeyModel() {
             const donkeyGroup = new THREE.Group();
             const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
@@ -258,12 +146,19 @@
         }
 
         const playerDonkey = createDonkeyModel();
-        playerDonkey.visible = false; // Başlangıçta menüde gizli
+        playerDonkey.visible = false;
         scene.add(playerDonkey);
 
+        // --- WEBSOCKET BAĞLANTISI ---
         function initWebSocket() {
             if (ws && ws.readyState === WebSocket.OPEN) return;
-            ws = new WebSocket(`${protocol}//${window.location.host}`);
+            
+            console.log("Bağlanılıyor:", wsUrl);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log("Sunucuya bağlandı!");
+            };
 
             ws.onmessage = (event) => {
                 try {
@@ -271,19 +166,24 @@
 
                     if (data.type === "init") {
                         myId = data.id;
+                        console.log("Benim ID:", myId);
                     }
 
                     if (data.type === "players" && myId) {
                         const serverPlayers = data.players;
 
+                        // 1. Diğer oyuncuları güncelle veya ekle
                         for (let id in serverPlayers) {
                             if (id !== myId) {
                                 if (!otherPlayers[id]) {
+                                    // Yeni oyuncu geldi, model oluştur
                                     const newDonkey = createDonkeyModel();
                                     scene.add(newDonkey);
                                     otherPlayers[id] = newDonkey;
+                                    console.log("Yeni oyuncu eklendi:", id);
                                 }
                                 const pData = serverPlayers[id];
+                                // Konum ve rotasyonu güncelle
                                 otherPlayers[id].position.set(pData.x, pData.y, pData.z);
                                 otherPlayers[id].rotation.y = pData.yaw || 0;
                                 if (otherPlayers[id].userData.neckHeadGroup) {
@@ -292,10 +192,12 @@
                             }
                         }
 
+                        // 2. Ayrılan oyuncuları temizle
                         for (let id in otherPlayers) {
                             if (!serverPlayers[id]) {
                                 scene.remove(otherPlayers[id]);
                                 delete otherPlayers[id];
+                                console.log("Oyuncu ayrıldı:", id);
                             }
                         }
                     }
@@ -303,8 +205,13 @@
                     console.error("Veri işleme hatası:", e);
                 }
             };
+            
+            ws.onclose = () => {
+                console.log("Bağlantı koptu.");
+            };
         }
 
+        // --- OYUN DURUMU VE KONTROLLER ---
         let gameStarted = false;
         let yaw = 0, pitch = 0.3, velocityY = 0;
         let isGrounded = true;
@@ -332,7 +239,7 @@
             playerDonkey.position.set(0, 0, 0);
             gameStarted = true;
             menuEl.style.display = 'none';
-            playerDonkey.visible = true; // Oyuna girince eşeği göster
+            playerDonkey.visible = true;
 
             if (controlMode === 'pc') {
                 infoEl.style.display = 'block';
@@ -347,10 +254,10 @@
         mobileSelectBtn.addEventListener('click', () => startGame('mobile'));
 
         resumeBtn.addEventListener('click', () => {
-            initWebSocket();
+            initWebSocket(); // Bağlantı kopmuşsa tekrar bağlan
             gameStarted = true;
             menuEl.style.display = 'none';
-            playerDonkey.visible = true; // Oyuna dönünce eşeği göster
+            playerDonkey.visible = true;
             infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
             mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
         });
@@ -362,14 +269,18 @@
             pauseButtons.style.display = 'none';
             infoEl.style.display = 'none';
             mobileControlsEl.style.display = 'none';
-            playerDonkey.visible = false; // Menüye dönünce eşeği gizle
+            playerDonkey.visible = false;
+            
             if (ws) { ws.close(); ws = null; }
+            
+            // Diğer oyuncuları temizle
             for (let id in otherPlayers) {
                 scene.remove(otherPlayers[id]);
                 delete otherPlayers[id];
             }
         });
 
+        // --- PC KONTROLLERİ ---
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && gameStarted) {
                 gameStarted = false;
@@ -378,7 +289,7 @@
                 pauseButtons.style.display = 'flex';
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
-                playerDonkey.visible = false; // Menü açılınca eşeği gizle
+                playerDonkey.visible = false;
                 return;
             }
             if (!gameStarted || controlMode !== 'pc') return;
@@ -421,6 +332,7 @@
             mouseY = e.clientY;
         });
 
+        // --- MOBİL KONTROLLERİ ---
         const joystickZone = document.getElementById('joystickZone');
         const joystickKnob = document.getElementById('joystickKnob');
         const mobJumpBtn = document.getElementById('mobJumpBtn');
@@ -470,6 +382,7 @@
             lastTouchX = tX; lastTouchY = tY;
         });
 
+        // --- OYUN DÖNGÜSÜ ---
         let walkCycle = 0;
 
         function animate() {
@@ -480,6 +393,7 @@
                 const speed = isCrouching ? 0.06 : 0.12;
                 let moveX = 0, moveZ = 0, isMoving = false;
 
+                // Hareket Mantığı
                 if (controlMode === 'pc') {
                     if (keys.w) { moveX += Math.sin(yaw) * speed; moveZ += Math.cos(yaw) * speed; isMoving = true; }
                     if (keys.s) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; isMoving = true; }
@@ -493,16 +407,20 @@
                     }
                 }
 
+                // Fizik ve Konum Güncelleme
                 playerDonkey.position.x += moveX;
                 playerDonkey.position.z += moveZ;
                 playerDonkey.rotation.y = yaw;
 
+                // Eğilme Animasyonu
                 playerDonkey.scale.y += ((isCrouching ? 0.6 : 1.0) - playerDonkey.scale.y) * 0.2;
 
+                // Zıplama Fiziği
                 velocityY -= 0.015;
                 playerDonkey.position.y += velocityY;
                 if (playerDonkey.position.y <= 0) { playerDonkey.position.y = 0; velocityY = 0; isGrounded = true; }
 
+                // Bacak Animasyonu
                 const legs = playerDonkey.userData.legs;
                 if (isMoving && isGrounded) {
                     walkCycle += 0.15;
@@ -514,10 +432,12 @@
                     legs.forEach(l => l.rotation.x *= 0.8);
                 }
 
+                // Kafa Animasyonu
                 if (playerDonkey.userData.neckHeadGroup) {
                     playerDonkey.userData.neckHeadGroup.rotation.x = pitch;
                 }
 
+                // SUNUCUYA KONUM GÖNDER
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: "move",
@@ -529,6 +449,7 @@
                     }));
                 }
 
+                // KAMERA TAKİBİ
                 const distance = 6, heightOffset = isCrouching ? 1.8 : 2.5;
                 camera.position.set(
                     playerDonkey.position.x - Math.sin(yaw) * distance,
