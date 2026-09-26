@@ -16,10 +16,8 @@
         .btn-blue { background-color: #2196F3; }
         #info { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #ffffff; font-size: 16px; pointer-events: none; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); display: none; z-index: 15; }
         
-        /* Mobil Kontroller */
         #mobileControls { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; pointer-events: none; z-index: 10; }
         
-        /* Mobil Menü Butonu (Sol Üst) */
         #mobMenuBtn {
             position: absolute;
             top: 20px;
@@ -69,7 +67,6 @@
     <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık + Sürükle: Etrafa Bak | Space: Zıpla | C: Eğil | ESC: Menü</div>
 
     <div id="mobileControls">
-        <!-- Mobil Menü Butonu -->
         <div id="mobMenuBtn">☰</div>
 
         <div id="joystickZone">
@@ -93,7 +90,7 @@
         const otherPlayers = {};
         let controlMode = 'pc';
 
-        // --- THREE.JS SAHNE ---
+        // --- THREE.JS ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
 
@@ -115,7 +112,6 @@
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
-        // --- EŞEK MODELİ ---
         function createDonkeyModel() {
             const donkeyGroup = new THREE.Group();
             const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
@@ -167,7 +163,7 @@
                 legs.push(legGroup);
             });
 
-            donkeyGroup.userData = { legs, neckHeadGroup, isCrouching: false };
+            donkeyGroup.userData = { legs, neckHeadGroup };
             return donkeyGroup;
         }
 
@@ -204,11 +200,9 @@
                                 if (otherPlayers[id].userData.neckHeadGroup) {
                                     otherPlayers[id].userData.neckHeadGroup.rotation.x = pData.pitch || 0;
                                 }
-                                // Diğer oyuncunun eğilme durumunu uygula
-                                if (pData.isCrouching !== undefined) {
-                                    const targetScale = pData.isCrouching ? 0.6 : 1.0;
-                                    otherPlayers[id].scale.y += (targetScale - otherPlayers[id].scale.y) * 0.2;
-                                }
+                                // EĞİLME SENKRONİZASYONU
+                                const targetScale = pData.isCrouching ? 0.6 : 1.0;
+                                otherPlayers[id].scale.y += (targetScale - otherPlayers[id].scale.y) * 0.2;
                             }
                         }
 
@@ -225,7 +219,7 @@
             };
         }
 
-        // --- OYUN DURUMU ---
+        // --- DURUM ---
         let gameStarted = false;
         let yaw = 0, pitch = 0.3, velocityY = 0;
         let isGrounded = true;
@@ -234,7 +228,7 @@
         const keys = { w: false, a: false, s: false, d: false, c: false, shift: false };
 
         let joystickActive = false;
-        let joystickMoveX = 0, joystickMoveZ = 0;
+        let joystickMoveX = 0, joystickMoveZ = 0; // X: sağ(+)/sol(-), Z: ileri(-)/geri(+)
         let isCouchingMobile = false;
         let isSprintingMobile = false;
 
@@ -265,7 +259,6 @@
             }
         }
 
-        // Menü Butonları
         pcSelectBtn.addEventListener('click', () => startGame('pc'));
         mobileSelectBtn.addEventListener('click', () => startGame('mobile'));
 
@@ -293,7 +286,7 @@
             }
         });
 
-        // --- PC KONTROLLERİ ---
+        // --- PC ---
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && gameStarted) {
                 gameStarted = false;
@@ -347,7 +340,7 @@
             mouseY = e.clientY;
         });
 
-        // --- MOBİL KONTROLLERİ ---
+        // --- MOBİL ---
         const joystickZone = document.getElementById('joystickZone');
         const joystickKnob = document.getElementById('joystickKnob');
         const mobJumpBtn = document.getElementById('mobJumpBtn');
@@ -357,7 +350,6 @@
         
         let touchStartX = 0, touchStartY = 0;
 
-        // Mobil Menü Butonu İşlevi
         mobMenuBtn.addEventListener('click', () => {
             if (gameStarted) {
                 gameStarted = false;
@@ -383,9 +375,11 @@
             let angle = Math.atan2(dY, dX);
             joystickKnob.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
             
-            // YÖN DÜZELTİLDİ: İleri = -Y (Yukarı), Geri = +Y (Aşağı)
+            // Joystick değerleri:
+            // Sağ = +1, Sol = -1
             joystickMoveX = Math.cos(angle) * (dist / 45);
-            joystickMoveZ = -Math.sin(angle) * (dist / 45); // Eksi yaptık ki yukarı ileri olsun
+            // Yukarı = -1, Aşağı = +1 (çünkü ekranda Y aşağı doğru artar)
+            joystickMoveZ = Math.sin(angle) * (dist / 45);
         });
         joystickZone.addEventListener('touchend', () => {
             joystickActive = false;
@@ -398,7 +392,6 @@
         });
         mobCrouchBtn.addEventListener('touchstart', () => { isCouchingMobile = true; });
         mobCrouchBtn.addEventListener('touchend', () => { isCouchingMobile = false; });
-        
         mobSprintBtn.addEventListener('touchstart', () => { isSprintingMobile = true; });
         mobSprintBtn.addEventListener('touchend', () => { isSprintingMobile = false; });
 
@@ -418,7 +411,7 @@
             lastTouchX = tX; lastTouchY = tY;
         });
 
-        // --- OYUN DÖNGÜSÜ ---
+        // --- DÖNGÜ ---
         let walkCycle = 0;
 
         function animate() {
@@ -428,14 +421,12 @@
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
                 
-                // Koşma hızı (Shift veya Mobil buton)
                 let baseSpeed = isCrouching ? 0.06 : 0.12;
-                if (isSprinting && !isCrouching) baseSpeed = 0.25; // Koşma hızı
-                
+                if (isSprinting && !isCrouching) baseSpeed = 0.25;
                 const speed = baseSpeed;
+                
                 let moveX = 0, moveZ = 0, isMoving = false;
 
-                // Hareket
                 if (controlMode === 'pc') {
                     if (keys.w) { moveX += Math.sin(yaw) * speed; moveZ += Math.cos(yaw) * speed; isMoving = true; }
                     if (keys.s) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; isMoving = true; }
@@ -443,31 +434,23 @@
                     if (keys.d) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
                 } else {
                     if (joystickActive) {
-                        // DÜZELTİLMİŞ YÖN MANTIĞI
-                        // JoystickMoveZ yukarı için eksi değer alıyor (düzelttik)
-                        // İleri gitmek için: moveZ negatif olmalı, bu yüzden joystickMoveZ'yi direkt kullanıyoruz.
-                        // Ancak kamera açısına göre döndürmemiz lazım.
+                        // JoystickMoveX: Sağ(+), Sol(-)
+                        // JoystickMoveZ: Yukarı(-), Aşağı(+)
                         
-                        // Yerel ileri vektörü: (0, 0, -1) * joystickMoveZ (yukarı için)
-                        // Ama joystickMoveZ'yi -sin(angle) yaptık. Yani yukarı çekince negatif oluyor.
-                        // Bu yüzden ileri gitmek için -joystickMoveZ kullanmalıyız? Hayır.
-                        // Basitçe: joystickMoveZ pozitifse geri, negatifse ileri.
-                        
-                        // Dünya koordinatlarına çevirme:
-                        // Sin(yaw) ve Cos(yaw) kullanarak.
-                        
-                        // moveZ = joystickMoveZ * cos(yaw) - joystickMoveX * sin(yaw) ... gibi
-                        // Ama daha basit: Joystick'in X ve Z'sini alıp, kameranın sağ ve ileri vektörleriyle çarpalım.
-                        
+                        // Kameranın ileri ve sağ vektörleri:
                         const forwardX = Math.sin(yaw);
                         const forwardZ = Math.cos(yaw);
                         const rightX = Math.cos(yaw);
                         const rightZ = -Math.sin(yaw);
                         
-                        // joystickMoveZ negatifse (yukarı), ileri gitmeli.
-                        // O yüzden -joystickMoveZ * forward kullanıyoruz.
-                        moveX = (forwardX * -joystickMoveZ + rightX * joystickMoveX) * speed * 1.5;
-                        moveZ = (forwardZ * -joystickMoveZ + rightZ * joystickMoveX) * speed * 1.5;
+                        // İleri gitmek için joystickMoveZ negatif olduğunda -(-1) = +1 olmalı.
+                        // O yüzden -joystickMoveZ kullanıyoruz.
+                        // Sağa gitmek için joystickMoveX pozitif olduğunda +1 olmalı.
+                        const ileriGeri = -joystickMoveZ; // Yukarı(-) -> +1 (ileri), Aşağı(+) -> -1 (geri)
+                        const sagSol = joystickMoveX;     // Sağ(+) -> +1, Sol(-) -> -1
+                        
+                        moveX = (forwardX * ileriGeri + rightX * sagSol) * speed * 1.5;
+                        moveZ = (forwardZ * ileriGeri + rightZ * sagSol) * speed * 1.5;
                         
                         isMoving = true;
                     }
@@ -477,18 +460,15 @@
                 playerDonkey.position.z += moveZ;
                 playerDonkey.rotation.y = yaw;
 
-                // Eğilme
                 playerDonkey.scale.y += ((isCrouching ? 0.6 : 1.0) - playerDonkey.scale.y) * 0.2;
 
-                // Zıplama
                 velocityY -= 0.015;
                 playerDonkey.position.y += velocityY;
                 if (playerDonkey.position.y <= 0) { playerDonkey.position.y = 0; velocityY = 0; isGrounded = true; }
 
-                // Bacak Animasyonu
                 const legs = playerDonkey.userData.legs;
                 if (isMoving && isGrounded) {
-                    walkCycle += isSprinting ? 0.25 : 0.15; // Koşarken daha hızlı
+                    walkCycle += isSprinting ? 0.25 : 0.15;
                     legs[0].rotation.x = Math.sin(walkCycle) * 0.5;
                     legs[1].rotation.x = -Math.sin(walkCycle) * 0.5;
                     legs[2].rotation.x = -Math.sin(walkCycle) * 0.5;
@@ -501,7 +481,7 @@
                     playerDonkey.userData.neckHeadGroup.rotation.x = pitch;
                 }
 
-                // SUNUCUYA GÖNDER (Eğilme durumunu da ekledik)
+                // SUNUCUYA GÖNDER (Eğilme dahil)
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: "move",
@@ -510,11 +490,10 @@
                         z: playerDonkey.position.z,
                         yaw: yaw,
                         pitch: pitch,
-                        isCrouching: isCrouching // YENİ: Eğilme durumu
+                        isCrouching: isCrouching
                     }));
                 }
 
-                // Kamera
                 const distance = 6, heightOffset = isCrouching ? 1.8 : 2.5;
                 camera.position.set(
                     playerDonkey.position.x - Math.sin(yaw) * distance,
