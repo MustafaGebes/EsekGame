@@ -20,62 +20,25 @@
         #mobileControls { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; pointer-events: none; z-index: 10; }
         
         #mobMenuBtn {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 50px;
-            height: 50px;
-            background: rgba(0, 0, 0, 0.6);
-            border: 2px solid #ffffff;
-            color: #ffffff;
-            font-size: 24px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            pointer-events: auto;
-            cursor: pointer;
-            z-index: 25;
+            position: absolute; top: 20px; left: 20px; width: 50px; height: 50px;
+            background: rgba(0, 0, 0, 0.6); border: 2px solid #ffffff; color: #ffffff;
+            font-size: 24px; border-radius: 50%; display: flex; justify-content: center;
+            align-items: center; pointer-events: auto; cursor: pointer; z-index: 25;
         }
 
         #mobViewBtn {
-            position: absolute;
-            top: 20px;
-            left: 80px;
-            width: 50px;
-            height: 50px;
-            background: rgba(0, 0, 0, 0.6);
-            border: 2px solid #ffffff;
-            color: #ffffff;
-            font-size: 22px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            pointer-events: auto;
-            cursor: pointer;
-            z-index: 25;
+            position: absolute; top: 20px; left: 80px; width: 50px; height: 50px;
+            background: rgba(0, 0, 0, 0.6); border: 2px solid #ffffff; color: #ffffff;
+            font-size: 22px; border-radius: 50%; display: flex; justify-content: center;
+            align-items: center; pointer-events: auto; cursor: pointer; z-index: 25;
         }
 
         #mobOpenBtn {
-            position: absolute;
-            bottom: 130px;
-            right: 40px;
-            width: 90px;
-            height: 90px;
-            background: rgba(255, 200, 0, 0.9);
-            border: 3px solid #ffffff;
-            color: #000000;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 50%;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            pointer-events: auto;
-            cursor: pointer;
-            z-index: 25;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            position: absolute; bottom: 130px; right: 40px; width: 90px; height: 90px;
+            background: rgba(255, 200, 0, 0.9); border: 3px solid #ffffff; color: #000000;
+            font-size: 18px; font-weight: bold; border-radius: 50%; display: none;
+            justify-content: center; align-items: center; pointer-events: auto; cursor: pointer;
+            z-index: 25; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
         }
 
         #joystickZone { position: absolute; bottom: 40px; left: 40px; width: 130px; height: 130px; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; pointer-events: auto; touch-action: none; }
@@ -87,145 +50,63 @@
         .mob-btn-sprint { background: rgba(255, 152, 0, 0.7); border-color: #ff9800; }
 
         #hud {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            color: #ffffff;
-            font-size: 14px;
-            font-family: monospace;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 8px 12px;
-            border-radius: 8px;
-            pointer-events: none;
-            z-index: 15;
-            text-shadow: 1px 1px 2px #000;
+            position: absolute; top: 20px; right: 20px; color: #ffffff; font-size: 14px;
+            font-family: monospace; background: rgba(0, 0, 0, 0.5); padding: 8px 12px;
+            border-radius: 8px; pointer-events: none; z-index: 15; text-shadow: 1px 1px 2px #000;
             display: none;
         }
         #hud div { margin: 2px 0; }
         #hud .label { color: #ffd700; font-weight: bold; }
 
         #interactPrompt {
-            position: absolute;
-            top: 55%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #ffffff;
-            font-size: 20px;
-            font-weight: bold;
-            background: rgba(0, 0, 0, 0.75);
-            padding: 12px 24px;
-            border-radius: 10px;
-            border: 2px solid #ffd700;
-            pointer-events: none;
-            z-index: 19;
-            display: none;
-            text-shadow: 1px 1px 3px #000;
+            position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
+            color: #ffffff; font-size: 20px; font-weight: bold; background: rgba(0, 0, 0, 0.75);
+            padding: 12px 24px; border-radius: 10px; border: 2px solid #ffd700;
+            pointer-events: none; z-index: 19; display: none; text-shadow: 1px 1px 3px #000;
         }
 
         #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 30px;
-            height: 30px;
-            pointer-events: none;
-            z-index: 18;
-            display: none;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 30px; height: 30px; pointer-events: none; z-index: 18; display: none;
         }
-        #crosshair::before,
-        #crosshair::after {
-            content: '';
-            position: absolute;
-            background: rgba(255, 255, 255, 0.9);
+        #crosshair::before, #crosshair::after {
+            content: ''; position: absolute; background: rgba(255, 255, 255, 0.9);
             box-shadow: 0 0 3px rgba(0,0,0,0.8);
         }
-        #crosshair::before {
-            top: 50%;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            transform: translateY(-50%);
-        }
-        #crosshair::after {
-            top: 0;
-            left: 50%;
-            width: 2px;
-            height: 100%;
-            transform: translateX(-50%);
-        }
+        #crosshair::before { top: 50%; left: 0; width: 100%; height: 2px; transform: translateY(-50%); }
+        #crosshair::after { top: 0; left: 50%; width: 2px; height: 100%; transform: translateX(-50%); }
         #crosshair .dot {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 4px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 3px rgba(0,0,0,0.8);
+            position: absolute; top: 50%; left: 50%; width: 4px; height: 4px;
+            background: rgba(255, 255, 255, 0.9); border-radius: 50%;
+            transform: translate(-50%, -50%); box-shadow: 0 0 3px rgba(0,0,0,0.8);
         }
 
         #settingsPanel {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 320px;
-            max-width: 90%;
-            background: rgba(20, 20, 30, 0.95);
-            border: 2px solid #4CAF50;
-            border-radius: 12px;
-            padding: 25px;
-            z-index: 100;
-            display: none;
-            color: #ffffff;
-            font-family: Arial, sans-serif;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 320px; max-width: 90%; background: rgba(20, 20, 30, 0.95);
+            border: 2px solid #4CAF50; border-radius: 12px; padding: 25px; z-index: 100;
+            display: none; color: #ffffff; font-family: Arial, sans-serif;
             box-shadow: 0 10px 40px rgba(0,0,0,0.8);
         }
         #settingsPanel h3 { margin: 0 0 20px 0; color: #ffd700; text-align: center; font-size: 22px; }
         #settingsPanel label { display: block; margin: 15px 0 5px 0; color: #cccccc; font-size: 14px; }
         #settingsPanel input[type="range"] {
-            width: 100%;
-            height: 8px;
-            background: #333;
-            border-radius: 4px;
-            outline: none;
-            -webkit-appearance: none;
+            width: 100%; height: 8px; background: #333; border-radius: 4px;
+            outline: none; -webkit-appearance: none;
         }
         #settingsPanel input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 22px;
-            height: 22px;
-            background: #4CAF50;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid #fff;
+            -webkit-appearance: none; width: 22px; height: 22px; background: #4CAF50;
+            border-radius: 50%; cursor: pointer; border: 2px solid #fff;
         }
         #settingsPanel input[type="range"]::-moz-range-thumb {
-            width: 22px;
-            height: 22px;
-            background: #4CAF50;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid #fff;
+            width: 22px; height: 22px; background: #4CAF50; border-radius: 50%;
+            cursor: pointer; border: 2px solid #fff;
         }
-        #settingsPanel .value-display {
-            float: right;
-            color: #ffd700;
-            font-weight: bold;
-        }
+        #settingsPanel .value-display { float: right; color: #ffd700; font-weight: bold; }
         #settingsPanel .close-btn {
-            width: 100%;
-            margin-top: 20px;
-            padding: 12px;
-            background: #4CAF50;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
+            width: 100%; margin-top: 20px; padding: 12px; background: #4CAF50;
+            color: #fff; border: none; border-radius: 8px; font-size: 16px;
+            font-weight: bold; cursor: pointer;
         }
         #settingsPanel .close-btn:hover { background: #45a049; }
     </style>
@@ -261,9 +142,7 @@
 
     <div id="interactPrompt">E - Kapıyı Aç</div>
 
-    <div id="crosshair">
-        <div class="dot"></div>
-    </div>
+    <div id="crosshair"><div class="dot"></div></div>
 
     <div id="settingsPanel">
         <h3>⚙️ Ayarlar</h3>
@@ -283,9 +162,7 @@
         <div id="mobViewBtn">📷</div>
         <div id="mobOpenBtn">🔓 AÇ</div>
 
-        <div id="joystickZone">
-            <div id="joystickKnob"></div>
-        </div>
+        <div id="joystickZone"><div id="joystickKnob"></div></div>
         <div class="mob-btn-group">
             <button class="mob-btn mob-btn-sprint" id="mobSprintBtn">KOŞ</button>
             <button class="mob-btn" id="mobCrouchBtn">Eğil</button>
@@ -308,7 +185,6 @@
 
         let viewDistance = 100;
         let sensitivity = 1.0;
-
         let cameraMode = 'third';
 
         const SPAWN_X = 180;
@@ -316,7 +192,6 @@
 
         let menuCameraAngle = 0;
 
-        // KAPI DURUMU
         let doorOpen = false;
         let doorAnimProgress = 0;
         let playerNearDoor = false;
@@ -385,11 +260,7 @@
         starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
 
         const starMaterial = new THREE.PointsMaterial({
-            size: 3,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0,
-            sizeAttenuation: false
+            size: 3, vertexColors: true, transparent: true, opacity: 0, sizeAttenuation: false
         });
 
         const stars = new THREE.Points(starGeometry, starMaterial);
@@ -402,7 +273,7 @@
         scene.add(terrainMesh);
 
         // ==========================================
-        // DAĞLAR
+        // DAĞLAR (DAHA FAZLA, SIKI ÇEMBER)
         // ==========================================
         const mountains = [];
 
@@ -429,15 +300,29 @@
             mountains.push({ x, z, radius: baseRadius * 0.95 });
         }
 
-        const mountainRingRadius = MAP_LIMIT - 20;
-        const mountainCount = 40;
+        // Çok daha fazla dağ - aralardan kaçış imkansız
+        const mountainRingRadius = MAP_LIMIT - 15;
+        const mountainCount = 140;
 
         for (let i = 0; i < mountainCount; i++) {
             const angle = (i / mountainCount) * Math.PI * 2;
             const x = Math.cos(angle) * mountainRingRadius;
             const z = Math.sin(angle) * mountainRingRadius;
-            const baseRadius = 25 + Math.random() * 8;
-            const height = 60 + Math.random() * 25;
+            const baseRadius = 22 + Math.random() * 6;
+            const height = 70 + Math.random() * 30;
+            createMountain(x, z, baseRadius, height);
+        }
+
+        // İkinci sıra dağ (daha dış)
+        const mountainRingRadius2 = MAP_LIMIT + 35;
+        const mountainCount2 = 100;
+
+        for (let i = 0; i < mountainCount2; i++) {
+            const angle = (i / mountainCount2) * Math.PI * 2;
+            const x = Math.cos(angle) * mountainRingRadius2;
+            const z = Math.sin(angle) * mountainRingRadius2;
+            const baseRadius = 28 + Math.random() * 10;
+            const height = 90 + Math.random() * 40;
             createMountain(x, z, baseRadius, height);
         }
 
@@ -448,8 +333,8 @@
         const grassMat2 = new THREE.MeshLambertMaterial({ color: 0x4a9c2a });
         const grassMat3 = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
 
-        const grassAreaRadius = MAP_LIMIT - 50;
-        const grassCount = 1200;
+        const grassAreaRadius = MAP_LIMIT - 60;
+        const grassCount = 1500;
 
         for (let i = 0; i < grassCount; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -461,12 +346,13 @@
             for (let m of mountains) {
                 const dx = x - m.x;
                 const dz = z - m.z;
-                if (Math.sqrt(dx * dx + dz * dz) < m.radius + 1) {
-                    inMountain = true;
-                    break;
-                }
+                if (Math.sqrt(dx * dx + dz * dz) < m.radius + 1) { inMountain = true; break; }
             }
             if (inMountain) continue;
+
+            // Çiftlik alanına ot koyma
+            const distToBarn = Math.sqrt((x - SPAWN_X) ** 2 + (z - SPAWN_Z) ** 2);
+            if (distToBarn < 55) continue;
 
             const bladeCount = 3;
             const grassGroup = new THREE.Group();
@@ -476,11 +362,7 @@
                 const bladeGeo = new THREE.BoxGeometry(0.06, h, 0.06);
                 const mat = Math.random() > 0.66 ? grassMat2 : (Math.random() > 0.5 ? grassMat1 : grassMat3);
                 const blade = new THREE.Mesh(bladeGeo, mat);
-                blade.position.set(
-                    (Math.random() - 0.5) * 0.5,
-                    h / 2,
-                    (Math.random() - 0.5) * 0.5
-                );
+                blade.position.set((Math.random() - 0.5) * 0.5, h / 2, (Math.random() - 0.5) * 0.5);
                 blade.rotation.z = (Math.random() - 0.5) * 0.4;
                 blade.rotation.x = (Math.random() - 0.5) * 0.4;
                 grassGroup.add(blade);
@@ -492,14 +374,13 @@
         }
 
         // ==========================================
-        // AHIR (TEMİZ, DÜZENLİ, HAYVANSIZ)
+        // AHIR
         // ==========================================
         const buildings = [];
         
-        // KAPI REFERANSLARI (animasyon için global)
         let doorLeftGroup = null;
         let doorRightGroup = null;
-        let doorCollision = null; // YENİ: kapı çarpışma kutusu
+        let doorCollision = null;
 
         function createBarn(x, z) {
             const barnGroup = new THREE.Group();
@@ -517,11 +398,8 @@
             const roofMat = new THREE.MeshLambertMaterial({ color: 0xf2efe6 });
             const trimMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
             const hayMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
-            const metalMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
-            const stoneMat = new THREE.MeshLambertMaterial({ color: 0x888878 });
             const waterMat = new THREE.MeshLambertMaterial({ color: 0x3399dd });
             
-            // ZEMİN
             const floorMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
             const floorGeo = new THREE.PlaneGeometry(width, depth);
             floorGeo.rotateX(-Math.PI / 2);
@@ -538,24 +416,20 @@
                 barnGroup.add(line);
             }
             
-            // SOL DUVAR
             const leftWallGeo = new THREE.BoxGeometry(0.5, wallHeight, depth);
             const leftWall = new THREE.Mesh(leftWallGeo, wallMat);
             leftWall.position.set(-width / 2, wallHeight / 2, 0);
             barnGroup.add(leftWall);
             
-            // SAĞ DUVAR
             const rightWall = new THREE.Mesh(leftWallGeo, wallMat);
             rightWall.position.set(width / 2, wallHeight / 2, 0);
             barnGroup.add(rightWall);
             
-            // ARKA DUVAR
             const backWallGeo = new THREE.BoxGeometry(width, wallHeight, 0.5);
             const backWall = new THREE.Mesh(backWallGeo, wallMat);
             backWall.position.set(0, wallHeight / 2, -depth / 2);
             barnGroup.add(backWall);
             
-            // ÖN DUVAR
             const frontWallGeo = new THREE.BoxGeometry(sideWallWidth, wallHeight, 0.5);
             const frontWallLeft = new THREE.Mesh(frontWallGeo, wallMat);
             frontWallLeft.position.set(-(doorWidth / 2 + sideWallWidth / 2), wallHeight / 2, depth / 2);
@@ -565,13 +439,11 @@
             frontWallRight.position.set((doorWidth / 2 + sideWallWidth / 2), wallHeight / 2, depth / 2);
             barnGroup.add(frontWallRight);
             
-            // Kapı üstü kiriş
             const doorTopGeo = new THREE.BoxGeometry(doorWidth + 0.6, wallHeight - 5, 0.55);
             const doorTop = new THREE.Mesh(doorTopGeo, trimMat);
             doorTop.position.set(0, wallHeight - (wallHeight - 5) / 2, depth / 2);
             barnGroup.add(doorTop);
 
-            // BEYAZ SÜSLEME ÇİZGİLERİ
             const trimBandH = 0.35;
             const trimYPositions = [0.3, wallHeight - 0.35];
             for (const ty of trimYPositions) {
@@ -596,7 +468,6 @@
                 barnGroup.add(trimFrontR);
             }
             
-            // KAPILAR
             const doorH = 5;
             const doorLeftHalfW = doorWidth / 2;
             
@@ -644,7 +515,6 @@
             
             barnGroup.add(doorRightGroup);
             
-            // ÇATI
             const roofSlopeWidth = Math.sqrt((width / 2) * (width / 2) + 2.5 * 2.5);
             const roofAngle = Math.atan2(2.5, width / 2);
             
@@ -664,7 +534,6 @@
             roofPeak.position.set(0, wallHeight + 2.5, 0);
             barnGroup.add(roofPeak);
             
-            // Alınlık
             function createGableTriangle(baseZ) {
                 const shape = new THREE.Shape();
                 shape.moveTo(-width / 2, 0);
@@ -682,7 +551,6 @@
             const gableBack = createGableTriangle(-depth / 2 - 0.15);
             barnGroup.add(gableBack);
             
-            // TAVAN KİRİŞLERİ
             for (let i = 0; i < 5; i++) {
                 const beamZ = -depth / 2 + 3 + i * ((depth - 6) / 4);
                 const beamGeo = new THREE.BoxGeometry(width, 0.4, 0.4);
@@ -691,7 +559,6 @@
                 barnGroup.add(beam);
             }
             
-            // DİKEY KOLONLAR
             const colGeo = new THREE.BoxGeometry(0.4, wallHeight, 0.4);
             const colPositions = [
                 [-width / 2 + 0.5, -depth / 2 + 1],
@@ -705,7 +572,6 @@
                 barnGroup.add(col);
             }
             
-            // PENCERELER
             const windowLightMat = new THREE.MeshBasicMaterial({ color: 0xfff5c0 });
             const windowFrameMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
             
@@ -738,7 +604,6 @@
             winR2.rotation.y = -Math.PI / 2;
             barnGroup.add(winR2);
             
-            // AHIR İÇİ
             const shelfGeo = new THREE.BoxGeometry(width - 4, 0.3, 1.5);
             const shelf = new THREE.Mesh(shelfGeo, woodDarkMat);
             shelf.position.set(0, wallHeight - 1.5, -depth / 2 + 1);
@@ -834,12 +699,7 @@
             }
 
             const postGeo = new THREE.CylinderGeometry(0.32, 0.38, wallHeight, 10);
-            const postPositions = [
-                [-5, -3],
-                [5, -3],
-                [-5, 5],
-                [5, 5]
-            ];
+            const postPositions = [[-5, -3], [5, -3], [-5, 5], [5, 5]];
             for (const [px, pz] of postPositions) {
                 const post = new THREE.Mesh(postGeo, woodDarkMat);
                 post.position.set(px, wallHeight / 2, pz);
@@ -853,46 +713,15 @@
                 buildings.push({ x: x + px, z: z + pz, halfW: 0.42, halfD: 0.42 });
             }
             
-            const saddleMat = new THREE.MeshLambertMaterial({ color: 0x5a2a1a });
-            const saddleGeo = new THREE.BoxGeometry(0.8, 0.3, 0.5);
-            const ropeMat = new THREE.MeshLambertMaterial({ color: 0x8a6a3a });
-            const ropeGeo = new THREE.TorusGeometry(0.4, 0.08, 6, 12);
-            
-            for (let i = 0; i < 2; i++) {
-                const saddle = new THREE.Mesh(saddleGeo, saddleMat);
-                saddle.position.set(-width / 2 + 0.6, 6, -2 + i * 3);
-                barnGroup.add(saddle);
-                
-                const rope = new THREE.Mesh(ropeGeo, ropeMat);
-                rope.position.set(-width / 2 + 0.6, 5.5, -2 + i * 3);
-                rope.rotation.y = Math.PI / 2;
-                barnGroup.add(rope);
-            }
-            
-            for (let i = 0; i < 2; i++) {
-                const saddle = new THREE.Mesh(saddleGeo, saddleMat);
-                saddle.position.set(width / 2 - 0.6, 6, -2 + i * 3);
-                barnGroup.add(saddle);
-                
-                const rope = new THREE.Mesh(ropeGeo, ropeMat);
-                rope.position.set(width / 2 - 0.6, 5.5, -2 + i * 3);
-                rope.rotation.y = Math.PI / 2;
-                barnGroup.add(rope);
-            }
-            
-            createRealisticFence(barnGroup, width, depth, woodLightMat, woodDarkMat);
-            
             barnGroup.position.set(x, 0, z);
             scene.add(barnGroup);
             
-            // ÇARPIŞMA - DUVARLAR
             buildings.push({ x: x - width / 2, z: z, halfW: 0.5, halfD: depth / 2 });
             buildings.push({ x: x + width / 2, z: z, halfW: 0.5, halfD: depth / 2 });
             buildings.push({ x: x, z: z - depth / 2, halfW: width / 2, halfD: 0.5 });
             buildings.push({ x: x - (doorWidth / 2 + sideWallWidth / 2), z: z + depth / 2, halfW: sideWallWidth / 2, halfD: 0.5 });
             buildings.push({ x: x + (doorWidth / 2 + sideWallWidth / 2), z: z + depth / 2, halfW: sideWallWidth / 2, halfD: 0.5 });
 
-            // YENİ: KAPI ÇARPIŞMASI (kapı kapalıyken geçişi engeller)
             doorCollision = { x: x, z: z + depth / 2, halfW: doorWidth / 2, halfD: 0.5 };
             buildings.push(doorCollision);
         }
@@ -940,92 +769,471 @@
             stallGroup.position.set(x, 0, z);
             parent.add(stallGroup);
         }
-        
-        function createRealisticFence(parent, barnWidth, barnDepth, woodLightMat, woodDarkMat) {
-            const fenceGroup = new THREE.Group();
-            
-            const fenceOffsetX = barnWidth / 2 + 8;
-            const fenceOffsetZ = barnDepth / 2 + 8;
-            const postSpacing = 4;
-            const postHeight = 2;
-            const railHeight1 = 0.7;
-            const railHeight2 = 1.4;
-            
-            const frontFenceLength = fenceOffsetX - 2;
-            
-            for (let x = -fenceOffsetX; x < -3; x += postSpacing) {
-                const postGeo = new THREE.BoxGeometry(0.3, postHeight, 0.3);
-                const post = new THREE.Mesh(postGeo, woodDarkMat);
-                post.position.set(x, postHeight / 2, fenceOffsetZ);
-                fenceGroup.add(post);
-            }
-            for (let x = 3; x <= fenceOffsetX; x += postSpacing) {
-                const postGeo = new THREE.BoxGeometry(0.3, postHeight, 0.3);
-                const post = new THREE.Mesh(postGeo, woodDarkMat);
-                post.position.set(x, postHeight / 2, fenceOffsetZ);
-                fenceGroup.add(post);
-            }
-            
-            const railFrontLGeo = new THREE.BoxGeometry(frontFenceLength - 3, 0.15, 0.15);
-            const railFL1 = new THREE.Mesh(railFrontLGeo, woodLightMat);
-            railFL1.position.set(-(fenceOffsetX + 3) / 2 - 1, railHeight1, fenceOffsetZ);
-            fenceGroup.add(railFL1);
-            const railFL2 = new THREE.Mesh(railFrontLGeo, woodLightMat);
-            railFL2.position.set(-(fenceOffsetX + 3) / 2 - 1, railHeight2, fenceOffsetZ);
-            fenceGroup.add(railFL2);
-            
-            const railFR1 = new THREE.Mesh(railFrontLGeo, woodLightMat);
-            railFR1.position.set((fenceOffsetX + 3) / 2 + 1, railHeight1, fenceOffsetZ);
-            fenceGroup.add(railFR1);
-            const railFR2 = new THREE.Mesh(railFrontLGeo, woodLightMat);
-            railFR2.position.set((fenceOffsetX + 3) / 2 + 1, railHeight2, fenceOffsetZ);
-            fenceGroup.add(railFR2);
-            
-            for (let x = -fenceOffsetX; x <= fenceOffsetX; x += postSpacing) {
-                const postGeo = new THREE.BoxGeometry(0.3, postHeight, 0.3);
-                const post = new THREE.Mesh(postGeo, woodDarkMat);
-                post.position.set(x, postHeight / 2, -fenceOffsetZ);
-                fenceGroup.add(post);
-            }
-            const railBackGeo = new THREE.BoxGeometry(fenceOffsetX * 2, 0.15, 0.15);
-            const railB1 = new THREE.Mesh(railBackGeo, woodLightMat);
-            railB1.position.set(0, railHeight1, -fenceOffsetZ);
-            fenceGroup.add(railB1);
-            const railB2 = new THREE.Mesh(railBackGeo, woodLightMat);
-            railB2.position.set(0, railHeight2, -fenceOffsetZ);
-            fenceGroup.add(railB2);
-            
-            for (let z = -fenceOffsetZ; z <= fenceOffsetZ; z += postSpacing) {
-                const postGeo = new THREE.BoxGeometry(0.3, postHeight, 0.3);
-                const post = new THREE.Mesh(postGeo, woodDarkMat);
-                post.position.set(-fenceOffsetX, postHeight / 2, z);
-                fenceGroup.add(post);
-            }
-            const railSideGeo = new THREE.BoxGeometry(0.15, 0.15, fenceOffsetZ * 2);
-            const railS1 = new THREE.Mesh(railSideGeo, woodLightMat);
-            railS1.position.set(-fenceOffsetX, railHeight1, 0);
-            fenceGroup.add(railS1);
-            const railS2 = new THREE.Mesh(railSideGeo, woodLightMat);
-            railS2.position.set(-fenceOffsetX, railHeight2, 0);
-            fenceGroup.add(railS2);
-            
-            for (let z = -fenceOffsetZ; z <= fenceOffsetZ; z += postSpacing) {
-                const postGeo = new THREE.BoxGeometry(0.3, postHeight, 0.3);
-                const post = new THREE.Mesh(postGeo, woodDarkMat);
-                post.position.set(fenceOffsetX, postHeight / 2, z);
-                fenceGroup.add(post);
-            }
-            const railSR1 = new THREE.Mesh(railSideGeo, woodLightMat);
-            railSR1.position.set(fenceOffsetX, railHeight1, 0);
-            fenceGroup.add(railSR1);
-            const railSR2 = new THREE.Mesh(railSideGeo, woodLightMat);
-            railSR2.position.set(fenceOffsetX, railHeight2, 0);
-            fenceGroup.add(railSR2);
-            
-            parent.add(fenceGroup);
-        }
 
         createBarn(SPAWN_X, SPAWN_Z);
+
+        // ==========================================
+        // ÇİFTLİK (YENİ)
+        // ==========================================
+        function createFarm() {
+            const farmX = SPAWN_X + 45;
+            const farmZ = SPAWN_Z;
+
+            const woodDarkMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
+            const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+            const woodLightMat = new THREE.MeshLambertMaterial({ color: 0xa87848 });
+            const hayMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
+            const dirtMat = new THREE.MeshLambertMaterial({ color: 0x5c3a1a });
+            const cropMat = new THREE.MeshLambertMaterial({ color: 0x7cbf3f });
+            const cropMat2 = new THREE.MeshLambertMaterial({ color: 0xa8d840 });
+            const tractorRedMat = new THREE.MeshLambertMaterial({ color: 0xcc2200 });
+            const tractorBlackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+            const tractorYellowMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
+
+            // ---- ÇİFTÇİ EVİ ----
+            const houseGroup = new THREE.Group();
+            const houseW = 14;
+            const houseD = 12;
+            const houseH = 6;
+
+            const houseBody = new THREE.Mesh(
+                new THREE.BoxGeometry(houseW, houseH, houseD),
+                new THREE.MeshLambertMaterial({ color: 0xe8d8b0 })
+            );
+            houseBody.position.y = houseH / 2;
+            houseGroup.add(houseBody);
+
+            // Çatı
+            const roofGroup = new THREE.Group();
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x8b3a3a });
+            const roof1 = new THREE.Mesh(new THREE.BoxGeometry(houseW / 2 + 0.8, 0.4, houseD + 1.5), roofMat);
+            roof1.position.set(-houseW / 4, houseH + 1.5, 0);
+            roof1.rotation.z = 0.5;
+            roofGroup.add(roof1);
+            const roof2 = new THREE.Mesh(new THREE.BoxGeometry(houseW / 2 + 0.8, 0.4, houseD + 1.5), roofMat);
+            roof2.position.set(houseW / 4, houseH + 1.5, 0);
+            roof2.rotation.z = -0.5;
+            roofGroup.add(roof2);
+            const roofPeak = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, houseD + 1.5), woodDarkMat);
+            roofPeak.position.set(0, houseH + 3, 0);
+            roofGroup.add(roofPeak);
+            houseGroup.add(roofGroup);
+
+            // Kapı
+            const doorMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
+            const houseDoor = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 3.5), doorMat);
+            houseDoor.position.set(0, 1.75, houseD / 2 + 0.01);
+            houseGroup.add(houseDoor);
+
+            // Pencereler
+            const winMat = new THREE.MeshBasicMaterial({ color: 0x88ccff });
+            const win1 = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), winMat);
+            win1.position.set(-houseW / 2 + 2, 4, houseD / 2 + 0.01);
+            houseGroup.add(win1);
+            const win2 = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), winMat);
+            win2.position.set(houseW / 2 - 2, 4, houseD / 2 + 0.01);
+            houseGroup.add(win2);
+
+            // Baca
+            const chimney = new THREE.Mesh(
+                new THREE.BoxGeometry(1.2, 3, 1.2),
+                new THREE.MeshLambertMaterial({ color: 0x666666 })
+            );
+            chimney.position.set(houseW / 4, houseH + 3, -houseD / 4);
+            houseGroup.add(chimney);
+
+            houseGroup.position.set(farmX - 20, 0, farmZ - 20);
+            scene.add(houseGroup);
+
+            buildings.push({ x: farmX - 20, z: farmZ - 20, halfW: houseW / 2, halfD: houseD / 2 });
+
+            // ---- TARLA ----
+            const fieldW = 30;
+            const fieldD = 24;
+            const fieldX = farmX + 15;
+            const fieldZ = farmZ + 8;
+
+            const fieldGround = new THREE.Mesh(
+                new THREE.PlaneGeometry(fieldW, fieldD),
+                dirtMat
+            );
+            fieldGround.rotation.x = -Math.PI / 2;
+            fieldGround.position.set(fieldX, 0.02, fieldZ);
+            scene.add(fieldGround);
+
+            // Tarla sıraları
+            const rowsCount = 8;
+            const rowSpacing = fieldD / rowsCount;
+            for (let r = 0; r < rowsCount; r++) {
+                for (let c = 0; c < 10; c++) {
+                    const cropX = fieldX - fieldW / 2 + 2 + c * 2.8;
+                    const cropZ = fieldZ - fieldD / 2 + rowSpacing / 2 + r * rowSpacing;
+                    
+                    const cropGroup = new THREE.Group();
+                    for (let k = 0; k < 3; k++) {
+                        const cropHeight = 0.8 + Math.random() * 0.4;
+                        const crop = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.15, cropHeight, 0.15),
+                            Math.random() > 0.5 ? cropMat : cropMat2
+                        );
+                        crop.position.set((Math.random() - 0.5) * 0.3, cropHeight / 2, (Math.random() - 0.5) * 0.3);
+                        cropGroup.add(crop);
+                    }
+                    cropGroup.position.set(cropX, 0, cropZ);
+                    scene.add(cropGroup);
+                }
+            }
+
+            // Korkuluk
+            const scarecrowX = fieldX;
+            const scarecrowZ = fieldZ;
+            const scarecrowGroup = new THREE.Group();
+            
+            const poleMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+            const scarecrowPole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 4, 6), poleMat);
+            scarecrowPole.position.y = 2;
+            scarecrowGroup.add(scarecrowPole);
+
+            const crossbar = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3, 6), poleMat);
+            crossbar.rotation.z = Math.PI / 2;
+            crossbar.position.y = 3;
+            scarecrowGroup.add(crossbar);
+
+            const shirtMat = new THREE.MeshLambertMaterial({ color: 0xcc4444 });
+            const shirt = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.5, 0.4), shirtMat);
+            shirt.position.y = 3;
+            scarecrowGroup.add(shirt);
+
+            const headMat = new THREE.MeshLambertMaterial({ color: 0xffddaa });
+            const scarecrowHead = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), headMat);
+            scarecrowHead.position.y = 4.2;
+            scarecrowGroup.add(scarecrowHead);
+
+            const hatMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+            const hatCone = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.8, 8), hatMat);
+            hatCone.position.y = 4.9;
+            scarecrowGroup.add(hatCone);
+            const hatBrim = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.1, 12), hatMat);
+            hatBrim.position.y = 4.5;
+            scarecrowGroup.add(hatBrim);
+
+            scarecrowGroup.position.set(scarecrowX, 0, scarecrowZ);
+            scene.add(scarecrowGroup);
+
+            buildings.push({ x: scarecrowX, z: scarecrowZ, halfW: 0.3, halfD: 0.3 });
+
+            // ---- TRAKTÖR ----
+            const tractorX = farmX - 5;
+            const tractorZ = farmZ + 15;
+            const tractorGroup = new THREE.Group();
+
+            // Gövde
+            const tractorBody = new THREE.Mesh(
+                new THREE.BoxGeometry(2.5, 1.8, 4.5),
+                tractorRedMat
+            );
+            tractorBody.position.y = 1.5;
+            tractorGroup.add(tractorBody);
+
+            // Kabin
+            const cabin = new THREE.Mesh(
+                new THREE.BoxGeometry(2.2, 2, 2),
+                tractorRedMat
+            );
+            cabin.position.set(0, 3.4, -0.8);
+            tractorGroup.add(cabin);
+
+            // Kabin camı
+            const cabinGlass = new THREE.Mesh(
+                new THREE.BoxGeometry(2, 1.6, 0.05),
+                new THREE.MeshLambertMaterial({ color: 0x88ccff, transparent: true, opacity: 0.7 })
+            );
+            cabinGlass.position.set(0, 3.5, 0.25);
+            tractorGroup.add(cabinGlass);
+
+            // Egzoz borusu
+            const exhaust = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.15, 0.15, 3, 6),
+                tractorBlackMat
+            );
+            exhaust.position.set(1, 4, 1.5);
+            tractorGroup.add(exhaust);
+
+            // Büyük arka tekerlekler
+            const bigWheelGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.8, 12);
+            bigWheelGeo.rotateZ(Math.PI / 2);
+            const bigWheel1 = new THREE.Mesh(bigWheelGeo, tractorBlackMat);
+            bigWheel1.position.set(-1.4, 1.2, -1.2);
+            tractorGroup.add(bigWheel1);
+            const bigWheel2 = new THREE.Mesh(bigWheelGeo, tractorBlackMat);
+            bigWheel2.position.set(1.4, 1.2, -1.2);
+            tractorGroup.add(bigWheel2);
+
+            // Jantlar (sarı)
+            const hubGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.85, 8);
+            hubGeo.rotateZ(Math.PI / 2);
+            const hub1 = new THREE.Mesh(hubGeo, tractorYellowMat);
+            hub1.position.set(-1.4, 1.2, -1.2);
+            tractorGroup.add(hub1);
+            const hub2 = new THREE.Mesh(hubGeo, tractorYellowMat);
+            hub2.position.set(1.4, 1.2, -1.2);
+            tractorGroup.add(hub2);
+
+            // Küçük ön tekerlekler
+            const smallWheelGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.5, 10);
+            smallWheelGeo.rotateZ(Math.PI / 2);
+            const smallWheel1 = new THREE.Mesh(smallWheelGeo, tractorBlackMat);
+            smallWheel1.position.set(-1.1, 0.7, 1.8);
+            tractorGroup.add(smallWheel1);
+            const smallWheel2 = new THREE.Mesh(smallWheelGeo, tractorBlackMat);
+            smallWheel2.position.set(1.1, 0.7, 1.8);
+            tractorGroup.add(smallWheel2);
+
+            // Ön ızgara
+            const grill = new THREE.Mesh(
+                new THREE.BoxGeometry(2.2, 1.2, 0.2),
+                tractorBlackMat
+            );
+            grill.position.set(0, 1.4, 2.3);
+            tractorGroup.add(grill);
+
+            // Farlar
+            const headlightGeo = new THREE.SphereGeometry(0.25, 8, 8);
+            const headlightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+            const headlight1 = new THREE.Mesh(headlightGeo, headlightMat);
+            headlight1.position.set(-0.7, 1.9, 2.35);
+            tractorGroup.add(headlight1);
+            const headlight2 = new THREE.Mesh(headlightGeo, headlightMat);
+            headlight2.position.set(0.7, 1.9, 2.35);
+            tractorGroup.add(headlight2);
+
+            tractorGroup.position.set(tractorX, 0, tractorZ);
+            tractorGroup.rotation.y = -0.5;
+            scene.add(tractorGroup);
+
+            buildings.push({ x: tractorX, z: tractorZ, halfW: 2, halfD: 2.5 });
+
+            // ---- RÖMORK (Traktör arkası) ----
+            const trailerGroup = new THREE.Group();
+            const trailerBody = new THREE.Mesh(
+                new THREE.BoxGeometry(3, 1.2, 5),
+                new THREE.MeshLambertMaterial({ color: 0x8b5a2b })
+            );
+            trailerBody.position.y = 1.5;
+            trailerGroup.add(trailerBody);
+
+            const trailerWall1 = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 0.2), woodDarkMat);
+            trailerWall1.position.set(0, 2.5, -2.4);
+            trailerGroup.add(trailerWall1);
+            const trailerWall2 = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 0.2), woodDarkMat);
+            trailerWall2.position.set(0, 2.5, 2.4);
+            trailerGroup.add(trailerWall2);
+            const trailerWall3 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1, 5), woodDarkMat);
+            trailerWall3.position.set(-1.4, 2.5, 0);
+            trailerGroup.add(trailerWall3);
+            const trailerWall4 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1, 5), woodDarkMat);
+            trailerWall4.position.set(1.4, 2.5, 0);
+            trailerGroup.add(trailerWall4);
+
+            // Saman balyaları içinde
+            for (let i = 0; i < 3; i++) {
+                const hayBale = new THREE.Mesh(
+                    new THREE.BoxGeometry(2.5, 1, 1.2),
+                    hayMat
+                );
+                hayBale.position.set(0, 2.2, -1.5 + i * 1.5);
+                trailerGroup.add(hayBale);
+            }
+
+            // Römork tekerlekleri
+            const trailerWheelGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.6, 10);
+            trailerWheelGeo.rotateZ(Math.PI / 2);
+            const tw1 = new THREE.Mesh(trailerWheelGeo, tractorBlackMat);
+            tw1.position.set(-1.5, 0.8, 0);
+            trailerGroup.add(tw1);
+            const tw2 = new THREE.Mesh(trailerWheelGeo, tractorBlackMat);
+            tw2.position.set(1.5, 0.8, 0);
+            trailerGroup.add(tw2);
+
+            trailerGroup.position.set(tractorX + 4, 0, tractorZ + 1);
+            trailerGroup.rotation.y = -0.5;
+            scene.add(trailerGroup);
+
+            buildings.push({ x: tractorX + 4, z: tractorZ + 1, halfW: 2, halfD: 3 });
+
+            // ---- SAMAN BALYALARI (TARLADA) ----
+            for (let i = 0; i < 8; i++) {
+                const baleX = farmX + 30 + Math.random() * 10;
+                const baleZ = farmZ - 25 + Math.random() * 15;
+                const bale = new THREE.Mesh(
+                    new THREE.CylinderGeometry(1.2, 1.2, 1.8, 12),
+                    hayMat
+                );
+                bale.rotation.z = Math.PI / 2;
+                bale.position.set(baleX, 1.2, baleZ);
+                scene.add(bale);
+                buildings.push({ x: baleX, z: baleZ, halfW: 1.3, halfD: 1.3 });
+            }
+
+            // ---- KÜMES (YENİ) ----
+            const coopX = farmX - 25;
+            const coopZ = farmZ + 15;
+            const coopGroup = new THREE.Group();
+            
+            const coopBody = new THREE.Mesh(
+                new THREE.BoxGeometry(6, 3, 5),
+                new THREE.MeshLambertMaterial({ color: 0xcc9944 })
+            );
+            coopBody.position.y = 1.5;
+            coopGroup.add(coopBody);
+
+            // Çatı
+            const coopRoof = new THREE.Mesh(
+                new THREE.BoxGeometry(7, 0.4, 6),
+                new THREE.MeshLambertMaterial({ color: 0x8b3a3a })
+            );
+            coopRoof.position.y = 3.4;
+            coopGroup.add(coopRoof);
+
+            // Kapı
+            const coopDoor = new THREE.Mesh(
+                new THREE.PlaneGeometry(1.5, 2),
+                woodDarkMat
+            );
+            coopDoor.position.set(0, 1, 2.51);
+            coopGroup.add(coopDoor);
+
+            // Tünek
+            const perch = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.1, 0.1, 3, 6),
+                woodDarkMat
+            );
+            perch.rotation.z = Math.PI / 2;
+            perch.position.set(0, 4, 2);
+            coopGroup.add(perch);
+
+            // Civcivler (basit sarı küpler)
+            const chickMat = new THREE.MeshLambertMaterial({ color: 0xffdd44 });
+            for (let i = 0; i < 4; i++) {
+                const chick = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.5), chickMat);
+                chick.position.set(-2 + i * 1.3, 0.2, 3.5);
+                coopGroup.add(chick);
+            }
+
+            coopGroup.position.set(coopX, 0, coopZ);
+            scene.add(coopGroup);
+
+            buildings.push({ x: coopX, z: coopZ, halfW: 3, halfD: 2.5 });
+
+            // ---- SU KUYUSU ----
+            const wellX = farmX + 5;
+            const wellZ = farmZ - 15;
+            const wellGroup = new THREE.Group();
+
+            const wellBase = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.5, 1.5, 1.2, 12),
+                new THREE.MeshLambertMaterial({ color: 0x888878 })
+            );
+            wellBase.position.y = 0.6;
+            wellGroup.add(wellBase);
+
+            const wellWater = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.2, 1.2, 0.1, 12),
+                new THREE.MeshLambertMaterial({ color: 0x3399dd })
+            );
+            wellWater.position.y = 1.15;
+            wellGroup.add(wellWater);
+
+            const wellPost1 = new THREE.Mesh(
+                new THREE.BoxGeometry(0.2, 3, 0.2),
+                woodDarkMat
+            );
+            wellPost1.position.set(-1, 2.7, 0);
+            wellGroup.add(wellPost1);
+            const wellPost2 = new THREE.Mesh(
+                new THREE.BoxGeometry(0.2, 3, 0.2),
+                woodDarkMat
+            );
+            wellPost2.position.set(1, 2.7, 0);
+            wellGroup.add(wellPost2);
+
+            const wellBeam = new THREE.Mesh(
+                new THREE.BoxGeometry(2.4, 0.2, 0.2),
+                woodDarkMat
+            );
+            wellBeam.position.set(0, 4.2, 0);
+            wellGroup.add(wellBeam);
+
+            const bucket = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.3, 0.25, 0.4, 8),
+                woodDarkMat
+            );
+            bucket.position.set(0, 3, 0);
+            wellGroup.add(bucket);
+
+            wellGroup.position.set(wellX, 0, wellZ);
+            scene.add(wellGroup);
+
+            buildings.push({ x: wellX, z: wellZ, halfW: 1.5, halfD: 1.5 });
+
+            // ---- ÇİFTLİK ÇİTİ (DÜZGÜN ÇEMBER ETRAFINA) ----
+            createFarmFence(farmX, farmZ, 55);
+        }
+
+        // Düzgün çit - çember etrafına yerleştirilmiş
+        function createFarmFence(centerX, centerZ, radius) {
+            const fenceGroup = new THREE.Group();
+            const postMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
+            const railMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+
+            const totalPosts = 60;
+            const postHeight = 1.8;
+            const postSpacingAngle = (Math.PI * 2) / totalPosts;
+
+            for (let i = 0; i < totalPosts; i++) {
+                const angle = i * postSpacingAngle;
+                const px = Math.cos(angle) * radius;
+                const pz = Math.sin(angle) * radius;
+
+                const post = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.25, postHeight, 0.25),
+                    postMat
+                );
+                post.position.set(px, postHeight / 2, pz);
+                post.rotation.y = -angle;
+                fenceGroup.add(post);
+            }
+
+            // Raylar (yatay çubuklar)
+            for (let i = 0; i < totalPosts; i++) {
+                const angle1 = i * postSpacingAngle;
+                const angle2 = (i + 1) * postSpacingAngle;
+                const p1x = Math.cos(angle1) * radius;
+                const p1z = Math.sin(angle1) * radius;
+                const p2x = Math.cos(angle2) * radius;
+                const p2z = Math.sin(angle2) * radius;
+                
+                const midX = (p1x + p2x) / 2;
+                const midZ = (p1z + p2z) / 2;
+                const len = Math.sqrt((p2x - p1x) ** 2 + (p2z - p1z) ** 2);
+                const railAngle = Math.atan2(p2z - p1z, p2x - p1x);
+
+                for (let h = 0; h < 2; h++) {
+                    const rail = new THREE.Mesh(
+                        new THREE.BoxGeometry(len, 0.12, 0.12),
+                        railMat
+                    );
+                    rail.position.set(midX, 0.6 + h * 0.7, midZ);
+                    rail.rotation.y = -railAngle;
+                    fenceGroup.add(rail);
+                }
+            }
+
+            fenceGroup.position.set(centerX, 0, centerZ);
+            scene.add(fenceGroup);
+        }
+
+        createFarm();
 
         // ==========================================
         // ŞEHİR
@@ -1062,11 +1270,7 @@
                 const dashGeo = new THREE.PlaneGeometry(3, 0.4);
                 dashGeo.rotateX(-Math.PI / 2);
                 const dash = new THREE.Mesh(dashGeo, lineMat);
-                dash.position.set(
-                    CITY_CENTER_X - cityWidth / 2 + d * 12 + 6,
-                    0.04,
-                    roadZ
-                );
+                dash.position.set(CITY_CENTER_X - cityWidth / 2 + d * 12 + 6, 0.04, roadZ);
                 scene.add(dash);
             }
         }
@@ -1084,11 +1288,7 @@
                 const dashGeo = new THREE.PlaneGeometry(0.4, 3);
                 dashGeo.rotateX(-Math.PI / 2);
                 const dash = new THREE.Mesh(dashGeo, lineMat);
-                dash.position.set(
-                    roadX,
-                    0.04,
-                    CITY_CENTER_Z - cityWidth / 2 + d * 12 + 6
-                );
+                dash.position.set(roadX, 0.04, CITY_CENTER_Z - cityWidth / 2 + d * 12 + 6);
                 scene.add(dash);
             }
         }
@@ -1217,11 +1417,7 @@
             roof.position.y = height + 0.25;
             group.add(roof);
             
-            const glassMat = new THREE.MeshLambertMaterial({ 
-                color: 0x88ccff, 
-                transparent: true, 
-                opacity: 0.7 
-            });
+            const glassMat = new THREE.MeshLambertMaterial({ color: 0x88ccff, transparent: true, opacity: 0.7 });
             const glassGeo = new THREE.PlaneGeometry(width - 2, height - 2.5);
             const glass = new THREE.Mesh(glassGeo, glassMat);
             glass.position.set(0, (height - 2.5) / 2 + 0.5, depth / 2 + 0.01);
@@ -1312,11 +1508,7 @@
             const positions = [[-0.4, 0.4], [-0.4, -0.4], [0.4, 0.4], [0.4, -0.4]];
             for (let p of positions) {
                 const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-                pillar.position.set(
-                    width * 0.15 + p[0] * width * 0.25,
-                    3,
-                    depth * 0.15 + p[1] * depth * 0.12
-                );
+                pillar.position.set(width * 0.15 + p[0] * width * 0.25, 3, depth * 0.15 + p[1] * depth * 0.12);
                 group.add(pillar);
             }
             
@@ -1347,10 +1539,7 @@
             const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
             const leafMat = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
             
-            const treePositions = [
-                [-width/3, -depth/3],
-                [ width/3,  depth/3]
-            ];
+            const treePositions = [[-width/3, -depth/3], [width/3, depth/3]];
             for (let p of treePositions) {
                 const trunkGeo = new THREE.CylinderGeometry(0.4, 0.5, 5, 6);
                 const trunk = new THREE.Mesh(trunkGeo, trunkMat);
@@ -1400,7 +1589,6 @@
                 const blockCenterZ = firstBlockCenterZ + bz * GRID_STEP;
                 
                 const type = blockTypes[bz][bx];
-                
                 const usableW = BLOCK_INNER - 12;
                 const usableD = BLOCK_INNER - 12;
                 
@@ -1520,16 +1708,13 @@
             if (distToCity < CITY_RADIUS) continue;
             
             const distToBarn = Math.sqrt((x - SPAWN_X) ** 2 + (z - SPAWN_Z) ** 2);
-            if (distToBarn < 40) continue;
+            if (distToBarn < 80) continue;
             
             let tooCloseToMountain = false;
             for (let m of mountains) {
                 const dx = x - m.x;
                 const dz = z - m.z;
-                if (Math.sqrt(dx * dx + dz * dz) < m.radius + 5) {
-                    tooCloseToMountain = true;
-                    break;
-                }
+                if (Math.sqrt(dx * dx + dz * dz) < m.radius + 5) { tooCloseToMountain = true; break; }
             }
             if (tooCloseToMountain) continue;
             
@@ -1546,11 +1731,7 @@
                 const size = 8 + Math.random() * 8;
                 const geo = new THREE.SphereGeometry(size, 6, 6);
                 const part = new THREE.Mesh(geo, cloudMat);
-                part.position.set(
-                    (Math.random() - 0.5) * 15,
-                    (Math.random() - 0.5) * 3,
-                    (Math.random() - 0.5) * 15
-                );
+                part.position.set((Math.random() - 0.5) * 15, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 15);
                 cloudGroup.add(part);
             }
             cloudGroup.position.set(x, y, z);
@@ -1587,11 +1768,7 @@
 
         for (let i = 0; i < 10; i++) {
             const bird = createBird();
-            bird.position.set(
-                (Math.random() - 0.5) * 500,
-                40 + Math.random() * 50,
-                (Math.random() - 0.5) * 500
-            );
+            bird.position.set((Math.random() - 0.5) * 500, 40 + Math.random() * 50, (Math.random() - 0.5) * 500);
             bird.userData.speed = 0.05 + Math.random() * 0.05;
             bird.userData.angle = Math.random() * Math.PI * 2;
             bird.userData.radius = 30 + Math.random() * 80;
@@ -1652,13 +1829,8 @@
             });
 
             donkeyGroup.userData = { 
-                legs, 
-                neckHeadGroup,
-                walkCycle: 0,
-                jumpAnimProgress: 0,
-                isMoving: false,
-                isJumping: false,
-                isCrouching: false
+                legs, neckHeadGroup, walkCycle: 0, jumpAnimProgress: 0,
+                isMoving: false, isJumping: false, isCrouching: false
             };
             return donkeyGroup;
         }
@@ -1675,9 +1847,7 @@
                 try {
                     const data = JSON.parse(event.data);
 
-                    if (data.type === "init") {
-                        myId = data.id;
-                    }
+                    if (data.type === "init") { myId = data.id; }
 
                     if (data.type === "players" && myId) {
                         const serverPlayers = data.players;
@@ -1715,9 +1885,7 @@
                             }
                         }
                     }
-                } catch (e) {
-                    console.error("Veri hatası:", e);
-                }
+                } catch (e) { console.error("Veri hatası:", e); }
             };
         }
 
@@ -1732,7 +1900,6 @@
         let joystickMoveX = 0, joystickMoveZ = 0;
         let isCouchingMobile = false;
         let isSprintingMobile = false;
-
         let joystickTouchId = null;
         let cameraTouchId = null;
         let cameraLastX = 0, cameraLastY = 0;
@@ -1765,12 +1932,8 @@
         const sensValue = document.getElementById('sensValue');
         const closeSettings = document.getElementById('closeSettings');
 
-        function openSettings() {
-            settingsPanel.style.display = 'block';
-        }
-        function closeSettingsPanel() {
-            settingsPanel.style.display = 'none';
-        }
+        function openSettings() { settingsPanel.style.display = 'block'; }
+        function closeSettingsPanel() { settingsPanel.style.display = 'none'; }
 
         closeSettings.addEventListener('click', closeSettingsPanel);
         pauseSettingsBtn.addEventListener('click', openSettings);
@@ -1794,16 +1957,12 @@
                 cameraMode = 'first';
                 hudCamEl.textContent = '1. Şahıs';
                 crosshairEl.style.display = 'block';
-                if (controlMode === 'pc') {
-                    document.body.style.cursor = 'none';
-                }
+                if (controlMode === 'pc') document.body.style.cursor = 'none';
             } else {
                 cameraMode = 'third';
                 hudCamEl.textContent = '3. Şahıs';
                 crosshairEl.style.display = 'none';
-                if (controlMode === 'pc') {
-                    document.body.style.cursor = 'default';
-                }
+                if (controlMode === 'pc') document.body.style.cursor = 'default';
             }
         }
 
@@ -1812,15 +1971,12 @@
         function toggleDoor() {
             doorOpen = !doorOpen;
             
-            // Kapı açılınca çarpışmayı kaldır, kapatınca geri ekle
             if (doorCollision) {
                 if (doorOpen) {
                     const idx = buildings.indexOf(doorCollision);
                     if (idx !== -1) buildings.splice(idx, 1);
                 } else {
-                    if (buildings.indexOf(doorCollision) === -1) {
-                        buildings.push(doorCollision);
-                    }
+                    if (buildings.indexOf(doorCollision) === -1) buildings.push(doorCollision);
                 }
             }
             
@@ -1834,15 +1990,11 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key.toLowerCase() === 'e' && gameStarted && playerNearDoor) {
-                toggleDoor();
-            }
+            if (e.key.toLowerCase() === 'e' && gameStarted && playerNearDoor) toggleDoor();
         });
 
         mobOpenBtn.addEventListener('click', () => {
-            if (gameStarted && playerNearDoor) {
-                toggleDoor();
-            }
+            if (gameStarted && playerNearDoor) toggleDoor();
         });
 
         function startGame(mode) {
@@ -1911,10 +2063,7 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && gameStarted) {
-                if (settingsPanel.style.display === 'block') {
-                    closeSettingsPanel();
-                    return;
-                }
+                if (settingsPanel.style.display === 'block') { closeSettingsPanel(); return; }
                 gameStarted = false;
                 menuEl.style.display = 'flex';
                 mainButtons.style.display = 'none';
@@ -1938,13 +2087,8 @@
             if (k === 'd') keys.d = true;
             if (k === 'c') keys.c = true;
             if (k === 'shift') keys.shift = true;
-            if (k === 't') {
-                toggleCameraMode();
-            }
-            if (e.code === 'Space' && isGrounded) {
-                velocityY = 0.35;
-                isGrounded = false;
-            }
+            if (k === 't') toggleCameraMode();
+            if (e.code === 'Space' && isGrounded) { velocityY = 0.35; isGrounded = false; }
         });
 
         document.addEventListener('keyup', (e) => {
@@ -1977,7 +2121,6 @@
             } else {
                 if (isMouseDown) {
                     yaw -= (e.clientX - mouseX) * 0.005 * sensitivity;
-                    // DEĞİŞTİ: 3. şahısta ters (aşağı sürükle = yukarı bak)
                     pitch += (e.clientY - mouseY) * 0.005 * sensitivity;
                     pitch = Math.max(-1.2, Math.min(1.4, pitch));
                     mouseX = e.clientX;
@@ -2028,10 +2171,7 @@
             
             let touch = null;
             for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === joystickTouchId) {
-                    touch = e.changedTouches[i];
-                    break;
-                }
+                if (e.changedTouches[i].identifier === joystickTouchId) { touch = e.changedTouches[i]; break; }
             }
             if (!touch) return;
             
@@ -2041,7 +2181,6 @@
             let angle = Math.atan2(dY, dX);
             
             joystickKnob.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
-            
             joystickMoveX = Math.cos(angle) * (dist / 45);
             joystickMoveZ = Math.sin(angle) * (dist / 45);
         }, { passive: false });
@@ -2075,15 +2214,10 @@
                 const target = document.elementFromPoint(touch.clientX, touch.clientY);
                 if (!target) continue;
                 
-                if (target.closest('#joystickZone') || 
-                    target.closest('.mob-btn-group') || 
-                    target.closest('#mobMenuBtn') ||
-                    target.closest('#mobViewBtn') ||
-                    target.closest('#mobOpenBtn') ||
-                    target.closest('#settingsPanel') ||
-                    target.closest('#menu')) {
-                    continue;
-                }
+                if (target.closest('#joystickZone') || target.closest('.mob-btn-group') || 
+                    target.closest('#mobMenuBtn') || target.closest('#mobViewBtn') ||
+                    target.closest('#mobOpenBtn') || target.closest('#settingsPanel') ||
+                    target.closest('#menu')) continue;
                 
                 if (cameraTouchId === null) {
                     cameraTouchId = touch.identifier;
@@ -2099,10 +2233,7 @@
             
             let touch = null;
             for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === cameraTouchId) {
-                    touch = e.changedTouches[i];
-                    break;
-                }
+                if (e.changedTouches[i].identifier === cameraTouchId) { touch = e.changedTouches[i]; break; }
             }
             if (!touch) return;
             
@@ -2110,7 +2241,6 @@
             const tY = touch.clientY;
             
             yaw -= (tX - cameraLastX) * 0.005 * sensitivity;
-            // DEĞİŞTİ: 3. şahısta ters, 1. şahısta normal
             if (cameraMode === 'third') {
                 pitch += (tY - cameraLastY) * 0.005 * sensitivity;
             } else {
@@ -2120,30 +2250,21 @@
             
             cameraLastX = tX;
             cameraLastY = tY;
-            
             e.preventDefault();
         }, { passive: false });
 
         window.addEventListener('touchend', (e) => {
             if (cameraTouchId === null) return;
             for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === cameraTouchId) {
-                    cameraTouchId = null;
-                    break;
-                }
+                if (e.changedTouches[i].identifier === cameraTouchId) { cameraTouchId = null; break; }
             }
         });
 
-        window.addEventListener('touchcancel', () => {
-            cameraTouchId = null;
-        });
+        window.addEventListener('touchcancel', () => { cameraTouchId = null; });
 
         function handleJumpStart(e) {
             e.preventDefault();
-            if (gameStarted && isGrounded) { 
-                velocityY = 0.35; 
-                isGrounded = false; 
-            }
+            if (gameStarted && isGrounded) { velocityY = 0.35; isGrounded = false; }
         }
         
         mobJumpBtn.addEventListener('touchstart', handleJumpStart, { passive: false });
@@ -2162,9 +2283,7 @@
                 const dx = x - m.x;
                 const dz = z - m.z;
                 const dist = Math.sqrt(dx * dx + dz * dz);
-                if (dist < m.radius + radius) {
-                    return true;
-                }
+                if (dist < m.radius + radius) return true;
             }
             for (let b of buildings) {
                 if (x + radius > b.x - b.halfW &&
@@ -2198,9 +2317,7 @@
                 legs.forEach(l => l.rotation.x *= 0.8);
             }
             
-            if (!isJumping) {
-                ud.jumpAnimProgress = 0;
-            }
+            if (!isJumping) ud.jumpAnimProgress = 0;
         }
 
         let gameTime = 8.0;
@@ -2211,7 +2328,6 @@
         let fpsFrames = 0;
         let fpsLastTime = performance.now();
         let currentFps = 60;
-
         let lastFrameTime = performance.now();
 
         function animate() {
@@ -2248,40 +2364,30 @@
 
             if (!gameStarted) {
                 menuCameraAngle += 0.003;
-                
-                const menuRadius = 45;
-                const menuHeight = 20;
-                
+                const menuRadius = 55;
+                const menuHeight = 25;
                 const camX = SPAWN_X + Math.cos(menuCameraAngle) * menuRadius;
                 const camZ = SPAWN_Z + Math.sin(menuCameraAngle) * menuRadius;
                 const camY = menuHeight;
                 
                 camera.position.set(camX, camY, camZ);
-                camera.lookAt(new THREE.Vector3(SPAWN_X, 3, SPAWN_Z));
+                camera.lookAt(new THREE.Vector3(SPAWN_X + 20, 3, SPAWN_Z));
                 
-                const menuSkyR = 0.65;
-                const menuSkyG = 0.75;
-                const menuSkyB = 0.92;
-                scene.background = new THREE.Color(menuSkyR, menuSkyG, menuSkyB);
+                scene.background = new THREE.Color(0.65, 0.75, 0.92);
                 scene.fog.color = scene.background;
-                
                 sunMesh.position.set(-200, 300, -200);
                 sunMesh.visible = true;
                 sunLight.position.set(-100, 200, -100);
                 sunLight.intensity = 1.2;
                 moonMesh.visible = false;
                 moonLight.intensity = 0;
-                
                 ambientLight.intensity = 0.7;
                 starMaterial.opacity = 0;
             }
 
             if (gameStarted) {
                 gameTime += TIME_SPEED * deltaSec;
-                if (gameTime >= DAY_DURATION) {
-                    gameTime -= DAY_DURATION;
-                    gameDay++;
-                }
+                if (gameTime >= DAY_DURATION) { gameTime -= DAY_DURATION; gameDay++; }
 
                 const hours = Math.floor(gameTime);
                 const minutes = Math.floor((gameTime - hours) * 60);
@@ -2338,9 +2444,7 @@
                     skyG = sunriseColor.g * (1 - t) + dayColor.g * t;
                     skyB = sunriseColor.b * (1 - t) + dayColor.b * t;
                 } else if (gameTime >= 9 && gameTime < 16) {
-                    skyR = dayColor.r;
-                    skyG = dayColor.g;
-                    skyB = dayColor.b;
+                    skyR = dayColor.r; skyG = dayColor.g; skyB = dayColor.b;
                 } else if (gameTime >= 16 && gameTime < 18) {
                     const t = (gameTime - 16) / 2;
                     skyR = dayColor.r * (1 - t) + sunsetColor.r * t;
@@ -2352,9 +2456,7 @@
                     skyG = sunsetColor.g * (1 - t) + nightColor.g * t;
                     skyB = sunsetColor.b * (1 - t) + nightColor.b * t;
                 } else {
-                    skyR = nightColor.r;
-                    skyG = nightColor.g;
-                    skyB = nightColor.b;
+                    skyR = nightColor.r; skyG = nightColor.g; skyB = nightColor.b;
                 }
 
                 scene.background = new THREE.Color(skyR, skyG, skyB);
@@ -2364,21 +2466,14 @@
                 ambientLight.intensity = isDay ? 0.6 : 0.2;
 
                 let starOpacity = 0;
-                if (gameTime >= 20 || gameTime < 5) {
-                    starOpacity = 1.0;
-                } else if (gameTime >= 5 && gameTime < 7) {
-                    starOpacity = 1.0 - (gameTime - 5) / 2;
-                } else if (gameTime >= 18 && gameTime < 20) {
-                    starOpacity = (gameTime - 18) / 2;
-                } else {
-                    starOpacity = 0;
-                }
+                if (gameTime >= 20 || gameTime < 5) starOpacity = 1.0;
+                else if (gameTime >= 5 && gameTime < 7) starOpacity = 1.0 - (gameTime - 5) / 2;
+                else if (gameTime >= 18 && gameTime < 20) starOpacity = (gameTime - 18) / 2;
                 starMaterial.opacity = starOpacity;
 
                 stars.position.copy(camera.position);
                 stars.rotation.y = yaw * 0.5;
 
-                // KAPI ANİMASYONU
                 if (doorOpen) {
                     doorAnimProgress += 0.05;
                     if (doorAnimProgress > 1) doorAnimProgress = 1;
@@ -2392,7 +2487,6 @@
                     doorRightGroup.rotation.y = doorAnimProgress * Math.PI / 2;
                 }
 
-                // KAPI YAKINLIK KONTROLÜ
                 const doorX = SPAWN_X;
                 const doorZ = SPAWN_Z + 11;
                 const DOOR_INTERACT_DIST = 4.5;
@@ -2444,10 +2538,8 @@
                     if (joystickActive) {
                         const ileriGeri = -joystickMoveZ;
                         const sagSol = -joystickMoveX;
-                        
                         moveX = (Math.sin(yaw) * ileriGeri + Math.cos(yaw) * sagSol) * speed * 1.5;
                         moveZ = (Math.cos(yaw) * ileriGeri - Math.sin(yaw) * sagSol) * speed * 1.5;
-                        
                         isMoving = true;
                     }
                 }
@@ -2468,15 +2560,15 @@
                     playerDonkey.position.z = newZ;
                 }
                 
+                // Sınır kontrolü (dağlarla güçlendirilmiş)
                 const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
-                if (distFromCenter > MAP_LIMIT) {
-                    const scale = MAP_LIMIT / distFromCenter;
+                if (distFromCenter > MAP_LIMIT - 5) {
+                    const scale = (MAP_LIMIT - 5) / distFromCenter;
                     playerDonkey.position.x *= scale;
                     playerDonkey.position.z *= scale;
                 }
                 
                 playerDonkey.rotation.y = yaw;
-
                 playerDonkey.scale.y += ((isCrouching ? 0.6 : 1.0) - playerDonkey.scale.y) * 0.5;
 
                 velocityY -= 0.015;
@@ -2493,13 +2585,7 @@
                 for (let id in otherPlayers) {
                     const other = otherPlayers[id];
                     const ud = other.userData;
-                    updateDonkeyAnimation(
-                        other, 
-                        ud.isMoving || false, 
-                        ud.isJumping || false, 
-                        ud.isCrouching || false, 
-                        1
-                    );
+                    updateDonkeyAnimation(other, ud.isMoving || false, ud.isJumping || false, ud.isCrouching || false, 1);
                 }
 
                 if (ws && ws.readyState === WebSocket.OPEN) {
@@ -2508,8 +2594,7 @@
                         x: playerDonkey.position.x,
                         y: playerDonkey.position.y,
                         z: playerDonkey.position.z,
-                        yaw: yaw,
-                        pitch: pitch,
+                        yaw: yaw, pitch: pitch,
                         isCrouching: isCrouching,
                         isMoving: isMoving,
                         isJumping: isJumping
