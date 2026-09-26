@@ -19,7 +19,13 @@ wss.on('connection', (ws) => {
     const id = Math.random().toString(36).substring(2, 9);
     console.log(`Oyuncu katıldı: ${id}`);
 
-    players[id] = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, isCrouching: false };
+    players[id] = { 
+        x: 0, y: 0, z: 0, 
+        yaw: 0, pitch: 0, 
+        isCrouching: false,
+        isMoving: false,
+        isJumping: false
+    };
 
     ws.send(JSON.stringify({ type: 'init', id: id }));
 
@@ -34,7 +40,9 @@ wss.on('connection', (ws) => {
                         z: data.z,
                         yaw: data.yaw,
                         pitch: data.pitch,
-                        isCrouching: data.isCrouching || false  // EĞİLME BİLGİSİ KAYDEDİLİYOR
+                        isCrouching: data.isCrouching || false,
+                        isMoving: data.isMoving || false,
+                        isJumping: data.isJumping || false
                     };
                 }
             }
