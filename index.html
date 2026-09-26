@@ -45,7 +45,6 @@
         .mob-btn:active { background: rgba(255, 255, 255, 0.4); }
         .mob-btn-sprint { background: rgba(255, 152, 0, 0.7); border-color: #ff9800; }
 
-        /* HUD (Saat ve FPS) */
         #hud {
             position: absolute;
             top: 20px;
@@ -116,12 +115,9 @@
         let controlMode = 'pc';
 
         // HARİTA SINIRI
-        const MAP_LIMIT = 200; // Oyuncu bu sınırın dışına çıkamaz
+        const MAP_LIMIT = 200;
 
         const scene = new THREE.Scene();
-        
-        // GÖKYÜZÜ - Gündüz/Gece için
-        // (Sky rengini dinamik olarak değiştireceğiz)
 
         const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 3000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -134,7 +130,6 @@
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(ambientLight);
 
-        // Güneş (Directional Light)
         const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
         sunLight.position.set(100, 200, 100);
         sunLight.castShadow = true;
@@ -148,14 +143,12 @@
         sunLight.shadow.camera.far = 1000;
         scene.add(sunLight);
 
-        // Güneş'in görsel modeli (küre)
         const sunMesh = new THREE.Mesh(
             new THREE.SphereGeometry(15, 16, 16),
             new THREE.MeshBasicMaterial({ color: 0xffff00 })
         );
         scene.add(sunMesh);
 
-        // Ay
         const moonLight = new THREE.DirectionalLight(0xaaccff, 0.3);
         moonLight.position.set(-100, 200, -100);
         scene.add(moonLight);
@@ -169,70 +162,77 @@
         // === ZEMİN ===
         const terrainGeo = new THREE.PlaneGeometry(500, 500, 100, 100);
         terrainGeo.rotateX(-Math.PI / 2);
-        const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0x3d8c28 }));
+        const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0x2d5a1e }));
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
         // === OT KÜMELERİ ===
-        function createGrassTuft() {
-            const grassGroup = new THREE.Group();
-            const grassMat = new THREE.MeshLambertMaterial({ color: 0x2d7a1e });
-            const grassMat2 = new THREE.MeshLambertMaterial({ color: 0x3d8c28 });
-            
-            // 3-5 adet ince ot yaprağı
-            const bladeCount = 3 + Math.floor(Math.random() * 3);
-            for (let i = 0; i < bladeCount; i++) {
-                const h = 0.3 + Math.random() * 0.4;
-                const blade = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.05, h, 0.05),
-                    Math.random() > 0.5 ? grassMat : grassMat2
-                );
-                blade.position.set(
-                    (Math.random() - 0.5) * 0.4,
-                    h / 2,
-                    (Math.random() - 0.5) * 0.4
-                );
-                blade.rotation.z = (Math.random() - 0.5) * 0.3;
-                blade.rotation.x = (Math.random() - 0.5) * 0.3;
-                blade.castShadow = true;
-                grassGroup.add(blade);
-            }
-            return grassGroup;
-        }
+        // Otları tek bir geometri olarak birleştirip performansı koruyacağız
+        const grassMat1 = new THREE.MeshLambertMaterial({ color: 0x2d7a1e });
+        const grassMat2 = new THREE.MeshLambertMaterial({ color: 0x4a9c2a });
+        const grassMat3 = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
+        
+        // Her ot birimi için tek bir "tuft" oluşturacağız, sonra hepsini birleştireceğiz
+        const grassGeometries = [];
+        const grassBladeGeo = new THREE.BoxGeometry(0.08, 0.5, 0.08);
 
-        // Haritaya rastgele otlar yerleştir (dağların dışında)
-        const grassPositions = [];
-        for (let i = 0; i < 500; i++) {
+        // Haritanın %90'ını kaplayacak şekilde ot yerleştir
+        // 400x400 alanın %90'ı = yaklaşık 360x360 alan
+        const grassAreaRadius = 180; // 180 yarıçap = 360 çap
+        const grassCount = 5000;
+
+        for (let i = 0; i < grassCount; i++) {
+            // Rastgele nokta (daire içinde)
             const angle = Math.random() * Math.PI * 2;
-            const radius = 20 + Math.random() * 170; // Dağların içinde kalmasın
+            const radius = Math.sqrt(Math.random()) * grassAreaRadius;
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
             
-            // Çok yakın otları engelle
-            let tooClose = false;
-            for (let p of grassPositions) {
-                if (Math.abs(p.x - x) < 2 && Math.abs(p.z - z) < 2) {
-                    tooClose = true;
+            // Dağ çarpışması kontrolü (dağların içinde ot olmasın)
+            let inMountain = false;
+            for (let m of mountains) {
+                const dx = x - m.x;
+                const dz = z - m.z;
+                if (Math.sqrt(dx * dx + dz * dz) < m.radius + 1) {
+                    inMountain = true;
                     break;
                 }
             }
-            if (tooClose) continue;
-            grassPositions.push({ x, z });
+            if (inMountain) continue;
+
+            // Her ot kümesi 4-7 yaprak
+            const bladeCount = 4 + Math.floor(Math.random() * 4);
+            const grassGroup = new THREE.Group();
             
-            const grass = createGrassTuft();
-            grass.position.set(x, 0, z);
-            grass.rotation.y = Math.random() * Math.PI * 2;
-            scene.add(grass);
+            for (let j = 0; j < bladeCount; j++) {
+                const h = 0.3 + Math.random() * 0.4;
+                const bladeGeo = new THREE.BoxGeometry(0.06, h, 0.06);
+                const mat = Math.random() > 0.66 ? grassMat2 : (Math.random() > 0.5 ? grassMat1 : grassMat3);
+                const blade = new THREE.Mesh(bladeGeo, mat);
+                blade.position.set(
+                    (Math.random() - 0.5) * 0.5,
+                    h / 2,
+                    (Math.random() - 0.5) * 0.5
+                );
+                blade.rotation.z = (Math.random() - 0.5) * 0.4;
+                blade.rotation.x = (Math.random() - 0.5) * 0.4;
+                blade.castShadow = false; // Performans için gölge kapat
+                blade.receiveShadow = false;
+                grassGroup.add(blade);
+            }
+            
+            grassGroup.position.set(x, 0, z);
+            grassGroup.rotation.y = Math.random() * Math.PI * 2;
+            scene.add(grassGroup);
         }
 
-        // === DAĞLAR (Harita Sınırı) ===
+        // === DAĞLAR (Harita Sınırı - Duvar Gibi) ===
         const mountains = []; // Çarpışma için dağ pozisyonları ve yarıçapları
 
         function createMountain(x, z, baseRadius, height) {
             const mountainGroup = new THREE.Group();
             
-            // Dağ gövdesi - koni şeklinde
-            const mountainMat = new THREE.MeshLambertMaterial({ color: 0x8b7355 }); // Kahverengi
+            const mountainMat = new THREE.MeshLambertMaterial({ color: 0x8b7355 });
             const mountainGeo = new THREE.ConeGeometry(baseRadius, height, 8);
             const mountainMesh = new THREE.Mesh(mountainGeo, mountainMat);
             mountainMesh.position.y = height / 2;
@@ -254,29 +254,43 @@
             scene.add(mountainGroup);
 
             // Çarpışma bilgisi
-            mountains.push({ x, z, radius: baseRadius * 0.9 }); // Biraz küçük yarıçap, içinden geçilmesin
+            mountains.push({ x, z, radius: baseRadius * 0.95 });
         }
 
-        // Haritanın etrafına dağlar yerleştir (çember şeklinde)
-        const mountainRingRadius = MAP_LIMIT - 10; // 190
-        const mountainCount = 24;
+        // Haritanın etrafına dağlar yerleştir - BOŞLUK KALMAYACAK ŞEKİLDE
+        // Çember üzerinde üst üste binmiş dağlar
+        const mountainRingRadius = MAP_LIMIT - 5;
+        
+        // Çevreyi tamamen kapat: 48 dağ, her biri geniş
+        const mountainCount = 48;
         for (let i = 0; i < mountainCount; i++) {
             const angle = (i / mountainCount) * Math.PI * 2;
             const x = Math.cos(angle) * mountainRingRadius;
             const z = Math.sin(angle) * mountainRingRadius;
-            const baseRadius = 20 + Math.random() * 10;
-            const height = 40 + Math.random() * 30;
+            // Geniş dağlar (üst üste binsin)
+            const baseRadius = 18 + Math.random() * 6;
+            const height = 45 + Math.random() * 25;
             createMountain(x, z, baseRadius, height);
         }
 
-        // Ekstra iç dağlar (manzara için)
-        for (let i = 0; i < 8; i++) {
+        // İkinci sıra dağ (daha da sağlam duvar)
+        for (let i = 0; i < mountainCount; i++) {
+            const angle = ((i + 0.5) / mountainCount) * Math.PI * 2;
+            const x = Math.cos(angle) * (mountainRingRadius + 12);
+            const z = Math.sin(angle) * (mountainRingRadius + 12);
+            const baseRadius = 20 + Math.random() * 6;
+            const height = 50 + Math.random() * 30;
+            createMountain(x, z, baseRadius, height);
+        }
+
+        // İçeride dekoratif dağlar (az sayıda, boşluk bırakmayacak)
+        for (let i = 0; i < 6; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const radius = 80 + Math.random() * 80;
+            const radius = 100 + Math.random() * 60;
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
-            const baseRadius = 8 + Math.random() * 6;
-            const height = 15 + Math.random() * 15;
+            const baseRadius = 10 + Math.random() * 6;
+            const height = 20 + Math.random() * 15;
             createMountain(x, z, baseRadius, height);
         }
 
@@ -555,6 +569,9 @@
             }
         });
 
+        // ==========================================
+        // JOYSTICK - KESİN DÜZELTME
+        // ==========================================
         joystickZone.addEventListener('touchstart', (e) => {
             e.preventDefault();
             if (joystickTouchId !== null) return;
@@ -582,7 +599,24 @@
             let dY = touch.clientY - touchStartY;
             let dist = Math.min(45, Math.sqrt(dX * dX + dY * dY));
             let angle = Math.atan2(dY, dX);
+            
+            // Knob'u göster
             joystickKnob.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
+            
+            // DÜZELTME:
+            // dX > 0 ise sağa çekiliyor. joystickMoveX = +1 olmalı.
+            // dX < 0 ise sola çekiliyor. joystickMoveX = -1 olmalı.
+            // dY < 0 ise yukarı çekiliyor (ekranda yukarı = negatif Y). joystickMoveZ = -1 olmalı.
+            // dY > 0 ise aşağı çekiliyor. joystickMoveZ = +1 olmalı.
+            // Bu yüzden:
+            // joystickMoveX = Math.cos(angle) * (dist/45)  -> sağa çekince +1, sola çekince -1
+            // joystickMoveZ = Math.sin(angle) * (dist/45)  -> yukarı çekince -1, aşağı çekince +1
+            
+            // ANCAK, biz hareket hesabında ileri için -joystickMoveZ kullanıyoruz.
+            // Yani yukarı çekince (-1) -> ileri (+1) oluyor. Doğru.
+            // Sağa çekince joystickMoveX = +1, hareket hesabında sagSol = joystickMoveX = +1.
+            // Ve formül moveX = sin(yaw)*ileriGeri + cos(yaw)*sagSol.
+            // yaw=0 için moveX = 0 + 1*1 = +1 (sağa). Doğru!
             
             joystickMoveX = Math.cos(angle) * (dist / 45);
             joystickMoveZ = Math.sin(angle) * (dist / 45);
@@ -686,7 +720,7 @@
                 const dz = z - m.z;
                 const dist = Math.sqrt(dx * dx + dz * dz);
                 if (dist < m.radius + radius) {
-                    return true; // Çarpışma var
+                    return true;
                 }
             }
             return false;
@@ -719,16 +753,13 @@
             }
         }
 
-        // === ZAMAN SİSTEMİ ===
-        // Oyun içi zaman: 1 gerçek dakika = 1 tam gün (24 saat)
-        // Yani 60 saniyede 24 saat geçer.
-        // Her frame'de geçen süre: 24 / 60 = 0.4 saat/saniye
-        let gameTime = 8.0; // Başlangıç: sabah 08:00
+        // === ZAMAN ===
+        let gameTime = 8.0;
         let gameDay = 1;
-        const TIME_SPEED = 0.4; // saat/saniye (1 dakikada 1 tam gün)
-        const DAY_DURATION = 24; // 24 saat
+        const TIME_SPEED = 0.4;
+        const DAY_DURATION = 24;
 
-        // === FPS SAYACI ===
+        // === FPS ===
         let fpsFrames = 0;
         let fpsLastTime = performance.now();
         let currentFps = 60;
@@ -743,7 +774,6 @@
             const deltaSec = (now - lastFrameTime) / 1000;
             lastFrameTime = now;
 
-            // FPS Hesapla
             fpsFrames++;
             if (now - fpsLastTime >= 1000) {
                 currentFps = fpsFrames;
@@ -752,65 +782,52 @@
             }
 
             if (gameStarted) {
-                // === ZAMAN GÜNCELLE ===
                 gameTime += TIME_SPEED * deltaSec;
                 if (gameTime >= DAY_DURATION) {
                     gameTime -= DAY_DURATION;
                     gameDay++;
                 }
 
-                // HUD Güncelle
                 const hours = Math.floor(gameTime);
                 const minutes = Math.floor((gameTime - hours) * 60);
                 hudTimeEl.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                 hudFpsEl.textContent = currentFps;
                 hudDayEl.textContent = gameDay;
 
-                // === GÜNEŞ VE AY POZİSYONU ===
-                // Gün 0-24 arası. Güneş 6'da doğar, 18'de batar.
-                const sunAngle = ((gameTime - 6) / 12) * Math.PI; // 6:00 -> 0, 18:00 -> PI
+                // Güneş/Ay
+                const sunAngle = ((gameTime - 6) / 12) * Math.PI;
                 const sunX = Math.cos(sunAngle - Math.PI / 2) * 250;
                 const sunY = Math.sin(sunAngle) * 250;
                 const sunZ = 0;
 
-                // Güneş görsel
                 sunMesh.position.set(sunX, sunY, sunZ);
-                // Güneş ışığı
                 sunLight.position.set(sunX, sunY, sunZ);
 
-                // Ay (güneşin tam tersi)
                 moonMesh.position.set(-sunX, -sunY, -sunZ);
                 moonLight.position.set(-sunX, -sunY, -sunZ);
 
-                // === GÖKYÜZÜ RENGİ (Gündüz/Gece) ===
-                // Gündüz: açık mavi, Gece: koyu lacivert
                 let skyR, skyG, skyB;
                 if (gameTime >= 6 && gameTime <= 18) {
-                    // Gündüz
-                    const t = (gameTime - 6) / 12; // 0 -> 1
-                    // Sabah kızıllığı -> mavi -> akşam kızıllığı
-                    const morningFactor = Math.max(0, 1 - t * 4); // 6-9 arası
-                    const eveningFactor = Math.max(0, (t - 0.75) * 4); // 15-18 arası
+                    const t = (gameTime - 6) / 12;
+                    const morningFactor = Math.max(0, 1 - t * 4);
+                    const eveningFactor = Math.max(0, (t - 0.75) * 4);
                     const orangeR = 1.0, orangeG = 0.6, orangeB = 0.3;
                     const blueR = 0.53, blueG = 0.81, blueB = 0.92;
-                    
                     let mixFactor = Math.max(morningFactor, eveningFactor);
                     skyR = blueR * (1 - mixFactor) + orangeR * mixFactor;
                     skyG = blueG * (1 - mixFactor) + orangeG * mixFactor;
                     skyB = blueB * (1 - mixFactor) + orangeB * mixFactor;
                 } else {
-                    // Gece
                     skyR = 0.05; skyG = 0.05; skyB = 0.15;
                 }
                 scene.background = new THREE.Color(skyR, skyG, skyB);
 
-                // Güneş ışığı şiddeti
                 const isDay = gameTime >= 6 && gameTime <= 18;
                 sunLight.intensity = isDay ? 1.0 : 0.0;
                 moonLight.intensity = isDay ? 0.0 : 0.3;
                 ambientLight.intensity = isDay ? 0.5 : 0.15;
 
-                // === OYUNCU HAREKET ===
+                // === HAREKET ===
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
                 
@@ -827,8 +844,8 @@
                     if (keys.d) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
                 } else {
                     if (joystickActive) {
-                        const ileriGeri = -joystickMoveZ;
-                        const sagSol = joystickMoveX;
+                        const ileriGeri = -joystickMoveZ; // Yukarı(-1) -> +1 ileri
+                        const sagSol = joystickMoveX;      // Sağ(+1) -> +1 sağ
                         
                         moveX = (Math.sin(yaw) * ileriGeri + Math.cos(yaw) * sagSol) * speed * 1.5;
                         moveZ = (Math.cos(yaw) * ileriGeri - Math.sin(yaw) * sagSol) * speed * 1.5;
@@ -837,17 +854,25 @@
                     }
                 }
 
-                // Hareketi uygula (çarpışma kontrolü ile)
+                // ÇARPIŞMA KONTROLÜ
                 const newX = playerDonkey.position.x + moveX;
                 const newZ = playerDonkey.position.z + moveZ;
                 
-                // Dağ çarpışması
-                if (!checkMountainCollision(newX, newZ, 1.0)) {
+                // Ayrı ayrı dene (bir yönde çarpışma varsa diğer yöne izin ver)
+                let canMoveX = !checkMountainCollision(newX, playerDonkey.position.z, 1.0);
+                let canMoveZ = !checkMountainCollision(playerDonkey.position.x, newZ, 1.0);
+                let canMoveBoth = !checkMountainCollision(newX, newZ, 1.0);
+                
+                if (canMoveBoth) {
                     playerDonkey.position.x = newX;
+                    playerDonkey.position.z = newZ;
+                } else if (canMoveX) {
+                    playerDonkey.position.x = newX;
+                } else if (canMoveZ) {
                     playerDonkey.position.z = newZ;
                 }
                 
-                // Harita sınırı (dağların dışına çıkmasın)
+                // HARİTA SINIRI (dağların dışına çıkmasın)
                 const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
                 if (distFromCenter > MAP_LIMIT) {
                     const scale = MAP_LIMIT / distFromCenter;
@@ -870,7 +895,6 @@
                     playerDonkey.userData.neckHeadGroup.rotation.x = pitch;
                 }
 
-                // Diğer oyuncular
                 for (let id in otherPlayers) {
                     const other = otherPlayers[id];
                     const ud = other.userData;
@@ -883,7 +907,6 @@
                     );
                 }
 
-                // Sunucuya gönder
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: "move",
