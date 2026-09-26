@@ -2,10 +2,10 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Eşek Game - Online</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: Arial, sans-serif; user-select: none; }
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: Arial, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
         #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.85); z-index: 20; }
         h1 { color: #ffd700; font-size: 64px; margin: 0; text-shadow: 3px 3px 6px #000; }
         h2 { color: #ffffff; font-size: 24px; margin: 10px 0 20px 0; font-weight: 300; }
@@ -82,10 +82,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // ==========================================
-        // BURADAN AŞAĞISI JAVASCRIPT KODU
-        // ==========================================
-        
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}`;
         
@@ -235,6 +231,11 @@
         let isCouchingMobile = false;
         let isSprintingMobile = false;
 
+        // YENİ: Çoklu dokunma takibi
+        let joystickTouchId = null;   // Joystick'i kontrol eden parmağın ID'si
+        let cameraTouchId = null;     // Kamerayı kontrol eden parmağın ID'si
+        let cameraLastX = 0, cameraLastY = 0;
+
         const menuEl = document.getElementById('menu');
         const mainButtons = document.getElementById('mainButtons');
         const pauseButtons = document.getElementById('pauseButtons');
@@ -342,6 +343,10 @@
             mouseY = e.clientY;
         });
 
+        // ==========================================
+        // MOBİL KONTROLLER - ÇOKLU DOKUNMA DESTEKLİ
+        // ==========================================
+        
         const joystickZone = document.getElementById('joystickZone');
         const joystickKnob = document.getElementById('joystickKnob');
         const mobJumpBtn = document.getElementById('mobJumpBtn');
@@ -363,34 +368,127 @@
             }
         });
 
+        // Joystick dokunuşu
         joystickZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (joystickTouchId !== null) return; // Zaten bir parmak joystick'te
+            const touch = e.changedTouches[0];
+            joystickTouchId = touch.identifier;
             joystickActive = true;
-            touchStartX = e.targetTouches[0].clientX;
-            touchStartY = e.targetTouches[0].clientY;
-        });
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+        }, { passive: false });
+
         joystickZone.addEventListener('touchmove', (e) => {
-            if (!joystickActive) return;
-            let dX = e.targetTouches[0].clientX - touchStartX;
-            let dY = e.targetTouches[0].clientY - touchStartY;
+            e.preventDefault();
+            if (joystickTouchId === null) return;
+            
+            // Joystick'i kontrol eden parmağı bul
+            let touch = null;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickTouchId) {
+                    touch = e.changedTouches[i];
+                    break;
+                }
+            }
+            if (!touch) return;
+            
+            let dX = touch.clientX - touchStartX;
+            let dY = touch.clientY - touchStartY;
             let dist = Math.min(45, Math.sqrt(dX * dX + dY * dY));
             let angle = Math.atan2(dY, dX);
             joystickKnob.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
             
-            // DÜZELTME: joystickMoveX'in işaretini çevirdik
-            // Böylece sağa çekince +1 yerine -1 olacak... 
-            // HAYIR, bekle. Şöyle yapalım:
-            // Sağa çekince cos(angle) pozitif olur. Biz sağa gitmek istiyoruz.
-            // O yüzden joystickMoveX = cos(angle) * (dist/45) OLMALI.
-            // Ama sizin sistemde ters çalışıyorsa, - koyarız.
-            
-            // ŞİMDİLİK DENEME: - koyduk. Eğer ters olursa -'yi kaldırın.
-            joystickMoveX = -Math.cos(angle) * (dist / 45);
+            joystickMoveX = Math.cos(angle) * (dist / 45);
             joystickMoveZ = Math.sin(angle) * (dist / 45);
-        });
-        joystickZone.addEventListener('touchend', () => {
+        }, { passive: false });
+
+        joystickZone.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickTouchId) {
+                    joystickTouchId = null;
+                    joystickActive = false;
+                    joystickKnob.style.transform = `translate(0px, 0px)`;
+                    joystickMoveX = 0; joystickMoveZ = 0;
+                    break;
+                }
+            }
+        }, { passive: false });
+
+        joystickZone.addEventListener('touchcancel', (e) => {
+            joystickTouchId = null;
             joystickActive = false;
             joystickKnob.style.transform = `translate(0px, 0px)`;
             joystickMoveX = 0; joystickMoveZ = 0;
+        });
+
+        // Kamera döndürme - ekranın herhangi bir yerine dokunup sürükle
+        // (Joystick ve butonlar hariç)
+        window.addEventListener('touchstart', (e) => {
+            if (!gameStarted || controlMode !== 'mobile') return;
+            
+            // Joystick, butonlar veya menü butonuna dokunulduysa kamera döndürme başlatma
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                const target = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (!target) continue;
+                
+                if (target.closest('#joystickZone') || 
+                    target.closest('.mob-btn-group') || 
+                    target.closest('#mobMenuBtn') ||
+                    target.closest('#menu')) {
+                    continue;
+                }
+                
+                // Bu parmak kamera döndürme için kullanılabilir
+                if (cameraTouchId === null) {
+                    cameraTouchId = touch.identifier;
+                    cameraLastX = touch.clientX;
+                    cameraLastY = touch.clientY;
+                }
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!gameStarted || controlMode !== 'mobile') return;
+            if (cameraTouchId === null) return;
+            
+            // Kamera döndüren parmağı bul
+            let touch = null;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === cameraTouchId) {
+                    touch = e.changedTouches[i];
+                    break;
+                }
+            }
+            if (!touch) return;
+            
+            const tX = touch.clientX;
+            const tY = touch.clientY;
+            
+            yaw -= (tX - cameraLastX) * 0.005;
+            pitch -= (tY - cameraLastY) * 0.005;
+            pitch = Math.max(-0.6, Math.min(1.0, pitch));
+            
+            cameraLastX = tX;
+            cameraLastY = tY;
+            
+            e.preventDefault();
+        }, { passive: false });
+
+        window.addEventListener('touchend', (e) => {
+            if (cameraTouchId === null) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === cameraTouchId) {
+                    cameraTouchId = null;
+                    break;
+                }
+            }
+        });
+
+        window.addEventListener('touchcancel', (e) => {
+            cameraTouchId = null;
         });
 
         mobJumpBtn.addEventListener('click', () => {
@@ -401,22 +499,10 @@
         mobSprintBtn.addEventListener('touchstart', () => { isSprintingMobile = true; });
         mobSprintBtn.addEventListener('touchend', () => { isSprintingMobile = false; });
 
-        let lastTouchX = 0, lastTouchY = 0;
-        window.addEventListener('touchstart', (e) => {
-            if (!gameStarted || controlMode !== 'mobile') return;
-            if (e.target.closest('#joystickZone') || e.target.closest('.mob-btn-group') || e.target.closest('#menu') || e.target.closest('#mobMenuBtn')) return;
-            lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY;
-        });
-        window.addEventListener('touchmove', (e) => {
-            if (!gameStarted || controlMode !== 'mobile') return;
-            if (e.target.closest('#joystickZone') || e.target.closest('.mob-btn-group') || e.target.closest('#menu') || e.target.closest('#mobMenuBtn')) return;
-            let tX = e.touches[0].clientX, tY = e.touches[0].clientY;
-            yaw -= (tX - lastTouchX) * 0.005;
-            pitch -= (tY - lastTouchY) * 0.005;
-            pitch = Math.max(-0.6, Math.min(1.0, pitch));
-            lastTouchX = tX; lastTouchY = tY;
-        });
-
+        // ==========================================
+        // OYUN DÖNGÜSÜ
+        // ==========================================
+        
         let walkCycle = 0;
 
         function animate() {
@@ -439,9 +525,6 @@
                     if (keys.d) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
                 } else {
                     if (joystickActive) {
-                        // joystickMoveX: joystick kodu yukarıda -cos ile ayarlandı
-                        // joystickMoveZ: yukarı(-), aşağı(+)
-                        
                         const ileriGeri = -joystickMoveZ;
                         const sagSol = joystickMoveX;
                         
