@@ -23,7 +23,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             z-index: 20;
         }
 
@@ -37,13 +37,19 @@
         h2 {
             color: #ffffff;
             font-size: 24px;
-            margin: 10px 0 30px 0;
+            margin: 10px 0 20px 0;
             font-weight: 300;
         }
 
+        .section-title {
+            color: #aaaaaa;
+            font-size: 18px;
+            margin: 15px 0 5px 0;
+        }
+
         .btn {
-            padding: 15px 40px;
-            font-size: 22px;
+            padding: 12px 35px;
+            font-size: 20px;
             font-weight: bold;
             color: #ffffff;
             background-color: #4CAF50;
@@ -52,7 +58,7 @@
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             transition: transform 0.2s;
-            margin: 10px;
+            margin: 8px;
             min-width: 250px;
         }
 
@@ -62,6 +68,10 @@
 
         .btn-red {
             background-color: #f44336;
+        }
+
+        .btn-blue {
+            background-color: #2196F3;
         }
 
         #info {
@@ -76,6 +86,71 @@
             display: none;
             z-index: 15;
         }
+
+        /* Mobil Kontrol Arayüzü */
+        #mobileControls {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #joystickZone {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            width: 130px;
+            height: 130px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        #joystickKnob {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .mob-btn-group {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .mob-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #ffffff;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .mob-btn:active {
+            background: rgba(255, 255, 255, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -83,12 +158,31 @@
     <div id="menu">
         <h1>Eşek Game</h1>
         <h2>Online 3. Şahıs Modu</h2>
-        <button id="resumeBtn" class="btn" style="display: none;">OYUNA DEVAM ET</button>
-        <button id="startBtn" class="btn">OYUNA BAŞLA</button>
-        <button id="returnMenuBtn" class="btn btn-red" style="display: none;">MENÜYE DÖN</button>
+        
+        <div id="mainButtons">
+            <div class="section-title">Kontrol Seçin</div>
+            <button id="pcSelectBtn" class="btn btn-blue">💻 PC KONTROLÜ</button><br>
+            <button id="mobileSelectBtn" class="btn" style="background-color: #ff9800;">📱 MOBİL KONTROLÜ</button>
+        </div>
+
+        <div id="pauseButtons" style="display: none; flex-direction: column; align-items: center;">
+            <button id="resumeBtn" class="btn">OYUNA DEVAM ET</button>
+            <button id="returnMenuBtn" class="btn btn-red">MENÜYE DÖN</button>
+        </div>
     </div>
 
     <div id="info">W,A,S,D: Yürü | Sol Tık + Sürükle: Etrafa Bak | Space: Zıpla | C: Eğil | ESC: Menü</div>
+
+    <!-- Mobil Ekran Kontrolleri -->
+    <div id="mobileControls">
+        <div id="joystickZone">
+            <div id="joystickKnob"></div>
+        </div>
+        <div class="mob-btn-group">
+            <button class="mob-btn" id="mobCrouchBtn">Eğil</button>
+            <button class="mob-btn" id="mobJumpBtn">Zıpla</button>
+        </div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
@@ -98,6 +192,7 @@
 
         let myId = null;
         const otherPlayers = {};
+        let controlMode = 'pc'; // 'pc' veya 'mobile'
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
@@ -183,7 +278,7 @@
         scene.add(playerDonkey);
 
         function initWebSocket() {
-            if (ws && ws.readyState === WebSocket.OPEN) return; // Zaten bağlıysa tekrar açma
+            if (ws && ws.readyState === WebSocket.OPEN) return;
             ws = new WebSocket(`${protocol}//${window.location.host}`);
 
             ws.onmessage = (event) => {
@@ -229,19 +324,28 @@
         let mouseX = 0, mouseY = 0;
         const keys = { w: false, a: false, s: false, d: false, c: false };
 
+        // Mobil Joystick Değişkenleri
+        let joystickActive = false;
+        let joystickMoveX = 0, joystickMoveZ = 0;
+        let isCouchingMobile = false;
+
         const menuEl = document.getElementById('menu');
-        const startBtn = document.getElementById('startBtn');
+        const mainButtons = document.getElementById('mainButtons');
+        const pauseButtons = document.getElementById('pauseButtons');
         const resumeBtn = document.getElementById('resumeBtn');
         const returnMenuBtn = document.getElementById('returnMenuBtn');
+        const pcSelectBtn = document.getElementById('pcSelectBtn');
+        const mobileSelectBtn = document.getElementById('mobileSelectBtn');
         const infoEl = document.getElementById('info');
+        const mobileControlsEl = document.getElementById('mobileControls');
 
         function showMainMenu() {
             gameStarted = false;
             menuEl.style.display = 'flex';
+            mainButtons.style.display = 'block';
+            pauseButtons.style.display = 'none';
             infoEl.style.display = 'none';
-            startBtn.style.display = 'block';
-            resumeBtn.style.display = 'none';
-            returnMenuBtn.style.display = 'none';
+            mobileControlsEl.style.display = 'none';
             
             if (ws) { ws.close(); ws = null; }
             playerDonkey.visible = false;
@@ -256,45 +360,57 @@
         function showPauseMenu() {
             gameStarted = false;
             menuEl.style.display = 'flex';
+            mainButtons.style.display = 'none';
+            pauseButtons.style.display = 'flex';
             infoEl.style.display = 'none';
-            startBtn.style.display = 'none';
-            resumeBtn.style.display = 'block';
-            returnMenuBtn.style.display = 'block';
+            mobileControlsEl.style.display = 'none';
             playerDonkey.visible = false;
         }
 
-        // Oyuna İlk Başla
-        startBtn.addEventListener('click', () => {
+        function startGame(mode) {
+            controlMode = mode;
             initWebSocket();
             playerDonkey.position.set(0, 0, 0);
             gameStarted = true;
             menuEl.style.display = 'none';
-            infoEl.style.display = 'block';
             playerDonkey.visible = true;
-        });
 
-        // Oyuna Devam Et (ESC menüsünden)
+            if (controlMode === 'pc') {
+                infoEl.style.display = 'block';
+                mobileControlsEl.style.display = 'none';
+            } else {
+                infoEl.style.display = 'none';
+                mobileControlsEl.style.display = 'block';
+            }
+        }
+
+        pcSelectBtn.addEventListener('click', () => startGame('pc'));
+        mobileSelectBtn.addEventListener('click', () => startGame('mobile'));
+
         resumeBtn.addEventListener('click', () => {
             initWebSocket();
             gameStarted = true;
             menuEl.style.display = 'none';
-            infoEl.style.display = 'block';
             playerDonkey.visible = true;
+            if (controlMode === 'pc') {
+                infoEl.style.display = 'block';
+            } else {
+                mobileControlsEl.style.display = 'block';
+            }
         });
 
-        // Menüye Dön (ESC menüsünden)
         returnMenuBtn.addEventListener('click', () => {
             showMainMenu();
         });
 
-        // ESC tuşu ile menüyü açma
+        // ESC tuşu ile menüyü açma (Sadece PC modunda veya her zaman)
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 if (gameStarted) {
                     showPauseMenu();
                 }
             }
-            if (!gameStarted) return;
+            if (!gameStarted || controlMode !== 'pc') return;
 
             const k = e.key.toLowerCase();
             if (k === 'w') keys.w = true;
@@ -309,6 +425,7 @@
         });
 
         document.addEventListener('keyup', (e) => {
+            if (!gameStarted || controlMode !== 'pc') return;
             const k = e.key.toLowerCase();
             if (k === 'w') keys.w = false;
             if (k === 'a') keys.a = false;
@@ -317,8 +434,9 @@
             if (k === 'c') keys.c = false;
         });
 
+        // PC Fare Kontrolleri
         document.addEventListener('mousedown', (e) => {
-            if (!gameStarted) return;
+            if (!gameStarted || controlMode !== 'pc') return;
             if (e.button === 0) {
                 isMouseDown = true;
                 mouseX = e.clientX;
@@ -326,22 +444,90 @@
             }
         });
 
-        document.addEventListener('mouseup', () => {
-            isMouseDown = false;
-        });
+        document.addEventListener('mouseup', () => { isMouseDown = false; });
 
         document.addEventListener('mousemove', (e) => {
-            if (!gameStarted || !isMouseDown) return;
-
+            if (!gameStarted || !isMouseDown || controlMode !== 'pc') return;
             const deltaX = e.clientX - mouseX;
             const deltaY = e.clientY - mouseY;
-
             yaw -= deltaX * 0.005;
             pitch -= deltaY * 0.005;
             pitch = Math.max(-0.6, Math.min(1.0, pitch));
-
             mouseX = e.clientX;
             mouseY = e.clientY;
+        });
+
+        // --- MOBİL JOYSTICK & DOKUNMATİK KONTROLLERİ ---
+        const joystickZone = document.getElementById('joystickZone');
+        const joystickKnob = document.getElementById('joystickKnob');
+        const mobJumpBtn = document.getElementById('mobJumpBtn');
+        const mobCrouchBtn = document.getElementById('mobCrouchBtn');
+
+        let touchStartX = 0, touchStartY = 0;
+
+        joystickZone.addEventListener('touchstart', (e) => {
+            joystickActive = true;
+            const touch = e.targetTouches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+        });
+
+        joystickZone.addEventListener('touchmove', (e) => {
+            if (!joystickActive) return;
+            const touch = e.targetTouches[0];
+            let deltaX = touch.clientX - touchStartX;
+            let deltaY = touch.clientY - touchStartY;
+            const distance = Math.min(45, Math.sqrt(deltaX * deltaX + deltaY * deltaY));
+            const angle = Math.atan2(deltaY, deltaX);
+
+            let knobX = 40 + Math.cos(angle) * distance;
+            let knobY = 40 + Math.sin(angle) * distance;
+            joystickKnob.style.transform = `translate(${knobX - 40}px, ${knobY - 40}px)`;
+
+            joystickMoveX = (Math.cos(angle) * (distance / 45));
+            joystickMoveZ = (Math.sin(angle) * (distance / 45));
+        });
+
+        joystickZone.addEventListener('touchend', () => {
+            joystickActive = false;
+            joystickKnob.style.transform = `translate(0px, 0px)`;
+            joystickMoveX = 0;
+            joystickMoveZ = 0;
+        });
+
+        mobJumpBtn.addEventListener('click', () => {
+            if (gameStarted && isGrounded) {
+                velocityY = 0.35;
+                isGrounded = false;
+            }
+        });
+
+        mobCrouchBtn.addEventListener('touchstart', () => { isCouchingMobile = true; });
+        mobCrouchBtn.addEventListener('touchend', () => { isCouchingMobile = false; });
+
+        // Mobil Ekran Kaydırma (Kamera Bakış Açısı)
+        let lastTouchX = 0, lastTouchY = 0;
+        window.addEventListener('touchstart', (e) => {
+            if (!gameStarted || controlMode !== 'mobile') return;
+            if (e.target.closest('#joystickZone') || e.target.closest('.mob-btn-group') || e.target.closest('#menu')) return;
+            lastTouchX = e.touches[0].clientX;
+            lastTouchY = e.touches[0].clientY;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!gameStarted || controlMode !== 'mobile') return;
+            if (e.target.closest('#joystickZone') || e.target.closest('.mob-btn-group') || e.target.closest('#menu')) return;
+            let tX = e.touches[0].clientX;
+            let tY = e.touches[0].clientY;
+            let dX = tX - lastTouchX;
+            let dY = tY - lastTouchY;
+
+            yaw -= dX * 0.005;
+            pitch -= dY * 0.005;
+            pitch = Math.max(-0.6, Math.min(1.0, pitch));
+
+            lastTouchX = tX;
+            lastTouchY = tY;
         });
 
         window.addEventListener('beforeunload', () => {
@@ -354,20 +540,29 @@
             requestAnimationFrame(animate);
 
             if (gameStarted) {
-                const speed = keys.c ? 0.06 : 0.12;
+                let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
+                const speed = isCrouching ? 0.06 : 0.12;
                 let moveX = 0, moveZ = 0;
                 let isMoving = false;
 
-                if (keys.w) { moveX += Math.sin(yaw) * speed; moveZ += Math.cos(yaw) * speed; isMoving = true; }
-                if (keys.s) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; isMoving = true; }
-                if (keys.a) { moveX += Math.cos(yaw) * speed; moveZ -= Math.sin(yaw) * speed; isMoving = true; }
-                if (keys.d) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
+                if (controlMode === 'pc') {
+                    if (keys.w) { moveX += Math.sin(yaw) * speed; moveZ += Math.cos(yaw) * speed; isMoving = true; }
+                    if (keys.s) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; isMoving = true; }
+                    if (keys.a) { moveX += Math.cos(yaw) * speed; moveZ -= Math.sin(yaw) * speed; isMoving = true; }
+                    if (keys.d) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
+                } else {
+                    if (joystickActive) {
+                        moveX += (Math.sin(yaw) * joystickMoveZ + Math.cos(yaw) * joystickMoveX) * speed * 1.5;
+                        moveZ += (Math.cos(yaw) * joystickMoveZ - Math.sin(yaw) * joystickMoveX) * speed * 1.5;
+                        isMoving = true;
+                    }
+                }
 
                 playerDonkey.position.x += moveX;
                 playerDonkey.position.z += moveZ;
                 playerDonkey.rotation.y = yaw;
 
-                const targetScaleY = keys.c ? 0.6 : 1.0;
+                const targetScaleY = isCrouching ? 0.6 : 1.0;
                 playerDonkey.scale.y += (targetScaleY - playerDonkey.scale.y) * 0.2;
 
                 velocityY -= 0.015;
@@ -405,7 +600,7 @@
                 }
 
                 const distance = 6;
-                const heightOffset = keys.c ? 1.8 : 2.5;
+                const heightOffset = isCrouching ? 1.8 : 2.5;
 
                 const camX = playerDonkey.position.x - Math.sin(yaw) * distance;
                 const camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
@@ -415,7 +610,7 @@
                 
                 const lookAtTarget = new THREE.Vector3(
                     playerDonkey.position.x,
-                    playerDonkey.position.y + (keys.c ? 1.0 : 1.5),
+                    playerDonkey.position.y + (isCrouching ? 1.0 : 1.5),
                     playerDonkey.position.z
                 );
                 camera.lookAt(lookAtTarget);
