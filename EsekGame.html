@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eşek Game - Online 3. Şahıs</title>
+    <title>Eşek Game - Cross-Platform Online</title>
     <style>
         body {
             margin: 0;
@@ -157,10 +157,10 @@
 
     <div id="menu">
         <h1>Eşek Game</h1>
-        <h2>Online 3. Şahıs Modu</h2>
+        <h2>Cross-Platform Online Modu</h2>
         
         <div id="mainButtons">
-            <div class="section-title">Kontrol Seçin</div>
+            <div class="section-title">Kontrol Yönteminizi Seçin</div>
             <button id="pcSelectBtn" class="btn btn-blue">💻 PC KONTROLÜ</button><br>
             <button id="mobileSelectBtn" class="btn" style="background-color: #ff9800;">📱 MOBİL KONTROLÜ</button>
         </div>
@@ -192,7 +192,7 @@
 
         let myId = null;
         const otherPlayers = {};
-        let controlMode = 'pc'; // 'pc' veya 'mobile'
+        let controlMode = 'pc';
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
@@ -324,7 +324,6 @@
         let mouseX = 0, mouseY = 0;
         const keys = { w: false, a: false, s: false, d: false, c: false };
 
-        // Mobil Joystick Değişkenleri
         let joystickActive = false;
         let joystickMoveX = 0, joystickMoveZ = 0;
         let isCouchingMobile = false;
@@ -403,7 +402,6 @@
             showMainMenu();
         });
 
-        // ESC tuşu ile menüyü açma (Sadece PC modunda veya her zaman)
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 if (gameStarted) {
@@ -434,7 +432,6 @@
             if (k === 'c') keys.c = false;
         });
 
-        // PC Fare Kontrolleri
         document.addEventListener('mousedown', (e) => {
             if (!gameStarted || controlMode !== 'pc') return;
             if (e.button === 0) {
@@ -457,7 +454,6 @@
             mouseY = e.clientY;
         });
 
-        // --- MOBİL JOYSTICK & DOKUNMATİK KONTROLLERİ ---
         const joystickZone = document.getElementById('joystickZone');
         const joystickKnob = document.getElementById('joystickKnob');
         const mobJumpBtn = document.getElementById('mobJumpBtn');
@@ -505,7 +501,6 @@
         mobCrouchBtn.addEventListener('touchstart', () => { isCouchingMobile = true; });
         mobCrouchBtn.addEventListener('touchend', () => { isCouchingMobile = false; });
 
-        // Mobil Ekran Kaydırma (Kamera Bakış Açısı)
         let lastTouchX = 0, lastTouchY = 0;
         window.addEventListener('touchstart', (e) => {
             if (!gameStarted || controlMode !== 'mobile') return;
