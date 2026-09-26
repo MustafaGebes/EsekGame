@@ -23,7 +23,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             z-index: 20;
         }
 
@@ -52,6 +52,7 @@
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             transition: transform 0.2s;
+            margin: 10px;
         }
 
         .btn:hover {
@@ -76,57 +77,23 @@
 
     <div id="menu">
         <h1>Eşek Game</h1>
-        <h2>Online 3. Şahıs Modu</h2>
+        <h2 id="menuSubtitle">Online 3. Şahıs Modu</h2>
         <button id="startBtn" class="btn">OYUNA BAŞLA</button>
     </div>
 
-    <div id="info">W,A,S,D: Yürü | Fare: Etrafa Bak | Space: Zıpla</div>
+    <div id="info">W,A,S,D: Yürü | Sol Tık + Sürükle: Etrafa Bak | Space: Zıpla | C: Eğil | ESC: Menü</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // WebSocket Bağlantısı (Sunucu ile haberleşme)
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${window.location.host}`);
+        let ws = null;
 
         let myId = null;
         const otherPlayers = {};
 
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.type === "players") {
-                    myId = data.me;
-                    const serverPlayers = data.players;
-
-                    // Diğer oyuncuları güncelle veya oluştur
-                    for (let id in serverPlayers) {
-                        if (id !== myId) {
-                            if (!otherPlayers[id]) {
-                                const newDonkey = createDonkeyModel();
-                                scene.add(newDonkey);
-                                otherPlayers[id] = newDonkey;
-                            }
-                            otherPlayers[id].position.x = serverPlayers[id].x;
-                            otherPlayers[id].position.z = serverPlayers[id].z;
-                        }
-                    }
-
-                    // Oyundan çıkanları temizle
-                    for (let id in otherPlayers) {
-                        if (!serverPlayers[id]) {
-                            scene.remove(otherPlayers[id]);
-                            delete otherPlayers[id];
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error("WebSocket veri hatası:", e);
-            }
-        };
-
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb); // Siyah ekranı önleyen gökyüzü rengi
+        scene.background = new THREE.Color(0x87ceeb);
 
         const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 3000);
 
@@ -148,7 +115,7 @@
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
-        // Eşek Modeli Oluşturma Fonksiyonu
+        // Eşek Modeli Oluşturucu
         function createDonkeyModel() {
             const donkeyGroup = new THREE.Group();
             const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
@@ -163,10 +130,9 @@
                 return mesh;
             }
 
-            // Gövde
-            donkeyGroup.add(createBox(1.2, 1.0, 2.0, greyMat, 0, 1.5, 0));
+            const body = createBox(1.2, 1.0, 2.0, greyMat, 0, 1.5, 0);
+            donkeyGroup.add(body);
 
-            // Boyun ve Baş Grubu
             const neckHeadGroup = new THREE.Group();
             neckHeadGroup.position.set(0, 1.8, 0.7);
 
@@ -191,48 +157,128 @@
 
             donkeyGroup.add(neckHeadGroup);
 
-            // Bacaklar
+            const legs = [];
             [[0.4, 1.0, 0.7], [-0.4, 1.0, 0.7], [0.4, 1.0, -0.7], [-0.4, 1.0, -0.7]].forEach(pos => {
                 const legGroup = new THREE.Group();
                 legGroup.position.set(pos[0], pos[1], pos[2]);
                 legGroup.add(createBox(0.3, 0.8, 0.3, greyMat, 0, -0.4, 0));
                 legGroup.add(createBox(0.32, 0.2, 0.32, blackMat, 0, -0.9, 0));
                 donkeyGroup.add(legGroup);
+                legs.push(legGroup);
             });
 
+            donkeyGroup.userData = { legs, neckHeadGroup, body };
             return donkeyGroup;
         }
 
         const playerDonkey = createDonkeyModel();
+        playerDonkey.visible = false; // Başlangıçta gizli
         scene.add(playerDonkey);
+
+        function initWebSocket() {
+            if (ws) ws.close();
+            ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === "players") {
+                        myId = data.me;
+                        const serverPlayers = data.players;
+
+                        for (let id in serverPlayers) {
+                            if (id !== myId) {
+                                if (!otherPlayers[id]) {
+                                    const newDonkey = createDonkeyModel();
+                                    scene.add(newDonkey);
+                                    otherPlayers[id] = newDonkey;
+                                }
+                                const pData = serverPlayers[id];
+                                otherPlayers[id].position.set(pData.x, pData.y, pData.z);
+                                otherPlayers[id].rotation.y = pData.yaw || 0;
+                                if(otherPlayers[id].userData.neckHeadGroup) {
+                                    otherPlayers[id].userData.neckHeadGroup.rotation.x = pData.pitch || 0;
+                                }
+                            }
+                        }
+
+                        for (let id in otherPlayers) {
+                            if (!serverPlayers[id]) {
+                                scene.remove(otherPlayers[id]);
+                                delete otherPlayers[id];
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("WebSocket veri hatası:", e);
+                }
+            };
+        }
 
         let gameStarted = false;
         let yaw = 0, pitch = 0.3, velocityY = 0;
         let isGrounded = true;
-        const keys = { w: false, a: false, s: false, d: false };
+        let isMouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        const keys = { w: false, a: false, s: false, d: false, c: false };
 
-        document.getElementById('startBtn').addEventListener('click', () => {
-            document.getElementById('menu').style.display = 'none';
-            document.getElementById('info').style.display = 'block';
-            gameStarted = true;
-            document.body.requestPointerLock();
-        });
+        const menuEl = document.getElementById('menu');
+        const startBtn = document.getElementById('startBtn');
+        const infoEl = document.getElementById('info');
 
-        document.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement === document.body && gameStarted) {
-                yaw -= e.movementX * 0.003;
-                pitch -= e.movementY * 0.003;
-                pitch = Math.max(-0.2, Math.min(1.2, pitch));
+        function updateMenuUI() {
+            if (!gameStarted) {
+                menuEl.style.display = 'flex';
+                infoEl.style.display = 'none';
+                startBtn.innerText = "OYUNA BAŞLA";
+                document.getElementById('menuSubtitle').innerText = "Online 3. Şahıs Modu";
+                if (ws) { ws.close(); ws = null; }
+                playerDonkey.visible = false;
+                
+                // Diğer oyuncuları da temizle
+                for (let id in otherPlayers) {
+                    scene.remove(otherPlayers[id]);
+                    delete otherPlayers[id];
+                }
+            } else {
+                menuEl.style.display = 'none';
+                infoEl.style.display = 'block';
+                playerDonkey.visible = true;
             }
+        }
+
+        startBtn.addEventListener('click', () => {
+            if (!gameStarted) {
+                initWebSocket();
+                gameStarted = true;
+                playerDonkey.position.set(0, 0, 0); // Başlangıç noktası
+            } else {
+                // Menüden oyuna geri dön (Devam et)
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    initWebSocket();
+                }
+            }
+            updateMenuUI();
         });
 
+        // ESC tuşu ile menüyü açma
         document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (gameStarted) {
+                    gameStarted = false;
+                    updateMenuUI();
+                    startBtn.innerText = "OYUNA DEVAM ET";
+                    document.getElementById('menuSubtitle').innerText = "Oyun Duraklatıldı";
+                }
+            }
             if (!gameStarted) return;
+
             const k = e.key.toLowerCase();
             if (k === 'w') keys.w = true;
             if (k === 'a') keys.a = true;
             if (k === 's') keys.s = true;
             if (k === 'd') keys.d = true;
+            if (k === 'c') keys.c = true;
             if (e.code === 'Space' && isGrounded) {
                 velocityY = 0.35;
                 isGrounded = false;
@@ -245,23 +291,63 @@
             if (k === 'a') keys.a = false;
             if (k === 's') keys.s = false;
             if (k === 'd') keys.d = false;
+            if (k === 'c') keys.c = false;
         });
+
+        document.addEventListener('mousedown', (e) => {
+            if (!gameStarted) return;
+            if (e.button === 0) {
+                isMouseDown = true;
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!gameStarted || !isMouseDown) return;
+
+            const deltaX = e.clientX - mouseX;
+            const deltaY = e.clientY - mouseY;
+
+            yaw -= deltaX * 0.005;
+            pitch -= deltaY * 0.005;
+            pitch = Math.max(-0.6, Math.min(1.0, pitch));
+
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        // Sayfadan çıkıldığında veya sekme kapatıldığında bağlantıyı kes
+        window.addEventListener('beforeunload', () => {
+            if (ws) ws.close();
+        });
+
+        let walkCycle = 0;
 
         // Oyun Döngüsü
         function animate() {
             requestAnimationFrame(animate);
 
             if (gameStarted) {
-                const speed = 0.12;
+                const speed = keys.c ? 0.06 : 0.12;
                 let moveX = 0, moveZ = 0;
-                if (keys.w) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; }
-                if (keys.s) { moveX += Math.sin(yaw) * speed; moveZ += Math.cos(yaw) * speed; }
-                if (keys.a) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; }
-                if (keys.d) { moveX += Math.cos(yaw) * speed; moveZ -= Math.sin(yaw) * speed; }
+                let isMoving = false;
+
+                if (keys.w) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; isMoving = true; }
+                if (keys.s) { moveX += Math.sin(yaw) * speed; moveZ += Math.cos(yaw) * speed; isMoving = true; }
+                if (keys.a) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
+                if (keys.d) { moveX += Math.cos(yaw) * speed; moveZ -= Math.sin(yaw) * speed; isMoving = true; }
 
                 playerDonkey.position.x += moveX;
                 playerDonkey.position.z += moveZ;
                 playerDonkey.rotation.y = yaw;
+
+                const targetScaleY = keys.c ? 0.6 : 1.0;
+                playerDonkey.scale.y += (targetScaleY - playerDonkey.scale.y) * 0.2;
 
                 velocityY -= 0.015;
                 playerDonkey.position.y += velocityY;
@@ -271,28 +357,45 @@
                     isGrounded = true;
                 }
 
-                // Sunucuya konum gönder
-                if (ws.readyState === WebSocket.OPEN) {
+                const legs = playerDonkey.userData.legs;
+                if (isMoving && isGrounded) {
+                    walkCycle += 0.15;
+                    legs[0].rotation.x = Math.sin(walkCycle) * 0.5;
+                    legs[1].rotation.x = -Math.sin(walkCycle) * 0.5;
+                    legs[2].rotation.x = -Math.sin(walkCycle) * 0.5;
+                    legs[3].rotation.x = Math.sin(walkCycle) * 0.5;
+                } else {
+                    legs.forEach(l => l.rotation.x *= 0.8);
+                }
+
+                if (playerDonkey.userData.neckHeadGroup) {
+                    playerDonkey.userData.neckHeadGroup.rotation.x = pitch;
+                }
+
+                if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: "move",
                         x: playerDonkey.position.x,
-                        z: playerDonkey.position.z
+                        y: playerDonkey.position.y,
+                        z: playerDonkey.position.z,
+                        yaw: yaw,
+                        pitch: pitch
                     }));
                 }
 
-                // --- ARKADAN BAKIŞ 3. ŞAHIS KAMERA ---
+                // --- 3. ŞAHIS KAMERA ---
                 const distance = 6;
-                const heightOffset = 2.5;
+                const heightOffset = keys.c ? 1.8 : 2.5;
 
                 const camX = playerDonkey.position.x - Math.sin(yaw) * distance;
                 const camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
-                const camY = playerDonkey.position.y + heightOffset + (pitch * 3);
+                const camY = playerDonkey.position.y + heightOffset + (pitch * 2);
 
                 camera.position.set(camX, camY, camZ);
                 
                 const lookAtTarget = new THREE.Vector3(
                     playerDonkey.position.x,
-                    playerDonkey.position.y + 1.5,
+                    playerDonkey.position.y + (keys.c ? 1.0 : 1.5),
                     playerDonkey.position.z
                 );
                 camera.lookAt(lookAtTarget);
@@ -303,7 +406,6 @@
 
         animate();
 
-        // Pencere boyutu değiştiğinde
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
