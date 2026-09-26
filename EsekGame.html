@@ -23,7 +23,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(0, 0, 0, 0.75);
+            background: rgba(0, 0, 0, 0.8);
             z-index: 20;
         }
 
@@ -53,10 +53,15 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             transition: transform 0.2s;
             margin: 10px;
+            min-width: 250px;
         }
 
         .btn:hover {
             transform: scale(1.05);
+        }
+
+        .btn-red {
+            background-color: #f44336;
         }
 
         #info {
@@ -79,6 +84,7 @@
         <h1>Eşek Game</h1>
         <h2 id="menuSubtitle">Online 3. Şahıs Modu</h2>
         <button id="startBtn" class="btn">OYUNA BAŞLA</button>
+        <button id="returnMenuBtn" class="btn btn-red" style="display: none;">MENÜYE DÖN</button>
     </div>
 
     <div id="info">W,A,S,D: Yürü | Sol Tık + Sürükle: Etrafa Bak | Space: Zıpla | C: Eğil | ESC: Menü</div>
@@ -172,7 +178,7 @@
         }
 
         const playerDonkey = createDonkeyModel();
-        playerDonkey.visible = false; // Başlangıçta gizli
+        playerDonkey.visible = false;
         scene.add(playerDonkey);
 
         function initWebSocket() {
@@ -224,51 +230,60 @@
 
         const menuEl = document.getElementById('menu');
         const startBtn = document.getElementById('startBtn');
+        const returnMenuBtn = document.getElementById('returnMenuBtn');
         const infoEl = document.getElementById('info');
 
-        function updateMenuUI() {
-            if (!gameStarted) {
-                menuEl.style.display = 'flex';
-                infoEl.style.display = 'none';
-                startBtn.innerText = "OYUNA BAŞLA";
-                document.getElementById('menuSubtitle').innerText = "Online 3. Şahıs Modu";
-                if (ws) { ws.close(); ws = null; }
-                playerDonkey.visible = false;
-                
-                // Diğer oyuncuları da temizle
-                for (let id in otherPlayers) {
-                    scene.remove(otherPlayers[id]);
-                    delete otherPlayers[id];
-                }
-            } else {
-                menuEl.style.display = 'none';
-                infoEl.style.display = 'block';
-                playerDonkey.visible = true;
+        function showMainMenu() {
+            gameStarted = false;
+            menuEl.style.display = 'flex';
+            infoEl.style.display = 'none';
+            startBtn.innerText = "OYUNA BAŞLA";
+            returnMenuBtn.style.display = 'none';
+            document.getElementById('menuSubtitle').innerText = "Online 3. Şahıs Modu";
+            
+            if (ws) { ws.close(); ws = null; }
+            playerDonkey.visible = false;
+            playerDonkey.position.set(0, 0, 0);
+
+            // Diğer oyuncuları temizle
+            for (let id in otherPlayers) {
+                scene.remove(otherPlayers[id]);
+                delete otherPlayers[id];
             }
         }
 
+        function showPauseMenu() {
+            gameStarted = false;
+            menuEl.style.display = 'flex';
+            infoEl.style.display = 'none';
+            startBtn.innerText = "OYUNA DEVAM ET";
+            returnMenuBtn.style.display = 'block';
+            document.getElementById('menuSubtitle').innerText = "Oyun Duraklatıldı";
+            playerDonkey.visible = false; // Menüye geçince karakter gizlenir
+            
+            if (ws) { ws.close(); ws = null; }
+        }
+
         startBtn.addEventListener('click', () => {
-            if (!gameStarted) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
                 initWebSocket();
-                gameStarted = true;
-                playerDonkey.position.set(0, 0, 0); // Başlangıç noktası
-            } else {
-                // Menüden oyuna geri dön (Devam et)
-                if (!ws || ws.readyState !== WebSocket.OPEN) {
-                    initWebSocket();
-                }
+                playerDonkey.position.set(0, 0, 0);
             }
-            updateMenuUI();
+            gameStarted = true;
+            menuEl.style.display = 'none';
+            infoEl.style.display = 'block';
+            playerDonkey.visible = true; // Oyuna başlayınca karakter gözükür
+        });
+
+        returnMenuBtn.addEventListener('click', () => {
+            showMainMenu();
         });
 
         // ESC tuşu ile menüyü açma
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 if (gameStarted) {
-                    gameStarted = false;
-                    updateMenuUI();
-                    startBtn.innerText = "OYUNA DEVAM ET";
-                    document.getElementById('menuSubtitle').innerText = "Oyun Duraklatıldı";
+                    showPauseMenu();
                 }
             }
             if (!gameStarted) return;
@@ -321,7 +336,6 @@
             mouseY = e.clientY;
         });
 
-        // Sayfadan çıkıldığında veya sekme kapatıldığında bağlantıyı kes
         window.addEventListener('beforeunload', () => {
             if (ws) ws.close();
         });
@@ -337,10 +351,11 @@
                 let moveX = 0, moveZ = 0;
                 let isMoving = false;
 
-                if (keys.w) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; isMoving = true; }
-                if (keys.s) { moveX += Math.sin(yaw) * speed; moveZ += Math.cos(yaw) * speed; isMoving = true; }
-                if (keys.a) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
-                if (keys.d) { moveX += Math.cos(yaw) * speed; moveZ -= Math.sin(yaw) * speed; isMoving = true; }
+                // Düzeltilmiş Yönler (W: İleri, S: Geri, A: Sola, D: Sağa)
+                if (keys.w) { moveX += Math.sin(yaw) * speed; moveZ += Math.cos(yaw) * speed; isMoving = true; }
+                if (keys.s) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; isMoving = true; }
+                if (keys.a) { moveX += Math.cos(yaw) * speed; moveZ -= Math.sin(yaw) * speed; isMoving = true; }
+                if (keys.d) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
 
                 playerDonkey.position.x += moveX;
                 playerDonkey.position.z += moveZ;
