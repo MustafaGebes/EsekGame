@@ -16,6 +16,9 @@ wss.on('connection', (ws) => {
 
     players[id] = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
 
+    // Oyuncuya kendi ID'sini gönder
+    ws.send(JSON.stringify({ type: 'init', id: id }));
+
     ws.on('message', (message) => {
         try {
             const data = JSON.parse(message);
@@ -29,7 +32,7 @@ wss.on('connection', (ws) => {
                 };
             }
         } catch (e) {
-            console.error("Mesaj çözme hatası:", e);
+            console.error("Mesaj hatası:", e);
         }
     });
 
@@ -39,15 +42,15 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Sürekli olarak tüm oyuncu konumlarını herkese gönder
+// Herkese güncel oyuncu konumlarını gönder
 setInterval(() => {
-    const dataToSend = JSON.stringify({ type: "players", me: null, players: players });
+    const dataToSend = JSON.stringify({ type: "players", players: players });
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(dataToSend);
         }
     });
-}, 50); // Saniyede 20 kez senkronizasyon
+}, 50);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
