@@ -38,6 +38,25 @@
             z-index: 25;
         }
 
+        #mobViewBtn {
+            position: absolute;
+            top: 20px;
+            left: 80px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #ffffff;
+            color: #ffffff;
+            font-size: 22px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 25;
+        }
+
         #joystickZone { position: absolute; bottom: 40px; left: 40px; width: 130px; height: 130px; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; pointer-events: auto; touch-action: none; }
         #joystickKnob { position: absolute; top: 40px; left: 40px; width: 50px; height: 50px; background: rgba(255, 255, 255, 0.7); border-radius: 50%; pointer-events: none; }
         
@@ -147,13 +166,14 @@
         </div>
     </div>
 
-    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık + Sürükle: Etrafa Bak | Space: Zıpla | C: Eğil | ESC: Menü</div>
+    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık + Sürükle: Etrafa Bak | Space: Zıpla | C: Eğil | T: Kamera | ESC: Menü</div>
 
     <div id="hud">
         <div><span class="label">Saat:</span> <span id="hudTime">00:00</span></div>
         <div><span class="label">FPS:</span> <span id="hudFps">60</span></div>
         <div><span class="label">Gün:</span> <span id="hudDay">1</span></div>
         <div><span class="label">Görüş:</span> <span id="hudChunk">150</span></div>
+        <div><span class="label">Kamera:</span> <span id="hudCam">3. Şahıs</span></div>
     </div>
 
     <div id="settingsPanel">
@@ -171,6 +191,7 @@
 
     <div id="mobileControls">
         <div id="mobMenuBtn">☰</div>
+        <div id="mobViewBtn">📷</div>
 
         <div id="joystickZone">
             <div id="joystickKnob"></div>
@@ -197,6 +218,9 @@
 
         let viewDistance = 150;
         let sensitivity = 1.0;
+
+        // KAMERA MODU: 'third' veya 'first'
+        let cameraMode = 'third';
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
@@ -597,6 +621,8 @@
         const hudFpsEl = document.getElementById('hudFps');
         const hudDayEl = document.getElementById('hudDay');
         const hudChunkEl = document.getElementById('hudChunk');
+        const hudCamEl = document.getElementById('hudCam');
+        const mobViewBtn = document.getElementById('mobViewBtn');
 
         const settingsPanel = document.getElementById('settingsPanel');
         const chunkSlider = document.getElementById('chunkSlider');
@@ -629,11 +655,26 @@
             sensValue.textContent = sensitivity.toFixed(1);
         });
 
+        // KAMERA MODU DEĞİŞTİRME
+        function toggleCameraMode() {
+            if (cameraMode === 'third') {
+                cameraMode = 'first';
+                hudCamEl.textContent = '1. Şahıs';
+            } else {
+                cameraMode = 'third';
+                hudCamEl.textContent = '3. Şahıs';
+            }
+        }
+
+        mobViewBtn.addEventListener('click', toggleCameraMode);
+
         function startGame(mode) {
             controlMode = mode;
             initWebSocket();
             playerDonkey.position.set(0, 0, 0);
             gameStarted = true;
+            cameraMode = 'third'; // Her zaman 3. şahıstan başla
+            hudCamEl.textContent = '3. Şahıs';
             menuEl.style.display = 'none';
             playerDonkey.visible = true;
             hudEl.style.display = 'block';
@@ -702,6 +743,10 @@
             if (k === 'd') keys.d = true;
             if (k === 'c') keys.c = true;
             if (k === 'shift') keys.shift = true;
+            // T tuşu ile kamera değiştir
+            if (k === 't') {
+                toggleCameraMode();
+            }
             if (e.code === 'Space' && isGrounded) {
                 velocityY = 0.35;
                 isGrounded = false;
@@ -732,7 +777,7 @@
             if (settingsPanel.style.display === 'block') return;
             yaw -= (e.clientX - mouseX) * 0.005 * sensitivity;
             pitch -= (e.clientY - mouseY) * 0.005 * sensitivity;
-            pitch = Math.max(-1.2, Math.min(1.4, pitch));  // GENİŞLETİLDİ
+            pitch = Math.max(-1.2, Math.min(1.4, pitch));
             mouseX = e.clientX;
             mouseY = e.clientY;
         });
@@ -825,6 +870,7 @@
                 if (target.closest('#joystickZone') || 
                     target.closest('.mob-btn-group') || 
                     target.closest('#mobMenuBtn') ||
+                    target.closest('#mobViewBtn') ||
                     target.closest('#settingsPanel') ||
                     target.closest('#menu')) {
                     continue;
@@ -856,7 +902,7 @@
             
             yaw -= (tX - cameraLastX) * 0.005 * sensitivity;
             pitch -= (tY - cameraLastY) * 0.005 * sensitivity;
-            pitch = Math.max(-1.2, Math.min(1.4, pitch));  // GENİŞLETİLDİ
+            pitch = Math.max(-1.2, Math.min(1.4, pitch));
             
             cameraLastX = tX;
             cameraLastY = tY;
@@ -1170,13 +1216,55 @@
                     }));
                 }
 
-                const distance = 6, heightOffset = isCrouching ? 1.8 : 2.5;
-                camera.position.set(
-                    playerDonkey.position.x - Math.sin(yaw) * distance,
-                    playerDonkey.position.y + heightOffset + (pitch * 2.5),  // 2 → 2.5
-                    playerDonkey.position.z - Math.cos(yaw) * distance
-                );
-                camera.lookAt(new THREE.Vector3(playerDonkey.position.x, playerDonkey.position.y + (isCrouching ? 1.0 : 1.5), playerDonkey.position.z));
+                // ========== KAMERA POZİSYONU ==========
+                const isCrouchNow = isCrouching;
+                
+                if (cameraMode === 'third') {
+                    // 3. ŞAHIS: Eşeğin arkasından
+                    const distance = 6;
+                    const heightOffset = isCrouchNow ? 1.8 : 2.5;
+                    
+                    let camX = playerDonkey.position.x - Math.sin(yaw) * distance;
+                    let camY = playerDonkey.position.y + heightOffset + (pitch * 2.5);
+                    let camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
+                    
+                    // Çimenin içinden geçmesini engelle: minimum Y
+                    if (camY < 0.8) camY = 0.8;
+                    
+                    camera.position.set(camX, camY, camZ);
+                    camera.lookAt(new THREE.Vector3(
+                        playerDonkey.position.x, 
+                        playerDonkey.position.y + (isCrouchNow ? 1.0 : 1.5), 
+                        playerDonkey.position.z
+                    ));
+                } else {
+                    // 1. ŞAHIS: Eşeğin gözünden
+                    const eyeHeight = isCrouchNow ? 1.2 : 2.0;
+                    const eyeForward = 0.5;
+                    
+                    const eyeX = playerDonkey.position.x + Math.sin(yaw) * eyeForward;
+                    const eyeY = playerDonkey.position.y + eyeHeight;
+                    const eyeZ = playerDonkey.position.z + Math.cos(yaw) * eyeForward;
+                    
+                    camera.position.set(eyeX, eyeY, eyeZ);
+                    
+                    // Bakış yönü: pitch'e göre
+                    const lookX = eyeX + Math.sin(yaw) * Math.cos(pitch);
+                    const lookY = eyeY - Math.sin(pitch);
+                    const lookZ = eyeZ + Math.cos(yaw) * Math.cos(pitch);
+                    
+                    camera.lookAt(new THREE.Vector3(lookX, lookY, lookZ));
+                    
+                    // 1. şahısta kendi eşeğimizi görünmez yap
+                    // (Ama diğer oyuncular görünsün)
+                }
+                
+                // 1. şahısta kendi eşeğimizi gizle
+                if (cameraMode === 'first') {
+                    playerDonkey.visible = false;
+                } else {
+                    playerDonkey.visible = true;
+                }
             }
 
             renderer.render(scene, camera);
