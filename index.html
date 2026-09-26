@@ -114,10 +114,10 @@
         const otherPlayers = {};
         let controlMode = 'pc';
 
-        // HARİTA SINIRI
         const MAP_LIMIT = 200;
 
         const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb); // Menüdeyken de mavi gökyüzü
 
         const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 3000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -166,29 +166,88 @@
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
-        // === OT KÜMELERİ ===
-        // Otları tek bir geometri olarak birleştirip performansı koruyacağız
+        // ==========================================
+        // ÖNCE DAĞLARI OLUŞTUR (Otlar dağlardan kaçınsın diye)
+        // ==========================================
+        const mountains = [];
+
+        function createMountain(x, z, baseRadius, height) {
+            const mountainGroup = new THREE.Group();
+            
+            const mountainMat = new THREE.MeshLambertMaterial({ color: 0x8b7355 });
+            const mountainGeo = new THREE.ConeGeometry(baseRadius, height, 8);
+            const mountainMesh = new THREE.Mesh(mountainGeo, mountainMat);
+            mountainMesh.position.y = height / 2;
+            mountainMesh.castShadow = true;
+            mountainMesh.receiveShadow = true;
+            mountainGroup.add(mountainMesh);
+
+            const snowMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            const snowHeight = height * 0.3;
+            const snowRadius = baseRadius * 0.35;
+            const snowGeo = new THREE.ConeGeometry(snowRadius, snowHeight, 8);
+            const snowMesh = new THREE.Mesh(snowGeo, snowMat);
+            snowMesh.position.y = height - snowHeight / 2;
+            snowMesh.castShadow = true;
+            mountainGroup.add(snowMesh);
+
+            mountainGroup.position.set(x, 0, z);
+            scene.add(mountainGroup);
+
+            mountains.push({ x, z, radius: baseRadius * 0.95 });
+        }
+
+        // Haritanın etrafına dağlar - BOŞLUK KALMAYACAK
+        const mountainRingRadius = MAP_LIMIT - 5;
+        const mountainCount = 48;
+        
+        for (let i = 0; i < mountainCount; i++) {
+            const angle = (i / mountainCount) * Math.PI * 2;
+            const x = Math.cos(angle) * mountainRingRadius;
+            const z = Math.sin(angle) * mountainRingRadius;
+            const baseRadius = 18 + Math.random() * 6;
+            const height = 45 + Math.random() * 25;
+            createMountain(x, z, baseRadius, height);
+        }
+
+        // İkinci sıra (daha sağlam duvar)
+        for (let i = 0; i < mountainCount; i++) {
+            const angle = ((i + 0.5) / mountainCount) * Math.PI * 2;
+            const x = Math.cos(angle) * (mountainRingRadius + 15);
+            const z = Math.sin(angle) * (mountainRingRadius + 15);
+            const baseRadius = 20 + Math.random() * 6;
+            const height = 50 + Math.random() * 30;
+            createMountain(x, z, baseRadius, height);
+        }
+
+        // İçeride dekoratif dağlar
+        for (let i = 0; i < 6; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 100 + Math.random() * 60;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            const baseRadius = 10 + Math.random() * 6;
+            const height = 20 + Math.random() * 15;
+            createMountain(x, z, baseRadius, height);
+        }
+
+        // ==========================================
+        // ŞİMDİ OTLARI OLUŞTUR (dağlar tanımlı)
+        // ==========================================
         const grassMat1 = new THREE.MeshLambertMaterial({ color: 0x2d7a1e });
         const grassMat2 = new THREE.MeshLambertMaterial({ color: 0x4a9c2a });
         const grassMat3 = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
-        
-        // Her ot birimi için tek bir "tuft" oluşturacağız, sonra hepsini birleştireceğiz
-        const grassGeometries = [];
-        const grassBladeGeo = new THREE.BoxGeometry(0.08, 0.5, 0.08);
 
-        // Haritanın %90'ını kaplayacak şekilde ot yerleştir
-        // 400x400 alanın %90'ı = yaklaşık 360x360 alan
-        const grassAreaRadius = 180; // 180 yarıçap = 360 çap
+        const grassAreaRadius = 180;
         const grassCount = 5000;
 
         for (let i = 0; i < grassCount; i++) {
-            // Rastgele nokta (daire içinde)
             const angle = Math.random() * Math.PI * 2;
             const radius = Math.sqrt(Math.random()) * grassAreaRadius;
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
             
-            // Dağ çarpışması kontrolü (dağların içinde ot olmasın)
+            // Dağ çarpışması kontrolü
             let inMountain = false;
             for (let m of mountains) {
                 const dx = x - m.x;
@@ -200,7 +259,6 @@
             }
             if (inMountain) continue;
 
-            // Her ot kümesi 4-7 yaprak
             const bladeCount = 4 + Math.floor(Math.random() * 4);
             const grassGroup = new THREE.Group();
             
@@ -216,7 +274,7 @@
                 );
                 blade.rotation.z = (Math.random() - 0.5) * 0.4;
                 blade.rotation.x = (Math.random() - 0.5) * 0.4;
-                blade.castShadow = false; // Performans için gölge kapat
+                blade.castShadow = false;
                 blade.receiveShadow = false;
                 grassGroup.add(blade);
             }
@@ -226,75 +284,9 @@
             scene.add(grassGroup);
         }
 
-        // === DAĞLAR (Harita Sınırı - Duvar Gibi) ===
-        const mountains = []; // Çarpışma için dağ pozisyonları ve yarıçapları
-
-        function createMountain(x, z, baseRadius, height) {
-            const mountainGroup = new THREE.Group();
-            
-            const mountainMat = new THREE.MeshLambertMaterial({ color: 0x8b7355 });
-            const mountainGeo = new THREE.ConeGeometry(baseRadius, height, 8);
-            const mountainMesh = new THREE.Mesh(mountainGeo, mountainMat);
-            mountainMesh.position.y = height / 2;
-            mountainMesh.castShadow = true;
-            mountainMesh.receiveShadow = true;
-            mountainGroup.add(mountainMesh);
-
-            // Kar tepesi
-            const snowMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-            const snowHeight = height * 0.3;
-            const snowRadius = baseRadius * 0.35;
-            const snowGeo = new THREE.ConeGeometry(snowRadius, snowHeight, 8);
-            const snowMesh = new THREE.Mesh(snowGeo, snowMat);
-            snowMesh.position.y = height - snowHeight / 2;
-            snowMesh.castShadow = true;
-            mountainGroup.add(snowMesh);
-
-            mountainGroup.position.set(x, 0, z);
-            scene.add(mountainGroup);
-
-            // Çarpışma bilgisi
-            mountains.push({ x, z, radius: baseRadius * 0.95 });
-        }
-
-        // Haritanın etrafına dağlar yerleştir - BOŞLUK KALMAYACAK ŞEKİLDE
-        // Çember üzerinde üst üste binmiş dağlar
-        const mountainRingRadius = MAP_LIMIT - 5;
-        
-        // Çevreyi tamamen kapat: 48 dağ, her biri geniş
-        const mountainCount = 48;
-        for (let i = 0; i < mountainCount; i++) {
-            const angle = (i / mountainCount) * Math.PI * 2;
-            const x = Math.cos(angle) * mountainRingRadius;
-            const z = Math.sin(angle) * mountainRingRadius;
-            // Geniş dağlar (üst üste binsin)
-            const baseRadius = 18 + Math.random() * 6;
-            const height = 45 + Math.random() * 25;
-            createMountain(x, z, baseRadius, height);
-        }
-
-        // İkinci sıra dağ (daha da sağlam duvar)
-        for (let i = 0; i < mountainCount; i++) {
-            const angle = ((i + 0.5) / mountainCount) * Math.PI * 2;
-            const x = Math.cos(angle) * (mountainRingRadius + 12);
-            const z = Math.sin(angle) * (mountainRingRadius + 12);
-            const baseRadius = 20 + Math.random() * 6;
-            const height = 50 + Math.random() * 30;
-            createMountain(x, z, baseRadius, height);
-        }
-
-        // İçeride dekoratif dağlar (az sayıda, boşluk bırakmayacak)
-        for (let i = 0; i < 6; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const radius = 100 + Math.random() * 60;
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
-            const baseRadius = 10 + Math.random() * 6;
-            const height = 20 + Math.random() * 15;
-            createMountain(x, z, baseRadius, height);
-        }
-
-        // === EŞEK MODELİ ===
+        // ==========================================
+        // EŞEK MODELİ
+        // ==========================================
         function createDonkeyModel() {
             const donkeyGroup = new THREE.Group();
             const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
@@ -569,9 +561,7 @@
             }
         });
 
-        // ==========================================
-        // JOYSTICK - KESİN DÜZELTME
-        // ==========================================
+        // JOYSTICK
         joystickZone.addEventListener('touchstart', (e) => {
             e.preventDefault();
             if (joystickTouchId !== null) return;
@@ -600,23 +590,7 @@
             let dist = Math.min(45, Math.sqrt(dX * dX + dY * dY));
             let angle = Math.atan2(dY, dX);
             
-            // Knob'u göster
             joystickKnob.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
-            
-            // DÜZELTME:
-            // dX > 0 ise sağa çekiliyor. joystickMoveX = +1 olmalı.
-            // dX < 0 ise sola çekiliyor. joystickMoveX = -1 olmalı.
-            // dY < 0 ise yukarı çekiliyor (ekranda yukarı = negatif Y). joystickMoveZ = -1 olmalı.
-            // dY > 0 ise aşağı çekiliyor. joystickMoveZ = +1 olmalı.
-            // Bu yüzden:
-            // joystickMoveX = Math.cos(angle) * (dist/45)  -> sağa çekince +1, sola çekince -1
-            // joystickMoveZ = Math.sin(angle) * (dist/45)  -> yukarı çekince -1, aşağı çekince +1
-            
-            // ANCAK, biz hareket hesabında ileri için -joystickMoveZ kullanıyoruz.
-            // Yani yukarı çekince (-1) -> ileri (+1) oluyor. Doğru.
-            // Sağa çekince joystickMoveX = +1, hareket hesabında sagSol = joystickMoveX = +1.
-            // Ve formül moveX = sin(yaw)*ileriGeri + cos(yaw)*sagSol.
-            // yaw=0 için moveX = 0 + 1*1 = +1 (sağa). Doğru!
             
             joystickMoveX = Math.cos(angle) * (dist / 45);
             joystickMoveZ = Math.sin(angle) * (dist / 45);
@@ -642,6 +616,7 @@
             joystickMoveX = 0; joystickMoveZ = 0;
         });
 
+        // KAMERA DÖNDÜRME
         window.addEventListener('touchstart', (e) => {
             if (!gameStarted || controlMode !== 'mobile') return;
             
@@ -713,7 +688,7 @@
         mobSprintBtn.addEventListener('touchstart', () => { isSprintingMobile = true; });
         mobSprintBtn.addEventListener('touchend', () => { isSprintingMobile = false; });
 
-        // === ÇARPIŞMA KONTROLÜ ===
+        // === ÇARPIŞMA ===
         function checkMountainCollision(x, z, radius) {
             for (let m of mountains) {
                 const dx = x - m.x;
@@ -764,7 +739,6 @@
         let fpsLastTime = performance.now();
         let currentFps = 60;
 
-        let walkCycle = 0;
         let lastFrameTime = performance.now();
 
         function animate() {
@@ -827,7 +801,7 @@
                 moonLight.intensity = isDay ? 0.0 : 0.3;
                 ambientLight.intensity = isDay ? 0.5 : 0.15;
 
-                // === HAREKET ===
+                // HAREKET
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
                 
@@ -844,8 +818,8 @@
                     if (keys.d) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
                 } else {
                     if (joystickActive) {
-                        const ileriGeri = -joystickMoveZ; // Yukarı(-1) -> +1 ileri
-                        const sagSol = joystickMoveX;      // Sağ(+1) -> +1 sağ
+                        const ileriGeri = -joystickMoveZ;
+                        const sagSol = joystickMoveX;
                         
                         moveX = (Math.sin(yaw) * ileriGeri + Math.cos(yaw) * sagSol) * speed * 1.5;
                         moveZ = (Math.cos(yaw) * ileriGeri - Math.sin(yaw) * sagSol) * speed * 1.5;
@@ -854,11 +828,10 @@
                     }
                 }
 
-                // ÇARPIŞMA KONTROLÜ
+                // ÇARPIŞMA
                 const newX = playerDonkey.position.x + moveX;
                 const newZ = playerDonkey.position.z + moveZ;
                 
-                // Ayrı ayrı dene (bir yönde çarpışma varsa diğer yöne izin ver)
                 let canMoveX = !checkMountainCollision(newX, playerDonkey.position.z, 1.0);
                 let canMoveZ = !checkMountainCollision(playerDonkey.position.x, newZ, 1.0);
                 let canMoveBoth = !checkMountainCollision(newX, newZ, 1.0);
@@ -872,7 +845,7 @@
                     playerDonkey.position.z = newZ;
                 }
                 
-                // HARİTA SINIRI (dağların dışına çıkmasın)
+                // HARİTA SINIRI
                 const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
                 if (distFromCenter > MAP_LIMIT) {
                     const scale = MAP_LIMIT / distFromCenter;
