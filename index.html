@@ -57,6 +57,28 @@
             z-index: 25;
         }
 
+        /* AÇ BUTONU (kapı için) */
+        #mobOpenBtn {
+            position: absolute;
+            bottom: 130px;
+            right: 40px;
+            width: 90px;
+            height: 90px;
+            background: rgba(255, 200, 0, 0.9);
+            border: 3px solid #ffffff;
+            color: #000000;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 25;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        }
+
         #joystickZone { position: absolute; bottom: 40px; left: 40px; width: 130px; height: 130px; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; pointer-events: auto; touch-action: none; }
         #joystickKnob { position: absolute; top: 40px; left: 40px; width: 50px; height: 50px; background: rgba(255, 255, 255, 0.7); border-radius: 50%; pointer-events: none; }
         
@@ -82,6 +104,25 @@
         }
         #hud div { margin: 2px 0; }
         #hud .label { color: #ffd700; font-weight: bold; }
+
+        /* E Tuşu Uyarısı */
+        #interactPrompt {
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 12px 24px;
+            border-radius: 10px;
+            border: 2px solid #ffd700;
+            pointer-events: none;
+            z-index: 19;
+            display: none;
+            text-shadow: 1px 1px 3px #000;
+        }
 
         #crosshair {
             position: absolute;
@@ -210,7 +251,7 @@
         </div>
     </div>
 
-    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık + Sürükle: Etrafa Bak | Space: Zıpla | C: Eğil | T: Kamera | ESC: Menü</div>
+    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık + Sürükle: Etrafa Bak | Space: Zıpla | C: Eğil | T: Kamera | E: Etkileşim | ESC: Menü</div>
 
     <div id="hud">
         <div><span class="label">Saat:</span> <span id="hudTime">00:00</span></div>
@@ -219,6 +260,8 @@
         <div><span class="label">Görüş:</span> <span id="hudChunk">100</span></div>
         <div><span class="label">Kamera:</span> <span id="hudCam">3. Şahıs</span></div>
     </div>
+
+    <div id="interactPrompt">E - Kapıyı Aç</div>
 
     <div id="crosshair">
         <div class="dot"></div>
@@ -240,6 +283,7 @@
     <div id="mobileControls">
         <div id="mobMenuBtn">☰</div>
         <div id="mobViewBtn">📷</div>
+        <div id="mobOpenBtn">🔓 AÇ</div>
 
         <div id="joystickZone">
             <div id="joystickKnob"></div>
@@ -272,8 +316,12 @@
         const SPAWN_X = 180;
         const SPAWN_Z = 180;
 
-        // MENÜ KAMERA DÖNGÜSÜ
         let menuCameraAngle = 0;
+
+        // KAPI DURUMU
+        let doorOpen = false;
+        let doorAnimProgress = 0; // 0 = kapalı, 1 = açık
+        let playerNearDoor = false;
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
@@ -311,7 +359,6 @@
         );
         scene.add(moonMesh);
 
-        // === YILDIZLAR ===
         const starGeometry = new THREE.BufferGeometry();
         const starCount = 1500;
         const starPositions = new Float32Array(starCount * 3);
@@ -447,9 +494,13 @@
         }
 
         // ==========================================
-        // AHIR (SİMETRİK, ÇATI TAŞMIYOR, KAPI YERDE)
+        // AHIR (TEMİZ, DÜZENLİ)
         // ==========================================
         const buildings = [];
+        
+        // KAPI REFERANSLARI (animasyon için global)
+        let doorLeftGroup = null;
+        let doorRightGroup = null;
 
         function createBarn(x, z) {
             const barnGroup = new THREE.Group();
@@ -467,8 +518,9 @@
             const hayMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
             const metalMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
             const stoneMat = new THREE.MeshLambertMaterial({ color: 0x888878 });
+            const whiteMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
             
-            // Zemin
+            // ZEMİN (ahşap tahta)
             const floorMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
             const floorGeo = new THREE.PlaneGeometry(width, depth);
             floorGeo.rotateX(-Math.PI / 2);
@@ -476,25 +528,35 @@
             floor.position.y = 0.02;
             barnGroup.add(floor);
             
-            // Sol duvar
-            const leftWallGeo = new THREE.BoxGeometry(0.8, wallHeight, depth);
+            // Zemin tahta çizgileri (dekoratif)
+            for (let i = 0; i < 8; i++) {
+                const lineGeo = new THREE.PlaneGeometry(width, 0.05);
+                lineGeo.rotateX(-Math.PI / 2);
+                const lineMat = new THREE.MeshBasicMaterial({ color: 0x4a2a1a });
+                const line = new THREE.Mesh(lineGeo, lineMat);
+                line.position.set(0, 0.03, -depth / 2 + 1.5 + i * ((depth - 3) / 7));
+                barnGroup.add(line);
+            }
+            
+            // SOL DUVAR
+            const leftWallGeo = new THREE.BoxGeometry(0.5, wallHeight, depth);
             const leftWall = new THREE.Mesh(leftWallGeo, woodMat);
             leftWall.position.set(-width / 2, wallHeight / 2, 0);
             barnGroup.add(leftWall);
             
-            // Sağ duvar
+            // SAĞ DUVAR
             const rightWall = new THREE.Mesh(leftWallGeo, woodMat);
             rightWall.position.set(width / 2, wallHeight / 2, 0);
             barnGroup.add(rightWall);
             
-            // Arka duvar
-            const backWallGeo = new THREE.BoxGeometry(width, wallHeight, 0.8);
+            // ARKA DUVAR
+            const backWallGeo = new THREE.BoxGeometry(width, wallHeight, 0.5);
             const backWall = new THREE.Mesh(backWallGeo, woodMat);
             backWall.position.set(0, wallHeight / 2, -depth / 2);
             barnGroup.add(backWall);
             
-            // ÖN duvar - SİMETRİK
-            const frontWallGeo = new THREE.BoxGeometry(sideWallWidth, wallHeight, 0.8);
+            // ÖN DUVAR (kapı yanları) - DİĞER DUVARLARLA AYNI YÜKSEKLİK
+            const frontWallGeo = new THREE.BoxGeometry(sideWallWidth, wallHeight, 0.5);
             const frontWallLeft = new THREE.Mesh(frontWallGeo, woodMat);
             frontWallLeft.position.set(-(doorWidth / 2 + sideWallWidth / 2), wallHeight / 2, depth / 2);
             barnGroup.add(frontWallLeft);
@@ -503,13 +565,69 @@
             frontWallRight.position.set((doorWidth / 2 + sideWallWidth / 2), wallHeight / 2, depth / 2);
             barnGroup.add(frontWallRight);
             
-            // Kapı üstü kiriş
-            const doorTopGeo = new THREE.BoxGeometry(doorWidth, wallHeight - 5, 0.8);
+            // Kapı üstü kiriş (kapı boşluğunun üstünde)
+            const doorTopGeo = new THREE.BoxGeometry(doorWidth, wallHeight - 5, 0.5);
             const doorTop = new THREE.Mesh(doorTopGeo, woodMat);
             doorTop.position.set(0, wallHeight - (wallHeight - 5) / 2, depth / 2);
             barnGroup.add(doorTop);
             
-            // ÇATI - SİMETRİK (taşmıyor)
+            // ==========================================
+            // KAPILAR (KAPALI başlar, E ile açılır)
+            // ==========================================
+            const doorH = 5;
+            const doorLeftHalfW = doorWidth / 2 - 0.1;
+            
+            // SOL KAPI - menteşe SOL köşede
+            doorLeftGroup = new THREE.Group();
+            doorLeftGroup.position.set(-doorWidth / 2, 0, depth / 2);
+            
+            const doorLeftMeshGeo = new THREE.BoxGeometry(doorLeftHalfW, doorH, 0.15);
+            const doorLeftMesh = new THREE.Mesh(doorLeftMeshGeo, woodDarkMat);
+            doorLeftMesh.position.set(doorLeftHalfW / 2, doorH / 2, 0);
+            doorLeftGroup.add(doorLeftMesh);
+            
+            // Kapı detay çizgileri
+            for (let i = 0; i < 3; i++) {
+                const lineGeo = new THREE.BoxGeometry(doorLeftHalfW, 0.08, 0.16);
+                const line = new THREE.Mesh(lineGeo, woodMat);
+                line.position.set(doorLeftHalfW / 2, 1.2 + i * 1.5, 0);
+                doorLeftGroup.add(line);
+            }
+            
+            // Kapı kolu
+            const handleLGeo = new THREE.SphereGeometry(0.12, 8, 8);
+            const handleLMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
+            const handleL = new THREE.Mesh(handleLGeo, handleLMat);
+            handleL.position.set(doorLeftHalfW - 0.3, 2.5, 0.15);
+            doorLeftGroup.add(handleL);
+            
+            barnGroup.add(doorLeftGroup);
+            
+            // SAĞ KAPI - menteşe SAĞ köşede
+            doorRightGroup = new THREE.Group();
+            doorRightGroup.position.set(doorWidth / 2, 0, depth / 2);
+            
+            const doorRightMeshGeo = new THREE.BoxGeometry(doorLeftHalfW, doorH, 0.15);
+            const doorRightMesh = new THREE.Mesh(doorRightMeshGeo, woodDarkMat);
+            doorRightMesh.position.set(-doorLeftHalfW / 2, doorH / 2, 0);
+            doorRightGroup.add(doorRightMesh);
+            
+            for (let i = 0; i < 3; i++) {
+                const lineGeo = new THREE.BoxGeometry(doorLeftHalfW, 0.08, 0.16);
+                const line = new THREE.Mesh(lineGeo, woodMat);
+                line.position.set(-doorLeftHalfW / 2, 1.2 + i * 1.5, 0);
+                doorRightGroup.add(line);
+            }
+            
+            const handleR = new THREE.Mesh(handleLGeo, handleLMat);
+            handleR.position.set(-doorLeftHalfW + 0.3, 2.5, 0.15);
+            doorRightGroup.add(handleR);
+            
+            barnGroup.add(doorRightGroup);
+            
+            // ==========================================
+            // ÇATI (SİMETRİK, TAŞMIYOR)
+            // ==========================================
             const roofSlopeWidth = Math.sqrt((width / 2) * (width / 2) + 3 * 3);
             const roofAngle = Math.atan2(3, width / 2);
             
@@ -530,7 +648,7 @@
             roofPeak.position.set(0, wallHeight + 3, 0);
             barnGroup.add(roofPeak);
             
-            // Alınlık
+            // Alınlık (üçgen)
             const gableGeo = new THREE.BoxGeometry(width, 3, 0.5);
             const gableFront = new THREE.Mesh(gableGeo, woodMat);
             gableFront.position.set(0, wallHeight + 1.5, depth / 2 - 0.1);
@@ -550,12 +668,12 @@
             }
             
             // DİKEY KOLONLAR
-            const colGeo = new THREE.BoxGeometry(0.5, wallHeight, 0.5);
+            const colGeo = new THREE.BoxGeometry(0.4, wallHeight, 0.4);
             const colPositions = [
-                [-width / 2 + 1, -depth / 2 + 2],
-                [-width / 2 + 1, depth / 2 - 2],
-                [width / 2 - 1, -depth / 2 + 2],
-                [width / 2 - 1, depth / 2 - 2]
+                [-width / 2 + 0.5, -depth / 2 + 1],
+                [-width / 2 + 0.5, depth / 2 - 1],
+                [width / 2 - 0.5, -depth / 2 + 1],
+                [width / 2 - 0.5, depth / 2 - 1]
             ];
             for (let p of colPositions) {
                 const col = new THREE.Mesh(colGeo, woodDarkMat);
@@ -563,128 +681,103 @@
                 barnGroup.add(col);
             }
             
-            // AT BÖLMELERİ (SİMETRİK)
-            createHorseStall(barnGroup, -width / 2 + 4.5, -depth / 2 + 6, woodDarkMat, metalMat);
-            createHorseStall(barnGroup, -width / 2 + 4.5, -depth / 2 + 14, woodDarkMat, metalMat);
-            createHorseStall(barnGroup, width / 2 - 4.5, -depth / 2 + 6, woodDarkMat, metalMat);
-            createHorseStall(barnGroup, width / 2 - 4.5, -depth / 2 + 14, woodDarkMat, metalMat);
+            // ==========================================
+            // AHIR İÇİ (TEMİZ, DÜZENLİ)
+            // ==========================================
             
-            // SAMAN RAFI
-            const shelfGeo = new THREE.BoxGeometry(width - 4, 0.4, 1.5);
+            // AT BÖLMELERİ - SADECE SOL TARAFTA 2 TANE
+            createHorseStall(barnGroup, -width / 2 + 4, -depth / 2 + 5, woodMat, metalMat);
+            createHorseStall(barnGroup, -width / 2 + 4, -depth / 2 + 13, woodMat, metalMat);
+            
+            // SAĞ TARAFTA SAMAN ALANI (çit ile)
+            const rightFenceMat = woodLightMat;
+            const rightFencePostGeo = new THREE.BoxGeometry(0.3, 1.5, 0.3);
+            for (let i = 0; i < 6; i++) {
+                const postZ = -depth / 2 + 4 + i * 3;
+                const post = new THREE.Mesh(rightFencePostGeo, rightFenceMat);
+                post.position.set(width / 2 - 4, 0.75, postZ);
+                barnGroup.add(post);
+            }
+            // Yatay çubuk
+            const rightFenceRailGeo = new THREE.BoxGeometry(0.15, 0.15, depth - 8);
+            const rightFenceRail1 = new THREE.Mesh(rightFenceRailGeo, rightFenceMat);
+            rightFenceRail1.position.set(width / 2 - 4, 0.7, 0);
+            barnGroup.add(rightFenceRail1);
+            const rightFenceRail2 = new THREE.Mesh(rightFenceRailGeo, rightFenceMat);
+            rightFenceRail2.position.set(width / 2 - 4, 1.3, 0);
+            barnGroup.add(rightFenceRail2);
+            
+            // SAMAN RAFI (arka duvar üst)
+            const shelfGeo = new THREE.BoxGeometry(width - 6, 0.3, 1.5);
             const shelf = new THREE.Mesh(shelfGeo, woodDarkMat);
             shelf.position.set(0, wallHeight - 1.5, -depth / 2 + 1);
             barnGroup.add(shelf);
             
-            // SAMAN BALYALARI
-            const hayStartX = -width / 2 + 4;
-            const hayCount = 6;
-            const haySpacing = (width - 8) / (hayCount - 1);
-            
-            for (let i = 0; i < hayCount; i++) {
-                const hayGeo = new THREE.BoxGeometry(1.8, 1.3, 1.2);
+            // SAMAN BALYALARI (üst rafta, düzenli)
+            const hayStartX = -width / 2 + 5;
+            for (let i = 0; i < 6; i++) {
+                const hayGeo = new THREE.BoxGeometry(1.6, 1.2, 1.2);
                 const hay = new THREE.Mesh(hayGeo, hayMat);
-                hay.position.set(
-                    hayStartX + i * haySpacing,
-                    wallHeight - 0.8,
-                    -depth / 2 + 1
-                );
+                hay.position.set(hayStartX + i * 2.2, wallHeight - 0.9, -depth / 2 + 1);
                 barnGroup.add(hay);
             }
-            for (let i = 0; i < hayCount; i++) {
-                const hayGeo = new THREE.BoxGeometry(1.8, 1.3, 1.2);
+            for (let i = 0; i < 5; i++) {
+                const hayGeo = new THREE.BoxGeometry(1.6, 1.2, 1.2);
                 const hay = new THREE.Mesh(hayGeo, hayMat);
-                hay.position.set(
-                    hayStartX + i * haySpacing,
-                    wallHeight - 2.1,
-                    -depth / 2 + 1
-                );
+                hay.position.set(hayStartX + 1.1 + i * 2.2, wallHeight - 2.1, -depth / 2 + 1);
                 barnGroup.add(hay);
             }
             
-            // YERDEKİ SAMAN
-            for (let i = 0; i < 3; i++) {
-                const hayGeo = new THREE.BoxGeometry(1.5, 1, 1);
+            // YERDEKİ SAMAN (sağ tarafta, düzenli)
+            for (let i = 0; i < 4; i++) {
+                const hayGeo = new THREE.BoxGeometry(1.8, 1, 1);
                 const hay = new THREE.Mesh(hayGeo, hayMat);
-                hay.position.set(-width / 2 + 3, 0.5, depth / 2 - 6 - i * 1.5);
+                hay.position.set(width / 2 - 5, 0.5, -depth / 2 + 4 + i * 1.3);
                 barnGroup.add(hay);
             }
-            for (let i = 0; i < 3; i++) {
-                const hayGeo = new THREE.BoxGeometry(1.5, 1, 1);
+            for (let i = 0; i < 4; i++) {
+                const hayGeo = new THREE.BoxGeometry(1.8, 1, 1);
                 const hay = new THREE.Mesh(hayGeo, hayMat);
-                hay.position.set(width / 2 - 3, 0.5, depth / 2 - 6 - i * 1.5);
+                hay.position.set(width / 2 - 5, 1.5, -depth / 2 + 4 + i * 1.3);
                 barnGroup.add(hay);
             }
             
-            // ATLAR
-            createHorse(barnGroup, -width / 2 + 4.5, -depth / 2 + 6, 0xa85a2a, Math.PI / 2);
-            createHorse(barnGroup, width / 2 - 4.5, -depth / 2 + 6, 0x888888, -Math.PI / 2);
-            createHorse(barnGroup, -width / 2 + 4.5, -depth / 2 + 14, 0x5a3a1a, Math.PI / 2);
-            createHorse(barnGroup, width / 2 - 4.5, -depth / 2 + 14, 0xcccccc, -Math.PI / 2);
+            // ATLAR (sol bölmelerde)
+            createHorse(barnGroup, -width / 2 + 4, -depth / 2 + 5, 0xa85a2a, Math.PI / 2);
+            createHorse(barnGroup, -width / 2 + 4, -depth / 2 + 13, 0x888888, Math.PI / 2);
             
-            // İNEK VE KOYUN
-            createCow(barnGroup, 0, depth / 2 - 8);
-            createSheep(barnGroup, -2, depth / 2 - 11);
-            createSheep(barnGroup, 2, depth / 2 - 11);
+            // KOYUNLAR (sağ tarafta saman alanında)
+            createSheep(barnGroup, width / 2 - 6, depth / 2 - 6);
+            createSheep(barnGroup, width / 2 - 5, depth / 2 - 4);
             
-            // KAPILAR (YERDEN BAŞLIYOR, DÜZGÜN AÇIK)
-            const doorH = 5;
-            const doorGeo = new THREE.BoxGeometry(doorWidth / 2 - 0.2, doorH, 0.2);
-            
-            // Sol kapı - menteşe sol köşede, dışa doğru açık
-            const doorLeft = new THREE.Mesh(doorGeo, woodDarkMat);
-            doorLeft.position.set(-doorWidth / 4 - 0.1, doorH / 2, depth / 2 + 0.6);
-            doorLeft.rotation.y = -Math.PI / 3;
-            barnGroup.add(doorLeft);
-            
-            // Sağ kapı - menteşe sağ köşede, dışa doğru açık
-            const doorRight = new THREE.Mesh(doorGeo, woodDarkMat);
-            doorRight.position.set(doorWidth / 4 + 0.1, doorH / 2, depth / 2 + 0.6);
-            doorRight.rotation.y = Math.PI / 3;
-            barnGroup.add(doorRight);
-            
-            // KAPI KOLLARI
-            const handleGeo = new THREE.SphereGeometry(0.15, 8, 8);
-            const handleMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
-            
-            const handleL = new THREE.Mesh(handleGeo, handleMat);
-            handleL.position.set(-doorWidth / 2 + 0.8, doorH / 2, depth / 2 + 1.4);
-            barnGroup.add(handleL);
-            
-            const handleR = new THREE.Mesh(handleGeo, handleMat);
-            handleR.position.set(doorWidth / 2 - 0.8, doorH / 2, depth / 2 + 1.4);
-            barnGroup.add(handleR);
+            // İNEK (ortada, arka tarafta)
+            createCow(barnGroup, 0, -depth / 2 + 8);
             
             // PENCERELER
             const windowLightMat = new THREE.MeshBasicMaterial({ color: 0xfff5c0 });
             
             const winLGeo = new THREE.PlaneGeometry(2, 2.5);
             const winL1 = new THREE.Mesh(winLGeo, windowLightMat);
-            winL1.position.set(-width / 2 + 0.41, 5, -5);
+            winL1.position.set(-width / 2 + 0.26, 5, -5);
             winL1.rotation.y = Math.PI / 2;
             barnGroup.add(winL1);
             
             const winL2 = new THREE.Mesh(winLGeo, windowLightMat);
-            winL2.position.set(-width / 2 + 0.41, 5, 5);
+            winL2.position.set(-width / 2 + 0.26, 5, 5);
             winL2.rotation.y = Math.PI / 2;
             barnGroup.add(winL2);
             
             const winR1 = new THREE.Mesh(winLGeo, windowLightMat);
-            winR1.position.set(width / 2 - 0.41, 5, -5);
+            winR1.position.set(width / 2 - 0.26, 5, -5);
             winR1.rotation.y = -Math.PI / 2;
             barnGroup.add(winR1);
             
             const winR2 = new THREE.Mesh(winLGeo, windowLightMat);
-            winR2.position.set(width / 2 - 0.41, 5, 5);
+            winR2.position.set(width / 2 - 0.26, 5, 5);
             winR2.rotation.y = -Math.PI / 2;
             barnGroup.add(winR2);
             
-            // TAŞ DUVAR DETAYI
-            const stoneGeo = new THREE.BoxGeometry(width - 1, 1.5, 0.3);
-            const stone = new THREE.Mesh(stoneGeo, stoneMat);
-            stone.position.set(0, 0.75, -depth / 2 + 0.5);
-            barnGroup.add(stone);
-            
-            // EĞERLER VE HALATLAR
+            // EĞERLER VE HALATLAR (duvarda)
             const saddleMat = new THREE.MeshLambertMaterial({ color: 0x5a2a1a });
             const saddleGeo = new THREE.BoxGeometry(0.8, 0.3, 0.5);
             const ropeMat = new THREE.MeshLambertMaterial({ color: 0x8a6a3a });
@@ -692,22 +785,22 @@
             
             for (let i = 0; i < 2; i++) {
                 const saddle = new THREE.Mesh(saddleGeo, saddleMat);
-                saddle.position.set(-width / 2 + 0.9, 6, -3 + i * 4);
+                saddle.position.set(-width / 2 + 0.6, 6, -3 + i * 4);
                 barnGroup.add(saddle);
                 
                 const rope = new THREE.Mesh(ropeGeo, ropeMat);
-                rope.position.set(-width / 2 + 0.9, 5.5, -3 + i * 4);
+                rope.position.set(-width / 2 + 0.6, 5.5, -3 + i * 4);
                 rope.rotation.y = Math.PI / 2;
                 barnGroup.add(rope);
             }
             
             for (let i = 0; i < 2; i++) {
                 const saddle = new THREE.Mesh(saddleGeo, saddleMat);
-                saddle.position.set(width / 2 - 0.9, 6, -3 + i * 4);
+                saddle.position.set(width / 2 - 0.6, 6, -3 + i * 4);
                 barnGroup.add(saddle);
                 
                 const rope = new THREE.Mesh(ropeGeo, ropeMat);
-                rope.position.set(width / 2 - 0.9, 5.5, -3 + i * 4);
+                rope.position.set(width / 2 - 0.6, 5.5, -3 + i * 4);
                 rope.rotation.y = Math.PI / 2;
                 barnGroup.add(rope);
             }
@@ -730,16 +823,11 @@
             barnGroup.position.set(x, 0, z);
             scene.add(barnGroup);
             
-            // ÇARPIŞMA - SADECE DUVARLAR (içi boş, girilebilir)
-            // Sol duvar
+            // ÇARPIŞMA - SADECE DUVARLAR
             buildings.push({ x: x - width / 2, z: z, halfW: 0.5, halfD: depth / 2 });
-            // Sağ duvar
             buildings.push({ x: x + width / 2, z: z, halfW: 0.5, halfD: depth / 2 });
-            // Arka duvar
             buildings.push({ x: x, z: z - depth / 2, halfW: width / 2, halfD: 0.5 });
-            // Ön duvar sol (kapı yanı)
             buildings.push({ x: x - (doorWidth / 2 + sideWallWidth / 2), z: z + depth / 2, halfW: sideWallWidth / 2, halfD: 0.5 });
-            // Ön duvar sağ (kapı yanı)
             buildings.push({ x: x + (doorWidth / 2 + sideWallWidth / 2), z: z + depth / 2, halfW: sideWallWidth / 2, halfD: 0.5 });
         }
         
@@ -955,7 +1043,7 @@
             cowGroup.add(tail);
             
             cowGroup.position.set(x, 0, z);
-            cowGroup.rotation.y = Math.PI;
+            cowGroup.rotation.y = 0;
             parent.add(cowGroup);
         }
         
@@ -1005,7 +1093,7 @@
             }
             
             sheepGroup.position.set(x, 0, z);
-            sheepGroup.rotation.y = Math.PI;
+            sheepGroup.rotation.y = Math.random() * Math.PI * 2;
             parent.add(sheepGroup);
         }
         
@@ -1089,20 +1177,6 @@
             const railSR2 = new THREE.Mesh(railSideGeo, woodLightMat);
             railSR2.position.set(fenceOffsetX, railHeight2, 0);
             fenceGroup.add(railSR2);
-            
-            const bracePositions = [
-                { x: -fenceOffsetX, z: fenceOffsetZ, rotZ: -Math.PI / 6 },
-                { x: fenceOffsetX, z: fenceOffsetZ, rotZ: Math.PI / 6 },
-                { x: -fenceOffsetX, z: -fenceOffsetZ, rotZ: -Math.PI / 6 },
-                { x: fenceOffsetX, z: -fenceOffsetZ, rotZ: Math.PI / 6 }
-            ];
-            for (let p of bracePositions) {
-                const braceGeo = new THREE.BoxGeometry(0.2, 2.2, 0.2);
-                const brace = new THREE.Mesh(braceGeo, woodDarkMat);
-                brace.position.set(p.x, 1.1, p.z);
-                brace.rotation.z = p.rotZ;
-                fenceGroup.add(brace);
-            }
             
             parent.add(fenceGroup);
         }
@@ -1836,7 +1910,9 @@
         const hudChunkEl = document.getElementById('hudChunk');
         const hudCamEl = document.getElementById('hudCam');
         const mobViewBtn = document.getElementById('mobViewBtn');
+        const mobOpenBtn = document.getElementById('mobOpenBtn');
         const crosshairEl = document.getElementById('crosshair');
+        const interactPromptEl = document.getElementById('interactPrompt');
 
         const settingsPanel = document.getElementById('settingsPanel');
         const chunkSlider = document.getElementById('chunkSlider');
@@ -1888,6 +1964,32 @@
         }
 
         mobViewBtn.addEventListener('click', toggleCameraMode);
+
+        // KAPI AÇMA FONKSİYONU
+        function toggleDoor() {
+            doorOpen = !doorOpen;
+            if (doorOpen) {
+                interactPromptEl.textContent = 'E - Kapıyı Kapat';
+                mobOpenBtn.textContent = '🔒 KAPAT';
+            } else {
+                interactPromptEl.textContent = 'E - Kapıyı Aç';
+                mobOpenBtn.textContent = '🔓 AÇ';
+            }
+        }
+
+        // E tuşu için
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'e' && gameStarted && playerNearDoor) {
+                toggleDoor();
+            }
+        });
+
+        // Mobil AÇ butonu
+        mobOpenBtn.addEventListener('click', () => {
+            if (gameStarted && playerNearDoor) {
+                toggleDoor();
+            }
+        });
 
         function startGame(mode) {
             controlMode = mode;
@@ -1943,6 +2045,8 @@
             hudEl.style.display = 'none';
             settingsPanel.style.display = 'none';
             crosshairEl.style.display = 'none';
+            interactPromptEl.style.display = 'none';
+            mobOpenBtn.style.display = 'none';
             document.body.style.cursor = 'default';
             playerDonkey.visible = false;
             if (ws) { ws.close(); ws = null; }
@@ -1966,6 +2070,8 @@
                 mobileControlsEl.style.display = 'none';
                 hudEl.style.display = 'none';
                 crosshairEl.style.display = 'none';
+                interactPromptEl.style.display = 'none';
+                mobOpenBtn.style.display = 'none';
                 document.body.style.cursor = 'default';
                 playerDonkey.visible = false;
                 return;
@@ -2045,6 +2151,8 @@
                 mobileControlsEl.style.display = 'none';
                 hudEl.style.display = 'none';
                 crosshairEl.style.display = 'none';
+                interactPromptEl.style.display = 'none';
+                mobOpenBtn.style.display = 'none';
                 document.body.style.cursor = 'default';
                 playerDonkey.visible = false;
             }
@@ -2117,6 +2225,7 @@
                     target.closest('.mob-btn-group') || 
                     target.closest('#mobMenuBtn') ||
                     target.closest('#mobViewBtn') ||
+                    target.closest('#mobOpenBtn') ||
                     target.closest('#settingsPanel') ||
                     target.closest('#menu')) {
                     continue;
@@ -2409,6 +2518,60 @@
 
                 stars.position.copy(camera.position);
                 stars.rotation.y = yaw * 0.5;
+
+                // KAPI ANİMASYONU
+                if (doorOpen) {
+                    doorAnimProgress += 0.05;
+                    if (doorAnimProgress > 1) doorAnimProgress = 1;
+                } else {
+                    doorAnimProgress -= 0.05;
+                    if (doorAnimProgress < 0) doorAnimProgress = 0;
+                }
+                
+                // Kapı açı (0 = kapalı, -90 = tam açık sol, +90 = tam açık sağ)
+                if (doorLeftGroup && doorRightGroup) {
+                    doorLeftGroup.rotation.y = -doorAnimProgress * Math.PI / 2;
+                    doorRightGroup.rotation.y = doorAnimProgress * Math.PI / 2;
+                }
+
+                // KAPI YAKINLIK KONTROLÜ
+                const distToDoor = Math.sqrt(
+                    (playerDonkey.position.x - SPAWN_X) ** 2 + 
+                    (playerDonkey.position.z - (SPAWN_Z + 13 + 5)) ** 2
+                );
+                
+                // Kapının konumu: SPAWN_Z + depth/2 = SPAWN_Z + 13
+                const doorX = SPAWN_X;
+                const doorZ = SPAWN_Z + 13;
+                
+                const distToDoorReal = Math.sqrt(
+                    (playerDonkey.position.x - doorX) ** 2 + 
+                    (playerDonkey.position.z - doorZ) ** 2
+                );
+                
+                if (distToDoorReal < 8 && !doorOpen) {
+                    playerNearDoor = true;
+                    if (controlMode === 'pc') {
+                        interactPromptEl.style.display = 'block';
+                        interactPromptEl.textContent = 'E - Kapıyı Aç';
+                    } else {
+                        mobOpenBtn.style.display = 'flex';
+                        mobOpenBtn.textContent = '🔓 AÇ';
+                    }
+                } else if (distToDoorReal < 8 && doorOpen) {
+                    playerNearDoor = true;
+                    if (controlMode === 'pc') {
+                        interactPromptEl.style.display = 'block';
+                        interactPromptEl.textContent = 'E - Kapıyı Kapat';
+                    } else {
+                        mobOpenBtn.style.display = 'flex';
+                        mobOpenBtn.textContent = '🔒 KAPAT';
+                    }
+                } else {
+                    playerNearDoor = false;
+                    interactPromptEl.style.display = 'none';
+                    mobOpenBtn.style.display = 'none';
+                }
 
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
