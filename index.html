@@ -195,14 +195,18 @@
                                     otherPlayers[id] = newDonkey;
                                 }
                                 const pData = serverPlayers[id];
+                                
+                                // Pozisyonu direkt ata (hızlı senkron)
                                 otherPlayers[id].position.set(pData.x, pData.y, pData.z);
                                 otherPlayers[id].rotation.y = pData.yaw || 0;
+                                
                                 if (otherPlayers[id].userData.neckHeadGroup) {
                                     otherPlayers[id].userData.neckHeadGroup.rotation.x = pData.pitch || 0;
                                 }
-                                // EĞİLME SENKRONİZASYONU
+                                
+                                // EĞİLME: Lerp katsayısını 0.5 yaptık (daha hızlı tepki)
                                 const targetScale = pData.isCrouching ? 0.6 : 1.0;
-                                otherPlayers[id].scale.y += (targetScale - otherPlayers[id].scale.y) * 0.2;
+                                otherPlayers[id].scale.y += (targetScale - otherPlayers[id].scale.y) * 0.5;
                             }
                         }
 
@@ -228,7 +232,7 @@
         const keys = { w: false, a: false, s: false, d: false, c: false, shift: false };
 
         let joystickActive = false;
-        let joystickMoveX = 0, joystickMoveZ = 0; // X: sağ(+)/sol(-), Z: ileri(-)/geri(+)
+        let joystickMoveX = 0, joystickMoveZ = 0;
         let isCouchingMobile = false;
         let isSprintingMobile = false;
 
@@ -375,10 +379,9 @@
             let angle = Math.atan2(dY, dX);
             joystickKnob.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
             
-            // Joystick değerleri:
-            // Sağ = +1, Sol = -1
+            // X: Sağ(+), Sol(-)
+            // Z: Yukarı(-), Aşağı(+)
             joystickMoveX = Math.cos(angle) * (dist / 45);
-            // Yukarı = -1, Aşağı = +1 (çünkü ekranda Y aşağı doğru artar)
             joystickMoveZ = Math.sin(angle) * (dist / 45);
         });
         joystickZone.addEventListener('touchend', () => {
@@ -434,23 +437,33 @@
                     if (keys.d) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
                 } else {
                     if (joystickActive) {
-                        // JoystickMoveX: Sağ(+), Sol(-)
-                        // JoystickMoveZ: Yukarı(-), Aşağı(+)
+                        // Kamera vektörleri (yaw=0 için):
+                        // İleri: (0, 1) -> moveX=0, moveZ=+1
+                        // Sağ:   (1, 0) -> moveX=+1, moveZ=0
+                        // Yani:
+                        // ileriGeri = -joystickMoveZ (yukarı=-1 -> ileri=+1)
+                        // sagSol    = -joystickMoveX (sağ=+1 -> sağa gitmek için moveX=+1 olmalı ama right vektörü...)
                         
-                        // Kameranın ileri ve sağ vektörleri:
-                        const forwardX = Math.sin(yaw);
-                        const forwardZ = Math.cos(yaw);
-                        const rightX = Math.cos(yaw);
-                        const rightZ = -Math.sin(yaw);
+                        // Basitçe dünya koordinatına çevirelim:
+                        // moveX = sin(yaw) * ileriGeri + cos(yaw) * sagSol
+                        // moveZ = cos(yaw) * ileriGeri - sin(yaw) * sagSol
                         
-                        // İleri gitmek için joystickMoveZ negatif olduğunda -(-1) = +1 olmalı.
-                        // O yüzden -joystickMoveZ kullanıyoruz.
-                        // Sağa gitmek için joystickMoveX pozitif olduğunda +1 olmalı.
-                        const ileriGeri = -joystickMoveZ; // Yukarı(-) -> +1 (ileri), Aşağı(+) -> -1 (geri)
-                        const sagSol = joystickMoveX;     // Sağ(+) -> +1, Sol(-) -> -1
+                        const ileriGeri = -joystickMoveZ; // Yukarı(-1) -> +1 ileri
+                        const sagSol = joystickMoveX;     // Sağ(+1) -> +1 sağ
                         
-                        moveX = (forwardX * ileriGeri + rightX * sagSol) * speed * 1.5;
-                        moveZ = (forwardZ * ileriGeri + rightZ * sagSol) * speed * 1.5;
+                        // Şimdi kontrol edelim (yaw=0):
+                        // Sağa çekince: joystickMoveX=+1, joystickMoveZ=0
+                        // ileriGeri=0, sagSol=+1
+                        // moveX = 0*0 + 1*1 = +1  (doğru, sağa gider)
+                        // moveZ = 1*0 - 0*1 = 0   (doğru)
+                        
+                        // Yukarı çekince: joystickMoveX=0, joystickMoveZ=-1
+                        // ileriGeri=+1, sagSol=0
+                        // moveX = 0*1 + 1*0 = 0
+                        // moveZ = 1*1 - 0*0 = +1  (doğru, ileri gider)
+                        
+                        moveX = (Math.sin(yaw) * ileriGeri + Math.cos(yaw) * sagSol) * speed * 1.5;
+                        moveZ = (Math.cos(yaw) * ileriGeri - Math.sin(yaw) * sagSol) * speed * 1.5;
                         
                         isMoving = true;
                     }
@@ -460,7 +473,7 @@
                 playerDonkey.position.z += moveZ;
                 playerDonkey.rotation.y = yaw;
 
-                playerDonkey.scale.y += ((isCrouching ? 0.6 : 1.0) - playerDonkey.scale.y) * 0.2;
+                playerDonkey.scale.y += ((isCrouching ? 0.6 : 1.0) - playerDonkey.scale.y) * 0.5;
 
                 velocityY -= 0.015;
                 playerDonkey.position.y += velocityY;
@@ -481,7 +494,6 @@
                     playerDonkey.userData.neckHeadGroup.rotation.x = pitch;
                 }
 
-                // SUNUCUYA GÖNDER (Eğilme dahil)
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: "move",
