@@ -262,7 +262,6 @@
         const otherPlayers = {};
         let controlMode = 'pc';
 
-        // HARİTA BÜYÜTÜLDÜ
         const MAP_LIMIT = 400;
 
         let viewDistance = 200;
@@ -352,7 +351,7 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // === ZEMİN (Harita büyütüldü) ===
+        // === ZEMİN ===
         const terrainGeo = new THREE.PlaneGeometry(1000, 1000, 50, 50);
         terrainGeo.rotateX(-Math.PI / 2);
         const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0x2d5a1e }));
@@ -403,7 +402,7 @@
         }
 
         // ==========================================
-        // OTLAR (5000 ot - artırıldı)
+        // OTLAR
         // ==========================================
         const grassMat1 = new THREE.MeshLambertMaterial({ color: 0x2d7a1e });
         const grassMat2 = new THREE.MeshLambertMaterial({ color: 0x4a9c2a });
@@ -455,32 +454,86 @@
         }
 
         // ==========================================
-        // ŞEHİR
+        // ŞEHİR (Detaylı)
         // ==========================================
         const CITY_CENTER_X = -150;
         const CITY_CENTER_Z = -150;
-        const CITY_SIZE = 150;
-        const BLOCK_SIZE = 25;
-        const ROAD_WIDTH = 8;
+        const BLOCK_SIZE = 30;
+        const ROAD_WIDTH = 10;
+        const SIDEWALK_WIDTH = 2.5;
 
-        const buildings = [];
-
-        // --- YOLLAR ---
-        const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const buildings = []; // Çarpışma için
 
         const gridCount = 6;
         const cityStartX = CITY_CENTER_X - (gridCount * BLOCK_SIZE) / 2;
         const cityStartZ = CITY_CENTER_Z - (gridCount * BLOCK_SIZE) / 2;
 
-        // Yatay yollar
+        // --- KALDIRIMLAR (bina ve yol arası) ---
+        const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
+        
+        // Yatay kaldırımlar
+        for (let i = 0; i < gridCount; i++) {
+            for (let j = 0; j < gridCount; j++) {
+                const blockCenterX = cityStartX + i * BLOCK_SIZE + BLOCK_SIZE / 2;
+                const blockCenterZ = cityStartZ + j * BLOCK_SIZE + BLOCK_SIZE / 2;
+                
+                // Kaldırım çerçevesi (blok etrafında)
+                const sideGeo = new THREE.PlaneGeometry(BLOCK_SIZE, SIDEWALK_WIDTH);
+                sideGeo.rotateX(-Math.PI / 2);
+                
+                const sideN = new THREE.Mesh(sideGeo, sidewalkMat);
+                sideN.position.set(blockCenterX, 0.05, blockCenterZ - BLOCK_SIZE / 2 + SIDEWALK_WIDTH / 2);
+                sideN.receiveShadow = true;
+                scene.add(sideN);
+                
+                const sideS = new THREE.Mesh(sideGeo, sidewalkMat);
+                sideS.position.set(blockCenterX, 0.05, blockCenterZ + BLOCK_SIZE / 2 - SIDEWALK_WIDTH / 2);
+                sideS.receiveShadow = true;
+                scene.add(sideS);
+                
+                const sideGeoV = new THREE.PlaneGeometry(SIDEWALK_WIDTH, BLOCK_SIZE);
+                sideGeoV.rotateX(-Math.PI / 2);
+                
+                const sideW = new THREE.Mesh(sideGeoV, sidewalkMat);
+                sideW.position.set(blockCenterX - BLOCK_SIZE / 2 + SIDEWALK_WIDTH / 2, 0.05, blockCenterZ);
+                sideW.receiveShadow = true;
+                scene.add(sideW);
+                
+                const sideE = new THREE.Mesh(sideGeoV, sidewalkMat);
+                sideE.position.set(blockCenterX + BLOCK_SIZE / 2 - SIDEWALK_WIDTH / 2, 0.05, blockCenterZ);
+                sideE.receiveShadow = true;
+                scene.add(sideE);
+            }
+        }
+
+        // --- YOLLAR ---
+        const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+        // Yatay yollar (orta çizgili)
         for (let i = 0; i <= gridCount; i++) {
             const roadZ = cityStartZ + i * BLOCK_SIZE;
             const roadGeo = new THREE.PlaneGeometry(gridCount * BLOCK_SIZE + ROAD_WIDTH, ROAD_WIDTH);
             roadGeo.rotateX(-Math.PI / 2);
             const road = new THREE.Mesh(roadGeo, roadMat);
-            road.position.set(CITY_CENTER_X, 0.02, roadZ);
+            road.position.set(CITY_CENTER_X, 0.03, roadZ);
             road.receiveShadow = true;
             scene.add(road);
+            
+            // Orta çizgi (kesikli)
+            const totalLen = gridCount * BLOCK_SIZE;
+            const dashCount = Math.floor(totalLen / 4);
+            for (let d = 0; d < dashCount; d++) {
+                const dashGeo = new THREE.PlaneGeometry(2, 0.3);
+                dashGeo.rotateX(-Math.PI / 2);
+                const dash = new THREE.Mesh(dashGeo, lineMat);
+                dash.position.set(
+                    cityStartX + d * 4 + 2,
+                    0.04,
+                    roadZ
+                );
+                scene.add(dash);
+            }
         }
 
         // Dikey yollar
@@ -489,142 +542,400 @@
             const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, gridCount * BLOCK_SIZE + ROAD_WIDTH);
             roadGeo.rotateX(-Math.PI / 2);
             const road = new THREE.Mesh(roadGeo, roadMat);
-            road.position.set(roadX, 0.02, CITY_CENTER_Z);
+            road.position.set(roadX, 0.03, CITY_CENTER_Z);
             road.receiveShadow = true;
             scene.add(road);
+            
+            // Orta çizgi
+            const totalLen = gridCount * BLOCK_SIZE;
+            const dashCount = Math.floor(totalLen / 4);
+            for (let d = 0; d < dashCount; d++) {
+                const dashGeo = new THREE.PlaneGeometry(0.3, 2);
+                dashGeo.rotateX(-Math.PI / 2);
+                const dash = new THREE.Mesh(dashGeo, lineMat);
+                dash.position.set(
+                    roadX,
+                    0.04,
+                    cityStartZ + d * 4 + 2
+                );
+                scene.add(dash);
+            }
         }
 
-        // --- BİNALAR ---
-        const buildingColors = [
-            0xcc4444, 0x44cc44, 0x4444cc, 0xcccc44,
-            0xcc44cc, 0x44cccc, 0xcccccc, 0x888888,
-            0xaa6644, 0x6644aa, 0x44aa66, 0xaa4466,
-            0xddaa77, 0x7799dd, 0x99dd77, 0xdd7799
-        ];
-
+        // --- BİNA TİPLERİ ---
         const windowMat = new THREE.MeshBasicMaterial({ color: 0xffff99 });
+        const darkWindowMat = new THREE.MeshBasicMaterial({ color: 0x334455 });
 
-        function createBuilding(x, z, width, depth, height, color) {
-            const buildingGroup = new THREE.Group();
+        // 1) GÖKDELEN (yüksek, cam pencereli)
+        function createSkyscraper(x, z, width, depth, height, color) {
+            const group = new THREE.Group();
             
-            const buildingMat = new THREE.MeshLambertMaterial({ color: color });
-            const buildingGeo = new THREE.BoxGeometry(width, height, depth);
-            const buildingMesh = new THREE.Mesh(buildingGeo, buildingMat);
-            buildingMesh.position.y = height / 2;
-            buildingMesh.castShadow = true;
-            buildingMesh.receiveShadow = true;
-            buildingGroup.add(buildingMesh);
-
-            const roofMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
-            const roofGeo = new THREE.BoxGeometry(width + 0.5, 0.5, depth + 0.5);
-            const roofMesh = new THREE.Mesh(roofGeo, roofMat);
-            roofMesh.position.y = height + 0.25;
-            roofMesh.castShadow = true;
-            buildingGroup.add(roofMesh);
-
-            // Pencereler
-            const floors = Math.floor(height / 2.5);
-            for (let f = 0; f < floors; f++) {
-                const y = 2 + f * 2.5;
-                const cols = Math.floor(width / 2);
-                for (let c = 0; c < cols; c++) {
-                    const wx = -width / 2 + 1.2 + c * 2;
-                    if (Math.random() > 0.3) {
-                        const winGeo = new THREE.PlaneGeometry(1, 1.2);
-                        const win = new THREE.Mesh(winGeo, windowMat);
-                        win.position.set(wx, y, depth / 2 + 0.01);
-                        buildingGroup.add(win);
-                    }
+            const bodyMat = new THREE.MeshLambertMaterial({ color: color });
+            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = height / 2;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            group.add(body);
+            
+            // Cam pencereler (grid halinde)
+            const floors = Math.floor(height / 3);
+            const colsX = Math.floor(width / 2);
+            const colsZ = Math.floor(depth / 2);
+            
+            for (let f = 1; f < floors; f++) {
+                const y = f * 3;
+                for (let c = 0; c < colsX; c++) {
+                    const wx = -width / 2 + 1 + c * 2;
+                    // Ön yüz
+                    const winGeo = new THREE.PlaneGeometry(1.4, 2);
+                    const win = new THREE.Mesh(winGeo, windowMat);
+                    win.position.set(wx, y, depth / 2 + 0.01);
+                    group.add(win);
+                    // Arka yüz
+                    const win2 = new THREE.Mesh(winGeo, windowMat);
+                    win2.position.set(wx, y, -depth / 2 - 0.01);
+                    win2.rotation.y = Math.PI;
+                    group.add(win2);
                 }
-                for (let c = 0; c < cols; c++) {
-                    const wx = -width / 2 + 1.2 + c * 2;
-                    if (Math.random() > 0.3) {
-                        const winGeo = new THREE.PlaneGeometry(1, 1.2);
-                        const win = new THREE.Mesh(winGeo, windowMat);
-                        win.position.set(wx, y, -depth / 2 - 0.01);
-                        win.rotation.y = Math.PI;
-                        buildingGroup.add(win);
-                    }
+                for (let c = 0; c < colsZ; c++) {
+                    const wz = -depth / 2 + 1 + c * 2;
+                    // Sol yüz
+                    const winGeo = new THREE.PlaneGeometry(1.4, 2);
+                    const win = new THREE.Mesh(winGeo, windowMat);
+                    win.position.set(-width / 2 - 0.01, y, wz);
+                    win.rotation.y = -Math.PI / 2;
+                    group.add(win);
+                    // Sağ yüz
+                    const win2 = new THREE.Mesh(winGeo, windowMat);
+                    win2.position.set(width / 2 + 0.01, y, wz);
+                    win2.rotation.y = Math.PI / 2;
+                    group.add(win2);
                 }
             }
-
-            buildingGroup.position.set(x, 0, z);
-            scene.add(buildingGroup);
-
+            
+            // Çatı anteni
+            if (height > 40) {
+                const antennaGeo = new THREE.CylinderGeometry(0.1, 0.1, 5, 4);
+                const antennaMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+                const antenna = new THREE.Mesh(antennaGeo, antennaMat);
+                antenna.position.y = height + 2.5;
+                group.add(antenna);
+                
+                const redLightGeo = new THREE.SphereGeometry(0.3, 6, 6);
+                const redLightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const redLight = new THREE.Mesh(redLightGeo, redLightMat);
+                redLight.position.y = height + 5;
+                group.add(redLight);
+            }
+            
+            group.position.set(x, 0, z);
+            scene.add(group);
             buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
         }
 
-        // Her blok içine bina yerleştir (merkez hariç)
+        // 2) EV (küçük, çatılı)
+        function createHouse(x, z, width, depth, color) {
+            const group = new THREE.Group();
+            const height = 4;
+            
+            // Ana gövde
+            const bodyMat = new THREE.MeshLambertMaterial({ color: color });
+            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = height / 2;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            group.add(body);
+            
+            // Çatı (üçgen prizma)
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x8b3a3a });
+            const roofGeo = new THREE.ConeGeometry(Math.max(width, depth) * 0.75, 3, 4);
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = height + 1.5;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            group.add(roof);
+            
+            // Kapı
+            const doorMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
+            const doorGeo = new THREE.PlaneGeometry(1.2, 2.5);
+            const door = new THREE.Mesh(doorGeo, doorMat);
+            door.position.set(0, 1.25, depth / 2 + 0.01);
+            group.add(door);
+            
+            // Pencereler (2 tane ön yüzde)
+            const winGeo = new THREE.PlaneGeometry(1, 1);
+            const win1 = new THREE.Mesh(winGeo, windowMat);
+            win1.position.set(-width / 2 + 1.5, 2.5, depth / 2 + 0.01);
+            group.add(win1);
+            const win2 = new THREE.Mesh(winGeo, windowMat);
+            win2.position.set(width / 2 - 1.5, 2.5, depth / 2 + 0.01);
+            group.add(win2);
+            
+            group.position.set(x, 0, z);
+            scene.add(group);
+            buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
+        }
+
+        // 3) MARKET/DÜKKAN (geniş vitrin, tabelalı)
+        function createShop(x, z, width, depth, color, signColor) {
+            const group = new THREE.Group();
+            const height = 5;
+            
+            const bodyMat = new THREE.MeshLambertMaterial({ color: color });
+            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = height / 2;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            group.add(body);
+            
+            // Geniş vitrin (ön yüz, büyük cam)
+            const glassMat = new THREE.MeshLambertMaterial({ 
+                color: 0x88ccff, 
+                transparent: true, 
+                opacity: 0.7 
+            });
+            const glassGeo = new THREE.PlaneGeometry(width - 1, height - 1.5);
+            const glass = new THREE.Mesh(glassGeo, glassMat);
+            glass.position.set(0, height / 2, depth / 2 + 0.01);
+            group.add(glass);
+            
+            // Tabela
+            const signMat = new THREE.MeshLambertMaterial({ color: signColor });
+            const signGeo = new THREE.BoxGeometry(width - 1, 1, 0.2);
+            const sign = new THREE.Mesh(signGeo, signMat);
+            sign.position.set(0, height - 0.3, depth / 2 + 0.15);
+            group.add(sign);
+            
+            group.position.set(x, 0, z);
+            scene.add(group);
+            buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
+        }
+
+        // 4) OTOPARK
+        function createParkingLot(x, z, width, depth) {
+            const group = new THREE.Group();
+            
+            // Asfalt zemin
+            const parkMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+            const parkGeo = new THREE.PlaneGeometry(width, depth);
+            parkGeo.rotateX(-Math.PI / 2);
+            const park = new THREE.Mesh(parkGeo, parkMat);
+            park.position.y = 0.05;
+            park.receiveShadow = true;
+            group.add(park);
+            
+            // Park çizgileri (beyaz)
+            const lineMat2 = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const spotsPerRow = Math.floor(width / 3);
+            for (let i = 0; i < spotsPerRow; i++) {
+                const lineGeo = new THREE.PlaneGeometry(0.15, depth / 2 - 1);
+                lineGeo.rotateX(-Math.PI / 2);
+                const line = new THREE.Mesh(lineGeo, lineMat2);
+                line.position.set(-width / 2 + i * 3, 0.06, -depth / 4);
+                group.add(line);
+                
+                const line2 = new THREE.Mesh(lineGeo, lineMat2);
+                line2.position.set(-width / 2 + i * 3, 0.06, depth / 4);
+                group.add(line2);
+            }
+            
+            // Arabalar (birkaç tane)
+            const carColors = [0xcc4444, 0x4444cc, 0x444444, 0xcccccc, 0x44cc44, 0xffaa00];
+            for (let i = 0; i < Math.min(spotsPerRow, 4); i++) {
+                const carColor = carColors[Math.floor(Math.random() * carColors.length)];
+                const carMat = new THREE.MeshLambertMaterial({ color: carColor });
+                
+                const carGroup = new THREE.Group();
+                const carBodyGeo = new THREE.BoxGeometry(2, 0.8, 3);
+                const carBody = new THREE.Mesh(carBodyGeo, carMat);
+                carBody.position.y = 0.5;
+                carBody.castShadow = true;
+                carGroup.add(carBody);
+                
+                const carTopGeo = new THREE.BoxGeometry(1.8, 0.7, 1.5);
+                const carTopMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+                const carTop = new THREE.Mesh(carTopGeo, carTopMat);
+                carTop.position.set(0, 1.1, -0.2);
+                carGroup.add(carTop);
+                
+                carGroup.position.set(-width / 2 + i * 3 + 1.5, 0, -depth / 4);
+                group.add(carGroup);
+            }
+            
+            group.position.set(x, 0, z);
+            scene.add(group);
+        }
+
+        // 5) PARK (yeşil alan, ağaçlar, banklar)
+        function createPark(x, z, width, depth) {
+            const group = new THREE.Group();
+            
+            // Yeşil zemin
+            const parkMat = new THREE.MeshLambertMaterial({ color: 0x3d8c28 });
+            const parkGeo = new THREE.PlaneGeometry(width, depth);
+            parkGeo.rotateX(-Math.PI / 2);
+            const park = new THREE.Mesh(parkGeo, parkMat);
+            park.position.y = 0.04;
+            park.receiveShadow = true;
+            group.add(park);
+            
+            // Ağaçlar
+            const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
+            const leafMat = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
+            
+            for (let i = 0; i < 6; i++) {
+                const treeX = (Math.random() - 0.5) * (width - 4);
+                const treeZ = (Math.random() - 0.5) * (depth - 4);
+                
+                const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 3, 6);
+                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+                trunk.position.set(treeX, 1.5, treeZ);
+                trunk.castShadow = true;
+                group.add(trunk);
+                
+                const leafGeo = new THREE.SphereGeometry(1.5, 8, 8);
+                const leaf = new THREE.Mesh(leafGeo, leafMat);
+                leaf.position.set(treeX, 4, treeZ);
+                leaf.castShadow = true;
+                group.add(leaf);
+            }
+            
+            // Banklar
+            const benchMat = new THREE.MeshLambertMaterial({ color: 0x6a4a2a });
+            for (let i = 0; i < 3; i++) {
+                const benchGroup = new THREE.Group();
+                const seatGeo = new THREE.BoxGeometry(2.5, 0.2, 0.6);
+                const seat = new THREE.Mesh(seatGeo, benchMat);
+                seat.position.y = 0.6;
+                benchGroup.add(seat);
+                
+                const backGeo = new THREE.BoxGeometry(2.5, 0.6, 0.1);
+                const back = new THREE.Mesh(backGeo, benchMat);
+                back.position.set(0, 0.9, -0.25);
+                benchGroup.add(back);
+                
+                const legGeo = new THREE.BoxGeometry(0.1, 0.6, 0.1);
+                const leg1 = new THREE.Mesh(legGeo, benchMat);
+                leg1.position.set(-1, 0.3, 0);
+                benchGroup.add(leg1);
+                const leg2 = new THREE.Mesh(legGeo, benchMat);
+                leg2.position.set(1, 0.3, 0);
+                benchGroup.add(leg2);
+                
+                benchGroup.position.set(
+                    (Math.random() - 0.5) * (width - 4),
+                    0,
+                    (Math.random() - 0.5) * (depth - 4)
+                );
+                benchGroup.rotation.y = Math.random() * Math.PI * 2;
+                group.add(benchGroup);
+            }
+            
+            group.position.set(x, 0, z);
+            scene.add(group);
+        }
+
+        // --- ŞEHİR BLOKLARINI DOLDUR (düzenli) ---
+        // Her blok için içerik tipini belirle (düzenli dağılım)
+        const blockTypes = [
+            'skyscraper', 'house', 'house', 'shop', 'park', 'house',
+            'house', 'skyscraper', 'shop', 'house', 'park', 'house',
+            'shop', 'house', 'house', 'skyscraper', 'house', 'house',
+            'house', 'park', 'house', 'shop', 'house', 'skyscraper',
+            'house', 'house', 'house', 'park', 'house', 'house',
+            'park', 'shop', 'house', 'house', 'skyscraper', 'house'
+        ];
+
+        let blockIndex = 0;
+
         for (let bx = 0; bx < gridCount; bx++) {
             for (let bz = 0; bz < gridCount; bz++) {
-                // Merkez bloğu atla (anıt için)
-                if (bx === 3 && bz === 3) continue;
-                
                 const blockCenterX = cityStartX + bx * BLOCK_SIZE + BLOCK_SIZE / 2;
                 const blockCenterZ = cityStartZ + bz * BLOCK_SIZE + BLOCK_SIZE / 2;
                 
-                const buildingCount = Math.random() > 0.5 ? 2 : 1;
+                // Merkez bloğu özel (anıt)
+                if (bx === 3 && bz === 3) {
+                    // Anıt
+                    const plazaGeo = new THREE.PlaneGeometry(BLOCK_SIZE - SIDEWALK_WIDTH * 2, BLOCK_SIZE - SIDEWALK_WIDTH * 2);
+                    plazaGeo.rotateX(-Math.PI / 2);
+                    const plazaMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+                    const plaza = new THREE.Mesh(plazaGeo, plazaMat);
+                    plaza.position.set(blockCenterX, 0.06, blockCenterZ);
+                    plaza.receiveShadow = true;
+                    scene.add(plaza);
+                    
+                    // Anıt sütunu
+                    const monBaseGeo = new THREE.CylinderGeometry(3, 3.5, 2, 8);
+                    const monBaseMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+                    const monBase = new THREE.Mesh(monBaseGeo, monBaseMat);
+                    monBase.position.set(blockCenterX, 1, blockCenterZ);
+                    monBase.castShadow = true;
+                    scene.add(monBase);
+                    
+                    const monGeo = new THREE.CylinderGeometry(0.6, 1, 15, 8);
+                    const monMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
+                    const mon = new THREE.Mesh(monGeo, monMat);
+                    mon.position.set(blockCenterX, 9.5, blockCenterZ);
+                    mon.castShadow = true;
+                    scene.add(mon);
+                    
+                    const monTopGeo = new THREE.SphereGeometry(1.2, 16, 16);
+                    const monTopMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
+                    const monTop = new THREE.Mesh(monTopGeo, monTopMat);
+                    monTop.position.set(blockCenterX, 17, blockCenterZ);
+                    monTop.castShadow = true;
+                    scene.add(monTop);
+                    
+                    buildings.push({ x: blockCenterX, z: blockCenterZ, halfW: 5, halfD: 5 });
+                    blockIndex++;
+                    continue;
+                }
                 
-                if (buildingCount === 1) {
-                    const w = 12 + Math.random() * 6;
-                    const d = 12 + Math.random() * 6;
-                    const h = 10 + Math.random() * 25;
-                    const color = buildingColors[Math.floor(Math.random() * buildingColors.length)];
-                    createBuilding(blockCenterX, blockCenterZ, w, d, h, color);
-                } else {
-                    const w1 = 8 + Math.random() * 4;
-                    const d1 = 8 + Math.random() * 4;
-                    const h1 = 8 + Math.random() * 15;
-                    const color1 = buildingColors[Math.floor(Math.random() * buildingColors.length)];
-                    
-                    const offset = 6;
-                    createBuilding(blockCenterX - offset, blockCenterZ - offset, w1, d1, h1, color1);
-                    
-                    const w2 = 8 + Math.random() * 4;
-                    const d2 = 8 + Math.random() * 4;
-                    const h2 = 8 + Math.random() * 15;
-                    const color2 = buildingColors[Math.floor(Math.random() * buildingColors.length)];
-                    createBuilding(blockCenterX + offset, blockCenterZ + offset, w2, d2, h2, color2);
+                const type = blockTypes[blockIndex % blockTypes.length];
+                blockIndex++;
+                
+                // Kaldırımın içine sığacak şekilde yerleştir
+                const usableSize = BLOCK_SIZE - SIDEWALK_WIDTH * 2 - 2;
+                
+                if (type === 'skyscraper') {
+                    const w = usableSize - 4;
+                    const d = usableSize - 4;
+                    const h = 30 + Math.random() * 30;
+                    const colors = [0x7799bb, 0x99aabb, 0x6688aa, 0xaabbcc, 0x8899aa];
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    createSkyscraper(blockCenterX, blockCenterZ, w, d, h, color);
+                } else if (type === 'house') {
+                    // 2 ev
+                    const w = usableSize / 2 - 1;
+                    const d = usableSize - 2;
+                    const colors = [0xddaa77, 0xcc8855, 0xbb9966, 0xaaccaa, 0xccaaaa, 0xaaaacc];
+                    const color1 = colors[Math.floor(Math.random() * colors.length)];
+                    const color2 = colors[Math.floor(Math.random() * colors.length)];
+                    createHouse(blockCenterX - usableSize / 4, blockCenterZ, w, d, color1);
+                    createHouse(blockCenterX + usableSize / 4, blockCenterZ, w, d, color2);
+                } else if (type === 'shop') {
+                    const w = usableSize - 2;
+                    const d = usableSize - 4;
+                    const colors = [0xdddddd, 0xeeeeee, 0xcccccc, 0xffccaa, 0xaaccff];
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    const signColors = [0xff3333, 0x33ff33, 0x3333ff, 0xffaa00, 0xff33ff];
+                    const signColor = signColors[Math.floor(Math.random() * signColors.length)];
+                    createShop(blockCenterX, blockCenterZ, w, d, color, signColor);
+                } else if (type === 'park') {
+                    createPark(blockCenterX, blockCenterZ, usableSize + 4, usableSize + 4);
                 }
             }
         }
 
-        // --- MERKEZ MEYDAN ---
-        const centerBlockX = cityStartX + 3 * BLOCK_SIZE + BLOCK_SIZE / 2;
-        const centerBlockZ = cityStartZ + 3 * BLOCK_SIZE + BLOCK_SIZE / 2;
-
-        const plazaGeo = new THREE.PlaneGeometry(BLOCK_SIZE, BLOCK_SIZE);
-        plazaGeo.rotateX(-Math.PI / 2);
-        const plazaMat = new THREE.MeshLambertMaterial({ color: 0xbbbbbb });
-        const plaza = new THREE.Mesh(plazaGeo, plazaMat);
-        plaza.position.set(centerBlockX, 0.03, centerBlockZ);
-        plaza.receiveShadow = true;
-        scene.add(plaza);
-
-        // Anıt
-        const monumentBaseGeo = new THREE.CylinderGeometry(3.5, 4, 2, 8);
-        const monumentBaseMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
-        const monumentBase = new THREE.Mesh(monumentBaseGeo, monumentBaseMat);
-        monumentBase.position.set(centerBlockX, 1, centerBlockZ);
-        monumentBase.castShadow = true;
-        monumentBase.receiveShadow = true;
-        scene.add(monumentBase);
-
-        const monumentGeo = new THREE.CylinderGeometry(0.6, 1, 15, 8);
-        const monumentMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
-        const monument = new THREE.Mesh(monumentGeo, monumentMat);
-        monument.position.set(centerBlockX, 9.5, centerBlockZ);
-        monument.castShadow = true;
-        scene.add(monument);
-
-        const monumentTopGeo = new THREE.SphereGeometry(1.2, 16, 16);
-        const monumentTopMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
-        const monumentTop = new THREE.Mesh(monumentTopGeo, monumentTopMat);
-        monumentTop.position.set(centerBlockX, 17, centerBlockZ);
-        monumentTop.castShadow = true;
-        scene.add(monumentTop);
-
-        buildings.push({ x: centerBlockX, z: centerBlockZ, halfW: 5, halfD: 5 });
+        // --- OTOPARKLAR (yol kenarlarına) ---
+        // Şehrin dış çevresine otoparklar
+        createParkingLot(cityStartX - 20, CITY_CENTER_Z, 20, 15);
+        createParkingLot(cityStartX + gridCount * BLOCK_SIZE + 20, CITY_CENTER_Z, 20, 15);
+        createParkingLot(CITY_CENTER_X, cityStartZ - 20, 20, 15);
+        createParkingLot(CITY_CENTER_X, cityStartZ + gridCount * BLOCK_SIZE + 20, 20, 15);
 
         // --- SOKAK LAMBALARI ---
         const lampPoleMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
@@ -648,15 +959,17 @@
             scene.add(lampGroup);
         }
 
+        // Kaldırım köşelerine lambalar
         for (let i = 0; i <= gridCount; i++) {
             for (let j = 0; j <= gridCount; j++) {
-                const lx = cityStartX + i * BLOCK_SIZE + 4;
-                const lz = cityStartZ + j * BLOCK_SIZE + 4;
+                const lx = cityStartX + i * BLOCK_SIZE - SIDEWALK_WIDTH - 1;
+                const lz = cityStartZ + j * BLOCK_SIZE - SIDEWALK_WIDTH - 1;
                 createStreetLamp(lx, lz);
+                createStreetLamp(lx + 2, lz + 2);
             }
         }
 
-        // --- AĞAÇLAR ---
+        // --- ŞEHİR DIŞI AĞAÇLAR ---
         const treeTrunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
         const treeLeafMat = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
 
@@ -679,14 +992,12 @@
             scene.add(treeGroup);
         }
 
-        // Şehir dışına rastgele ağaçlar
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 300; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const radius = 100 + Math.random() * 250;
+            const radius = 150 + Math.random() * 220;
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
             
-            // Şehirden uzak olsun
             const distToCity = Math.sqrt((x - CITY_CENTER_X) ** 2 + (z - CITY_CENTER_Z) ** 2);
             if (distToCity < 120) continue;
             
@@ -1278,9 +1589,7 @@
         mobSprintBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isSprintingMobile = true; }, { passive: false });
         mobSprintBtn.addEventListener('touchend', (e) => { e.preventDefault(); isSprintingMobile = false; }, { passive: false });
 
-        // ÇARPIŞMA - Hem dağ hem bina
         function checkMountainCollision(x, z, radius) {
-            // Dağ kontrolü
             for (let m of mountains) {
                 const dx = x - m.x;
                 const dz = z - m.z;
@@ -1289,7 +1598,6 @@
                     return true;
                 }
             }
-            // Bina kontrolü (AABB - kutu çarpışma)
             for (let b of buildings) {
                 if (x + radius > b.x - b.halfW &&
                     x - radius < b.x + b.halfW &&
