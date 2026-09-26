@@ -258,7 +258,7 @@
         }
 
         const playerDonkey = createDonkeyModel();
-        playerDonkey.visible = false;
+        playerDonkey.visible = false; // Başlangıçta menüde gizli
         scene.add(playerDonkey);
 
         function initWebSocket() {
@@ -332,7 +332,7 @@
             playerDonkey.position.set(0, 0, 0);
             gameStarted = true;
             menuEl.style.display = 'none';
-            playerDonkey.visible = true;
+            playerDonkey.visible = true; // Oyuna girince eşeği göster
 
             if (controlMode === 'pc') {
                 infoEl.style.display = 'block';
@@ -350,7 +350,7 @@
             initWebSocket();
             gameStarted = true;
             menuEl.style.display = 'none';
-            playerDonkey.visible = true;
+            playerDonkey.visible = true; // Oyuna dönünce eşeği göster
             infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
             mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
         });
@@ -362,7 +362,7 @@
             pauseButtons.style.display = 'none';
             infoEl.style.display = 'none';
             mobileControlsEl.style.display = 'none';
-            playerDonkey.visible = false;
+            playerDonkey.visible = false; // Menüye dönünce eşeği gizle
             if (ws) { ws.close(); ws = null; }
             for (let id in otherPlayers) {
                 scene.remove(otherPlayers[id]);
@@ -378,7 +378,7 @@
                 pauseButtons.style.display = 'flex';
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
-                playerDonkey.visible = false;
+                playerDonkey.visible = false; // Menü açılınca eşeği gizle
                 return;
             }
             if (!gameStarted || controlMode !== 'pc') return;
