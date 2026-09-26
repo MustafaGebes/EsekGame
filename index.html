@@ -111,6 +111,9 @@
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
+        // ==========================================
+        // EŞEK MODELİ - Animasyon durumları ile
+        // ==========================================
         function createDonkeyModel() {
             const donkeyGroup = new THREE.Group();
             const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
@@ -162,7 +165,14 @@
                 legs.push(legGroup);
             });
 
-            donkeyGroup.userData = { legs, neckHeadGroup };
+            // Her eşek için animasyon durumları
+            donkeyGroup.userData = { 
+                legs, 
+                neckHeadGroup,
+                walkCycle: 0,
+                jumpAnimProgress: 0,
+                isJumpingAnim: false
+            };
             return donkeyGroup;
         }
 
@@ -193,16 +203,23 @@
                                     otherPlayers[id] = newDonkey;
                                 }
                                 const pData = serverPlayers[id];
+                                const other = otherPlayers[id];
                                 
-                                otherPlayers[id].position.set(pData.x, pData.y, pData.z);
-                                otherPlayers[id].rotation.y = pData.yaw || 0;
+                                other.position.set(pData.x, pData.y, pData.z);
+                                other.rotation.y = pData.yaw || 0;
                                 
-                                if (otherPlayers[id].userData.neckHeadGroup) {
-                                    otherPlayers[id].userData.neckHeadGroup.rotation.x = pData.pitch || 0;
+                                if (other.userData.neckHeadGroup) {
+                                    other.userData.neckHeadGroup.rotation.x = pData.pitch || 0;
                                 }
                                 
+                                // Eğilme
                                 const targetScale = pData.isCrouching ? 0.6 : 1.0;
-                                otherPlayers[id].scale.y += (targetScale - otherPlayers[id].scale.y) * 0.5;
+                                other.scale.y += (targetScale - other.scale.y) * 0.5;
+                                
+                                // Hareket ve zıplama durumlarını kaydet
+                                other.userData.isMoving = pData.isMoving || false;
+                                other.userData.isJumping = pData.isJumping || false;
+                                other.userData.isCrouching = pData.isCrouching || false;
                             }
                         }
 
@@ -231,9 +248,8 @@
         let isCouchingMobile = false;
         let isSprintingMobile = false;
 
-        // YENİ: Çoklu dokunma takibi
-        let joystickTouchId = null;   // Joystick'i kontrol eden parmağın ID'si
-        let cameraTouchId = null;     // Kamerayı kontrol eden parmağın ID'si
+        let joystickTouchId = null;
+        let cameraTouchId = null;
         let cameraLastX = 0, cameraLastY = 0;
 
         const menuEl = document.getElementById('menu');
@@ -343,10 +359,6 @@
             mouseY = e.clientY;
         });
 
-        // ==========================================
-        // MOBİL KONTROLLER - ÇOKLU DOKUNMA DESTEKLİ
-        // ==========================================
-        
         const joystickZone = document.getElementById('joystickZone');
         const joystickKnob = document.getElementById('joystickKnob');
         const mobJumpBtn = document.getElementById('mobJumpBtn');
@@ -368,10 +380,9 @@
             }
         });
 
-        // Joystick dokunuşu
         joystickZone.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            if (joystickTouchId !== null) return; // Zaten bir parmak joystick'te
+            if (joystickTouchId !== null) return;
             const touch = e.changedTouches[0];
             joystickTouchId = touch.identifier;
             joystickActive = true;
@@ -383,7 +394,6 @@
             e.preventDefault();
             if (joystickTouchId === null) return;
             
-            // Joystick'i kontrol eden parmağı bul
             let touch = null;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 if (e.changedTouches[i].identifier === joystickTouchId) {
@@ -416,19 +426,16 @@
             }
         }, { passive: false });
 
-        joystickZone.addEventListener('touchcancel', (e) => {
+        joystickZone.addEventListener('touchcancel', () => {
             joystickTouchId = null;
             joystickActive = false;
             joystickKnob.style.transform = `translate(0px, 0px)`;
             joystickMoveX = 0; joystickMoveZ = 0;
         });
 
-        // Kamera döndürme - ekranın herhangi bir yerine dokunup sürükle
-        // (Joystick ve butonlar hariç)
         window.addEventListener('touchstart', (e) => {
             if (!gameStarted || controlMode !== 'mobile') return;
             
-            // Joystick, butonlar veya menü butonuna dokunulduysa kamera döndürme başlatma
             for (let i = 0; i < e.changedTouches.length; i++) {
                 const touch = e.changedTouches[i];
                 const target = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -441,7 +448,6 @@
                     continue;
                 }
                 
-                // Bu parmak kamera döndürme için kullanılabilir
                 if (cameraTouchId === null) {
                     cameraTouchId = touch.identifier;
                     cameraLastX = touch.clientX;
@@ -454,7 +460,6 @@
             if (!gameStarted || controlMode !== 'mobile') return;
             if (cameraTouchId === null) return;
             
-            // Kamera döndüren parmağı bul
             let touch = null;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 if (e.changedTouches[i].identifier === cameraTouchId) {
@@ -487,7 +492,7 @@
             }
         });
 
-        window.addEventListener('touchcancel', (e) => {
+        window.addEventListener('touchcancel', () => {
             cameraTouchId = null;
         });
 
@@ -500,9 +505,39 @@
         mobSprintBtn.addEventListener('touchend', () => { isSprintingMobile = false; });
 
         // ==========================================
-        // OYUN DÖNGÜSÜ
+        // ANİMASYON FONKSİYONU (hem kendi hem diğerleri için)
         // ==========================================
-        
+        function updateDonkeyAnimation(donkey, isMoving, isJumping, isCrouching, speedMultiplier) {
+            const legs = donkey.userData.legs;
+            const ud = donkey.userData;
+            
+            // Zıplama animasyonu
+            if (isJumping && !isCrouching) {
+                // Bacakları öne/arkaya doğru çek
+                ud.jumpAnimProgress += 0.15;
+                const jumpAngle = Math.sin(ud.jumpAnimProgress) * 0.6;
+                legs[0].rotation.x = jumpAngle;
+                legs[1].rotation.x = -jumpAngle;
+                legs[2].rotation.x = -jumpAngle;
+                legs[3].rotation.x = jumpAngle;
+            } else if (isMoving && !isCrouching) {
+                // Yürüme animasyonu
+                ud.walkCycle += (speedMultiplier || 1) * 0.15;
+                legs[0].rotation.x = Math.sin(ud.walkCycle) * 0.5;
+                legs[1].rotation.x = -Math.sin(ud.walkCycle) * 0.5;
+                legs[2].rotation.x = -Math.sin(ud.walkCycle) * 0.5;
+                legs[3].rotation.x = Math.sin(ud.walkCycle) * 0.5;
+            } else {
+                // Durma - yavaşça normale dön
+                legs.forEach(l => l.rotation.x *= 0.8);
+            }
+            
+            // Zıplama animasyonu bittiğinde sıfırla
+            if (!isJumping) {
+                ud.jumpAnimProgress = 0;
+            }
+        }
+
         let walkCycle = 0;
 
         function animate() {
@@ -545,21 +580,28 @@
                 playerDonkey.position.y += velocityY;
                 if (playerDonkey.position.y <= 0) { playerDonkey.position.y = 0; velocityY = 0; isGrounded = true; }
 
-                const legs = playerDonkey.userData.legs;
-                if (isMoving && isGrounded) {
-                    walkCycle += isSprinting ? 0.25 : 0.15;
-                    legs[0].rotation.x = Math.sin(walkCycle) * 0.5;
-                    legs[1].rotation.x = -Math.sin(walkCycle) * 0.5;
-                    legs[2].rotation.x = -Math.sin(walkCycle) * 0.5;
-                    legs[3].rotation.x = Math.sin(walkCycle) * 0.5;
-                } else {
-                    legs.forEach(l => l.rotation.x *= 0.8);
-                }
+                // KENDİ ANİMASYONUMUZ
+                const isJumping = !isGrounded;
+                updateDonkeyAnimation(playerDonkey, isMoving, isJumping, isCrouching, isSprinting ? 1.5 : 1);
 
                 if (playerDonkey.userData.neckHeadGroup) {
                     playerDonkey.userData.neckHeadGroup.rotation.x = pitch;
                 }
 
+                // DİĞER OYUNCULARIN ANİMASYONU
+                for (let id in otherPlayers) {
+                    const other = otherPlayers[id];
+                    const ud = other.userData;
+                    updateDonkeyAnimation(
+                        other, 
+                        ud.isMoving || false, 
+                        ud.isJumping || false, 
+                        ud.isCrouching || false, 
+                        1
+                    );
+                }
+
+                // Sunucuya gönder - isMoving ve isJumping eklendi
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: "move",
@@ -568,7 +610,9 @@
                         z: playerDonkey.position.z,
                         yaw: yaw,
                         pitch: pitch,
-                        isCrouching: isCrouching
+                        isCrouching: isCrouching,
+                        isMoving: isMoving,
+                        isJumping: isJumping
                     }));
                 }
 
