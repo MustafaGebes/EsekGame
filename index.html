@@ -64,7 +64,6 @@
         #hud div { margin: 2px 0; }
         #hud .label { color: #ffd700; font-weight: bold; }
 
-        /* AYARLAR PANELİ */
         #settingsPanel {
             position: absolute;
             top: 50%;
@@ -157,7 +156,6 @@
         <div><span class="label">Görüş:</span> <span id="hudChunk">150</span></div>
     </div>
 
-    <!-- Ayarlar Paneli -->
     <div id="settingsPanel">
         <h3>⚙️ Ayarlar</h3>
         <label>Görüş Mesafesi (Chunk): <span class="value-display" id="chunkValue">150</span></label>
@@ -197,7 +195,6 @@
 
         const MAP_LIMIT = 200;
 
-        // AYARLAR
         let viewDistance = 150;
         let sensitivity = 1.0;
 
@@ -245,6 +242,48 @@
         );
         scene.add(moonMesh);
 
+        // === YILDIZLAR ===
+        // Gece görünecek parlayan yıldızlar
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 1500;
+        const starPositions = new Float32Array(starCount * 3);
+        const starColors = new Float32Array(starCount * 3);
+
+        for (let i = 0; i < starCount; i++) {
+            // Yıldızları büyük bir küre üzerine dağıt (sadece üst yarımküre)
+            const radius = 800 + Math.random() * 200;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI * 0.5; // 0 - 90 derece (üst yarımküre)
+            
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.cos(phi);
+            const z = radius * Math.sin(phi) * Math.sin(theta);
+            
+            starPositions[i * 3] = x;
+            starPositions[i * 3 + 1] = y;
+            starPositions[i * 3 + 2] = z;
+            
+            // Renk: beyazdan hafif maviye/sarıya
+            const tint = Math.random();
+            starColors[i * 3] = 0.8 + tint * 0.2;
+            starColors[i * 3 + 1] = 0.8 + tint * 0.2;
+            starColors[i * 3 + 2] = 1.0;
+        }
+
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+
+        const starMaterial = new THREE.PointsMaterial({
+            size: 3,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0, // Başlangıçta görünmez (gündüz)
+            sizeAttenuation: false
+        });
+
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
         // === ZEMİN ===
         const terrainGeo = new THREE.PlaneGeometry(500, 500, 50, 50);
         terrainGeo.rotateX(-Math.PI / 2);
@@ -253,7 +292,7 @@
         scene.add(terrainMesh);
 
         // ==========================================
-        // DAĞLAR - Sadece harita sınırı (tek sıra)
+        // DAĞLAR
         // ==========================================
         const mountains = [];
 
@@ -579,7 +618,6 @@
         const hudDayEl = document.getElementById('hudDay');
         const hudChunkEl = document.getElementById('hudChunk');
 
-        // AYARLAR
         const settingsPanel = document.getElementById('settingsPanel');
         const chunkSlider = document.getElementById('chunkSlider');
         const chunkValue = document.getElementById('chunkValue');
@@ -862,7 +900,6 @@
             cameraTouchId = null;
         });
 
-        // MOBİL BUTONLAR
         function handleJumpStart(e) {
             e.preventDefault();
             if (gameStarted && isGrounded) { 
@@ -882,7 +919,6 @@
         mobSprintBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isSprintingMobile = true; }, { passive: false });
         mobSprintBtn.addEventListener('touchend', (e) => { e.preventDefault(); isSprintingMobile = false; }, { passive: false });
 
-        // === ÇARPIŞMA ===
         function checkMountainCollision(x, z, radius) {
             for (let m of mountains) {
                 const dx = x - m.x;
@@ -895,7 +931,6 @@
             return false;
         }
 
-        // === ANİMASYON ===
         function updateDonkeyAnimation(donkey, isMoving, isJumping, isCrouching, speedMultiplier) {
             const legs = donkey.userData.legs;
             const ud = donkey.userData;
@@ -983,7 +1018,7 @@
                 hudDayEl.textContent = gameDay;
                 hudChunkEl.textContent = viewDistance;
 
-                // GÜNEŞ/AY
+                // ========== GÜNEŞ/AY ==========
                 const dayProgress = (gameTime - 6) / 12;
                 const sunAngle = dayProgress * Math.PI;
                 const sunRadius = 300;
@@ -1014,26 +1049,85 @@
                     sunLight.intensity = 0.0;
                 }
 
-                // Gökyüzü rengi
+                // ========== GÖKYÜZÜ RENGİ - KADEMELİ GEÇİŞ ==========
+                // Renk paleti:
+                // Gece: koyu lacivert (0.02, 0.02, 0.08)
+                // Şafak: kızıl/turuncu (1.0, 0.5, 0.2)
+                // Gündüz: açık mavi (0.53, 0.81, 0.92)
+                // Gün batımı: turuncu/kızıl (1.0, 0.4, 0.15)
+                // Gece: koyu lacivert
+                
+                const nightColor = { r: 0.02, g: 0.02, b: 0.08 };
+                const dayColor = { r: 0.53, g: 0.81, b: 0.92 };
+                const sunsetColor = { r: 1.0, g: 0.45, b: 0.15 };
+                const sunriseColor = { r: 1.0, g: 0.55, b: 0.25 };
+
                 let skyR, skyG, skyB;
-                if (gameTime >= 6 && gameTime <= 18) {
-                    const t = (gameTime - 6) / 12;
-                    const morningFactor = Math.max(0, 1 - t * 4);
-                    const eveningFactor = Math.max(0, (t - 0.75) * 4);
-                    const orangeR = 1.0, orangeG = 0.6, orangeB = 0.3;
-                    const blueR = 0.53, blueG = 0.81, blueB = 0.92;
-                    let mixFactor = Math.max(morningFactor, eveningFactor);
-                    skyR = blueR * (1 - mixFactor) + orangeR * mixFactor;
-                    skyG = blueG * (1 - mixFactor) + orangeG * mixFactor;
-                    skyB = blueB * (1 - mixFactor) + orangeB * mixFactor;
+
+                // Saat dilimlerine göre geçiş
+                if (gameTime >= 5 && gameTime < 7) {
+                    // Şafak: Gece -> Gündoğumu
+                    const t = (gameTime - 5) / 2; // 0 -> 1
+                    skyR = nightColor.r * (1 - t) + sunriseColor.r * t;
+                    skyG = nightColor.g * (1 - t) + sunriseColor.g * t;
+                    skyB = nightColor.b * (1 - t) + sunriseColor.b * t;
+                } else if (gameTime >= 7 && gameTime < 9) {
+                    // Gündoğumu -> Gündüz
+                    const t = (gameTime - 7) / 2; // 0 -> 1
+                    skyR = sunriseColor.r * (1 - t) + dayColor.r * t;
+                    skyG = sunriseColor.g * (1 - t) + dayColor.g * t;
+                    skyB = sunriseColor.b * (1 - t) + dayColor.b * t;
+                } else if (gameTime >= 9 && gameTime < 16) {
+                    // Tam gündüz
+                    skyR = dayColor.r;
+                    skyG = dayColor.g;
+                    skyB = dayColor.b;
+                } else if (gameTime >= 16 && gameTime < 18) {
+                    // Gündüz -> Gün batımı
+                    const t = (gameTime - 16) / 2; // 0 -> 1
+                    skyR = dayColor.r * (1 - t) + sunsetColor.r * t;
+                    skyG = dayColor.g * (1 - t) + sunsetColor.g * t;
+                    skyB = dayColor.b * (1 - t) + sunsetColor.b * t;
+                } else if (gameTime >= 18 && gameTime < 20) {
+                    // Gün batımı -> Gece
+                    const t = (gameTime - 18) / 2; // 0 -> 1
+                    skyR = sunsetColor.r * (1 - t) + nightColor.r * t;
+                    skyG = sunsetColor.g * (1 - t) + nightColor.g * t;
+                    skyB = sunsetColor.b * (1 - t) + nightColor.b * t;
                 } else {
-                    skyR = 0.05; skyG = 0.05; skyB = 0.15;
+                    // Tam gece (20:00 - 05:00)
+                    skyR = nightColor.r;
+                    skyG = nightColor.g;
+                    skyB = nightColor.b;
                 }
+
                 scene.background = new THREE.Color(skyR, skyG, skyB);
                 scene.fog.color = scene.background;
 
-                const isDay = gameTime >= 6 && gameTime <= 18;
+                const isDay = gameTime >= 7 && gameTime <= 17;
                 ambientLight.intensity = isDay ? 0.5 : 0.15;
+
+                // ========== YILDIZLARIN GÖRÜNÜRLÜĞÜ ==========
+                // Gece tam görünür, gündüz görünmez, geçişlerde yumuşak
+                let starOpacity = 0;
+                if (gameTime >= 20 || gameTime < 5) {
+                    // Tam gece
+                    starOpacity = 1.0;
+                } else if (gameTime >= 5 && gameTime < 7) {
+                    // Şafak: yavaşça kaybol
+                    starOpacity = 1.0 - (gameTime - 5) / 2;
+                } else if (gameTime >= 18 && gameTime < 20) {
+                    // Gün batımı: yavaşça ortaya çık
+                    starOpacity = (gameTime - 18) / 2;
+                } else {
+                    // Gündüz
+                    starOpacity = 0;
+                }
+                starMaterial.opacity = starOpacity;
+
+                // Yıldızları kameraya göre döndür (hep aynı yerde kalsınlar)
+                stars.position.copy(camera.position);
+                stars.rotation.y = yaw * 0.5; // Hafif paralaks etkisi
 
                 // HAREKET
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
@@ -1053,7 +1147,7 @@
                 } else {
                     if (joystickActive) {
                         const ileriGeri = -joystickMoveZ;
-                        const sagSol = -joystickMoveX; // Joystick sağa çekildiğinde sağa (karakterin sağına/yanına) yürümesi için eksi ile terslendi
+                        const sagSol = -joystickMoveX;
                         
                         moveX = (Math.sin(yaw) * ileriGeri + Math.cos(yaw) * sagSol) * speed * 1.5;
                         moveZ = (Math.cos(yaw) * ileriGeri - Math.sin(yaw) * sagSol) * speed * 1.5;
@@ -1062,7 +1156,6 @@
                     }
                 }
 
-                // ÇARPIŞMA
                 const newX = playerDonkey.position.x + moveX;
                 const newZ = playerDonkey.position.z + moveZ;
                 
@@ -1079,7 +1172,6 @@
                     playerDonkey.position.z = newZ;
                 }
                 
-                // HARİTA SINIRI
                 const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
                 if (distFromCenter > MAP_LIMIT) {
                     const scale = MAP_LIMIT / distFromCenter;
