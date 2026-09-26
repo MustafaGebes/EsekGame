@@ -499,12 +499,13 @@
         // KAPI REFERANSLARI (animasyon için global)
         let doorLeftGroup = null;
         let doorRightGroup = null;
+        let doorCollision = null; // YENİ: kapı çarpışma kutusu
 
         function createBarn(x, z) {
             const barnGroup = new THREE.Group();
             
             const width = 22;
-            const depth = 22; // Kare yapalım (yan duvarlarla eşit görünsün)
+            const depth = 22;
             const wallHeight = 7;
             const doorWidth = 6;
             const sideWallWidth = (width - doorWidth) / 2;
@@ -512,15 +513,15 @@
             const woodDarkMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
             const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
             const woodLightMat = new THREE.MeshLambertMaterial({ color: 0xa87848 });
-            const wallMat = new THREE.MeshLambertMaterial({ color: 0xa8271c }); // KIRMIZI DUVAR
-            const roofMat = new THREE.MeshLambertMaterial({ color: 0xf2efe6 }); // BEYAZ ÇATI
-            const trimMat = new THREE.MeshLambertMaterial({ color: 0xffffff }); // BEYAZ ÇİZGİ/SÜSLEME
+            const wallMat = new THREE.MeshLambertMaterial({ color: 0xa8271c });
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0xf2efe6 });
+            const trimMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
             const hayMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
             const metalMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
             const stoneMat = new THREE.MeshLambertMaterial({ color: 0x888878 });
             const waterMat = new THREE.MeshLambertMaterial({ color: 0x3399dd });
             
-            // ZEMİN (ahşap tahta)
+            // ZEMİN
             const floorMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
             const floorGeo = new THREE.PlaneGeometry(width, depth);
             floorGeo.rotateX(-Math.PI / 2);
@@ -528,7 +529,6 @@
             floor.position.y = 0.02;
             barnGroup.add(floor);
             
-            // Zemin tahta çizgileri
             for (let i = 0; i < 8; i++) {
                 const lineGeo = new THREE.PlaneGeometry(width, 0.05);
                 lineGeo.rotateX(-Math.PI / 2);
@@ -555,7 +555,7 @@
             backWall.position.set(0, wallHeight / 2, -depth / 2);
             barnGroup.add(backWall);
             
-            // ÖN DUVAR (kapı yanları) - AYNI YÜKSEKLİK VE EŞİT GENİŞLİK (SİMETRİK)
+            // ÖN DUVAR
             const frontWallGeo = new THREE.BoxGeometry(sideWallWidth, wallHeight, 0.5);
             const frontWallLeft = new THREE.Mesh(frontWallGeo, wallMat);
             frontWallLeft.position.set(-(doorWidth / 2 + sideWallWidth / 2), wallHeight / 2, depth / 2);
@@ -565,15 +565,13 @@
             frontWallRight.position.set((doorWidth / 2 + sideWallWidth / 2), wallHeight / 2, depth / 2);
             barnGroup.add(frontWallRight);
             
-            // Kapı üstü kiriş (kapı boşluğunun üstünde) - BEYAZ SÜSLEME
+            // Kapı üstü kiriş
             const doorTopGeo = new THREE.BoxGeometry(doorWidth + 0.6, wallHeight - 5, 0.55);
             const doorTop = new THREE.Mesh(doorTopGeo, trimMat);
             doorTop.position.set(0, wallHeight - (wallHeight - 5) / 2, depth / 2);
             barnGroup.add(doorTop);
 
-            // ==========================================
-            // BEYAZ SÜSLEME ÇİZGİLERİ (klasik kırmızı ahır görünümü, tüm duvarlarda simetrik)
-            // ==========================================
+            // BEYAZ SÜSLEME ÇİZGİLERİ
             const trimBandH = 0.35;
             const trimYPositions = [0.3, wallHeight - 0.35];
             for (const ty of trimYPositions) {
@@ -598,13 +596,10 @@
                 barnGroup.add(trimFrontR);
             }
             
-            // ==========================================
-            // KAPILAR (KAPALI başlar, tam kapanır)
-            // ==========================================
+            // KAPILAR
             const doorH = 5;
             const doorLeftHalfW = doorWidth / 2;
             
-            // SOL KAPI
             doorLeftGroup = new THREE.Group();
             doorLeftGroup.position.set(-doorWidth / 2, 0, depth / 2);
             
@@ -613,7 +608,6 @@
             doorLeftMesh.position.set(doorLeftHalfW / 2, doorH / 2, 0);
             doorLeftGroup.add(doorLeftMesh);
             
-            // Kapı detay çizgileri
             for (let i = 0; i < 3; i++) {
                 const lineGeo = new THREE.BoxGeometry(doorLeftHalfW - 0.1, 0.08, 0.16);
                 const line = new THREE.Mesh(lineGeo, woodMat);
@@ -621,7 +615,6 @@
                 doorLeftGroup.add(line);
             }
             
-            // Kapı kolu
             const handleLGeo = new THREE.SphereGeometry(0.12, 8, 8);
             const handleLMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
             const handleL = new THREE.Mesh(handleLGeo, handleLMat);
@@ -630,7 +623,6 @@
             
             barnGroup.add(doorLeftGroup);
             
-            // SAĞ KAPI
             doorRightGroup = new THREE.Group();
             doorRightGroup.position.set(doorWidth / 2, 0, depth / 2);
             
@@ -652,9 +644,7 @@
             
             barnGroup.add(doorRightGroup);
             
-            // ==========================================
-            // ÇATI (SİMETRİK, TAŞMIYOR)
-            // ==========================================
+            // ÇATI
             const roofSlopeWidth = Math.sqrt((width / 2) * (width / 2) + 2.5 * 2.5);
             const roofAngle = Math.atan2(2.5, width / 2);
             
@@ -669,15 +659,12 @@
             roofRight.rotation.z = -roofAngle;
             barnGroup.add(roofRight);
             
-            // Sırt kirişi
             const roofPeakGeo = new THREE.BoxGeometry(0.5, 0.5, depth);
             const roofPeak = new THREE.Mesh(roofPeakGeo, woodDarkMat);
             roofPeak.position.set(0, wallHeight + 2.5, 0);
             barnGroup.add(roofPeak);
             
-            // Alınlık (ÜÇGEN) - ÖN ve ARKA. Gerçek üçgen şekil kullanılıyor ki
-            // ön/arka duvarın GÖVDESİ (dikdörtgen kısmı) yan duvarla AYNI YÜKSEKLİKTE (wallHeight) kalsın;
-            // üstteki üçgen sadece çatı boşluğunu kapatır, duvar gibi "büyük" görünmez.
+            // Alınlık
             function createGableTriangle(baseZ) {
                 const shape = new THREE.Shape();
                 shape.moveTo(-width / 2, 0);
@@ -704,7 +691,7 @@
                 barnGroup.add(beam);
             }
             
-            // DİKEY KOLONLAR (4 köşede)
+            // DİKEY KOLONLAR
             const colGeo = new THREE.BoxGeometry(0.4, wallHeight, 0.4);
             const colPositions = [
                 [-width / 2 + 0.5, -depth / 2 + 1],
@@ -718,24 +705,19 @@
                 barnGroup.add(col);
             }
             
-            // ==========================================
-            // PENCERELER (SİMETRİK, KÜÇÜK, AHIR TARZI)
-            // ==========================================
+            // PENCERELER
             const windowLightMat = new THREE.MeshBasicMaterial({ color: 0xfff5c0 });
             const windowFrameMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
             
-            // Pencere boyutu (küçük)
             const winW = 1.4;
             const winH = 1.4;
             
-            // Sol duvar - 2 pencere (simetrik)
             const winLGeo = new THREE.PlaneGeometry(winW, winH);
             const winL1 = new THREE.Mesh(winLGeo, windowLightMat);
             winL1.position.set(-width / 2 + 0.26, 4.5, -4);
             winL1.rotation.y = Math.PI / 2;
             barnGroup.add(winL1);
             
-            // Pencere çerçevesi
             const frameL1H = new THREE.Mesh(new THREE.BoxGeometry(0.05, winH + 0.2, 0.05), windowFrameMat);
             frameL1H.position.set(-width / 2 + 0.24, 4.5, -4);
             frameL1H.rotation.y = Math.PI / 2;
@@ -746,7 +728,6 @@
             winL2.rotation.y = Math.PI / 2;
             barnGroup.add(winL2);
             
-            // Sağ duvar - 2 pencere (simetrik)
             const winR1 = new THREE.Mesh(winLGeo, windowLightMat);
             winR1.position.set(width / 2 - 0.26, 4.5, -4);
             winR1.rotation.y = -Math.PI / 2;
@@ -757,17 +738,12 @@
             winR2.rotation.y = -Math.PI / 2;
             barnGroup.add(winR2);
             
-            // ==========================================
-            // AHIR İÇİ (TEMİZ, HAYVANSIZ)
-            // ==========================================
-            
-            // ARKA DUVARDA SAMAN RAFI
+            // AHIR İÇİ
             const shelfGeo = new THREE.BoxGeometry(width - 4, 0.3, 1.5);
             const shelf = new THREE.Mesh(shelfGeo, woodDarkMat);
             shelf.position.set(0, wallHeight - 1.5, -depth / 2 + 1);
             barnGroup.add(shelf);
             
-            // SAMAN BALYALARI (RAFTA - DÜZENLİ)
             const hayStartX = -width / 2 + 4;
             const hayCount = 6;
             const haySpacing = (width - 8) / (hayCount - 1);
@@ -785,7 +761,6 @@
                 barnGroup.add(hay);
             }
             
-            // YERDEKİ SAMAN YIĞINLARI - 4 KÖŞEYE SİMETRİK (arka-sol, arka-sağ, ön-sol, ön-sağ)
             const floorHayCorners = [
                 [-width / 2 + 3, -depth / 2 + 3],
                 [width / 2 - 3, -depth / 2 + 3],
@@ -806,7 +781,6 @@
                 barnGroup.add(hayTop);
             }
 
-            // SU YALAKLARI - KENARLARDA, KAPININ İKİ YANINA SİMETRİK (artık orta/kapı önü boş kalmıyor)
             function createTrough(px, pz) {
                 const troughGroup = new THREE.Group();
                 const troughMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
@@ -839,21 +813,16 @@
                 troughGroup.position.set(px, 0, pz);
                 barnGroup.add(troughGroup);
 
-                // ÇARPIŞMA - su yalağının içinden geçilmesin
                 buildings.push({ x: x + px, z: z + pz, halfW: 1.65, halfD: 1.05 });
             }
             createTrough(-width / 2 + 3.5, depth / 2 - 5);
             createTrough(width / 2 - 3.5, depth / 2 - 5);
 
-            // AT BÖLMELERİ (SOL VE SAĞ) - ARTIK BOŞ, AHŞAP YAPILI
-            // Sol tarafta 2 bölme (boş)
             createEmptyStall(barnGroup, -width / 2 + 4, -depth / 2 + 5, woodMat);
             createEmptyStall(barnGroup, -width / 2 + 4, -depth / 2 + 12, woodMat);
-            // Sağ tarafta 2 bölme (boş)
             createEmptyStall(barnGroup, width / 2 - 4, -depth / 2 + 5, woodMat);
             createEmptyStall(barnGroup, width / 2 - 4, -depth / 2 + 12, woodMat);
 
-            // ÇARPIŞMA - at bölmelerinin içinden geçilmesin (stallW=3.5, stallD=5)
             const stallCollisionPositions = [
                 [-width / 2 + 4, -depth / 2 + 5],
                 [-width / 2 + 4, -depth / 2 + 12],
@@ -864,8 +833,6 @@
                 buildings.push({ x: x + sx, z: z + sz, halfW: 1.75, halfD: 2.5 });
             }
 
-            // AHIR İÇİ 4 ADET DESTEK DİREĞİ - kapının hemen arkasındaki boş orta alanı doldurur,
-            // ortadaki geçiş yolu (x ekseni merkez) açık kalır
             const postGeo = new THREE.CylinderGeometry(0.32, 0.38, wallHeight, 10);
             const postPositions = [
                 [-5, -3],
@@ -883,11 +850,9 @@
                 postCap.position.set(px, wallHeight, pz);
                 barnGroup.add(postCap);
 
-                // ÇARPIŞMA - direğin içinden geçilmesin
                 buildings.push({ x: x + px, z: z + pz, halfW: 0.42, halfD: 0.42 });
             }
             
-            // EĞERLER VE HALATLAR (Duvarda)
             const saddleMat = new THREE.MeshLambertMaterial({ color: 0x5a2a1a });
             const saddleGeo = new THREE.BoxGeometry(0.8, 0.3, 0.5);
             const ropeMat = new THREE.MeshLambertMaterial({ color: 0x8a6a3a });
@@ -915,21 +880,23 @@
                 barnGroup.add(rope);
             }
             
-            // DIŞ ÇİT
             createRealisticFence(barnGroup, width, depth, woodLightMat, woodDarkMat);
             
             barnGroup.position.set(x, 0, z);
             scene.add(barnGroup);
             
-            // ÇARPIŞMA - SADECE DUVARLAR
+            // ÇARPIŞMA - DUVARLAR
             buildings.push({ x: x - width / 2, z: z, halfW: 0.5, halfD: depth / 2 });
             buildings.push({ x: x + width / 2, z: z, halfW: 0.5, halfD: depth / 2 });
             buildings.push({ x: x, z: z - depth / 2, halfW: width / 2, halfD: 0.5 });
             buildings.push({ x: x - (doorWidth / 2 + sideWallWidth / 2), z: z + depth / 2, halfW: sideWallWidth / 2, halfD: 0.5 });
             buildings.push({ x: x + (doorWidth / 2 + sideWallWidth / 2), z: z + depth / 2, halfW: sideWallWidth / 2, halfD: 0.5 });
+
+            // YENİ: KAPI ÇARPIŞMASI (kapı kapalıyken geçişi engeller)
+            doorCollision = { x: x, z: z + depth / 2, halfW: doorWidth / 2, halfD: 0.5 };
+            buildings.push(doorCollision);
         }
         
-        // BOŞ AHIR BÖLMESİ (Hayvansız, sade ahşap)
         function createEmptyStall(parent, x, z, woodMat) {
             const stallGroup = new THREE.Group();
             
@@ -937,30 +904,25 @@
             const stallD = 5;
             const stallH = 3;
             
-            // Arka duvar
             const backGeo = new THREE.BoxGeometry(stallW, stallH, 0.15);
             const backWall = new THREE.Mesh(backGeo, woodMat);
             backWall.position.set(0, stallH / 2, -stallD / 2);
             stallGroup.add(backWall);
             
-            // Sol duvar
             const sideGeo = new THREE.BoxGeometry(0.15, stallH, stallD);
             const leftWall = new THREE.Mesh(sideGeo, woodMat);
             leftWall.position.set(-stallW / 2, stallH / 2, 0);
             stallGroup.add(leftWall);
             
-            // Sağ duvar
             const rightWall = new THREE.Mesh(sideGeo, woodMat);
             rightWall.position.set(stallW / 2, stallH / 2, 0);
             stallGroup.add(rightWall);
             
-            // Üst
             const topGeo = new THREE.BoxGeometry(stallW, 0.15, stallD);
             const top = new THREE.Mesh(topGeo, woodMat);
             top.position.set(0, stallH, 0);
             stallGroup.add(top);
             
-            // Önde 3 yatay ahşap çubuk (bölmeyi kapatır)
             for (let i = 0; i < 3; i++) {
                 const railGeo = new THREE.BoxGeometry(stallW, 0.15, 0.15);
                 const rail = new THREE.Mesh(railGeo, woodMat);
@@ -968,7 +930,6 @@
                 stallGroup.add(rail);
             }
             
-            // Saman yatağı
             const beddingMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
             const beddingGeo = new THREE.PlaneGeometry(stallW - 0.5, stallD - 1);
             beddingGeo.rotateX(-Math.PI / 2);
@@ -1850,6 +1811,19 @@
 
         function toggleDoor() {
             doorOpen = !doorOpen;
+            
+            // Kapı açılınca çarpışmayı kaldır, kapatınca geri ekle
+            if (doorCollision) {
+                if (doorOpen) {
+                    const idx = buildings.indexOf(doorCollision);
+                    if (idx !== -1) buildings.splice(idx, 1);
+                } else {
+                    if (buildings.indexOf(doorCollision) === -1) {
+                        buildings.push(doorCollision);
+                    }
+                }
+            }
+            
             if (doorOpen) {
                 interactPromptEl.textContent = 'E - Kapıyı Kapat';
                 mobOpenBtn.textContent = '🔒 KAPAT';
@@ -1874,7 +1848,6 @@
         function startGame(mode) {
             controlMode = mode;
             initWebSocket();
-            // AHIRIN İÇİNDE SPAWN (direk/yalak/bölmelere çarpmayan güvenli açık alan)
             playerDonkey.position.set(SPAWN_X, 0, SPAWN_Z - 2);
             gameStarted = true;
             cameraMode = 'third';
@@ -2004,7 +1977,8 @@
             } else {
                 if (isMouseDown) {
                     yaw -= (e.clientX - mouseX) * 0.005 * sensitivity;
-                    pitch -= (e.clientY - mouseY) * 0.005 * sensitivity;
+                    // DEĞİŞTİ: 3. şahısta ters (aşağı sürükle = yukarı bak)
+                    pitch += (e.clientY - mouseY) * 0.005 * sensitivity;
                     pitch = Math.max(-1.2, Math.min(1.4, pitch));
                     mouseX = e.clientX;
                     mouseY = e.clientY;
@@ -2136,7 +2110,12 @@
             const tY = touch.clientY;
             
             yaw -= (tX - cameraLastX) * 0.005 * sensitivity;
-            pitch -= (tY - cameraLastY) * 0.005 * sensitivity;
+            // DEĞİŞTİ: 3. şahısta ters, 1. şahısta normal
+            if (cameraMode === 'third') {
+                pitch += (tY - cameraLastY) * 0.005 * sensitivity;
+            } else {
+                pitch -= (tY - cameraLastY) * 0.005 * sensitivity;
+            }
             pitch = Math.max(-1.2, Math.min(1.4, pitch));
             
             cameraLastX = tX;
@@ -2415,8 +2394,8 @@
 
                 // KAPI YAKINLIK KONTROLÜ
                 const doorX = SPAWN_X;
-                const doorZ = SPAWN_Z + 11; // depth/2 = 11
-                const DOOR_INTERACT_DIST = 4.5; // mesafe kısaltıldı (önceden 8 idi)
+                const doorZ = SPAWN_Z + 11;
+                const DOOR_INTERACT_DIST = 4.5;
                 
                 const distToDoorReal = Math.sqrt(
                     (playerDonkey.position.x - doorX) ** 2 + 
