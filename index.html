@@ -264,7 +264,6 @@
 
         const MAP_LIMIT = 400;
 
-        // OPTİMİZASYON: Varsayılan chunk 100 (önceki 200)
         let viewDistance = 100;
         let sensitivity = 1.0;
 
@@ -279,12 +278,9 @@
 
         const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, viewDistance);
         
-        // OPTİMİZASYON: antialias kapalı, pixel ratio sınırlı
         const renderer = new THREE.WebGLRenderer({ antialias: false });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         renderer.setSize(window.innerWidth, window.innerHeight);
-        
-        // OPTİMİZASYON: gölgeler kapalı
         renderer.shadowMap.enabled = false;
         
         document.body.appendChild(renderer.domElement);
@@ -292,7 +288,6 @@
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
 
-        // OPTİMİZASYON: gölge yok
         const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
         sunLight.position.set(100, 200, 100);
         scene.add(sunLight);
@@ -359,7 +354,7 @@
         scene.add(terrainMesh);
 
         // ==========================================
-        // DAĞLAR (OPTİMİZASYON: 60 → 40 dağ, sadece 3 seg)
+        // DAĞLAR
         // ==========================================
         const mountains = [];
 
@@ -387,7 +382,7 @@
         }
 
         const mountainRingRadius = MAP_LIMIT - 20;
-        const mountainCount = 40; // 60 → 40
+        const mountainCount = 40;
 
         for (let i = 0; i < mountainCount; i++) {
             const angle = (i / mountainCount) * Math.PI * 2;
@@ -399,14 +394,14 @@
         }
 
         // ==========================================
-        // OTLAR (OPTİMİZASYON: 5000 → 1200, yaprak 4 → 3)
+        // OTLAR
         // ==========================================
         const grassMat1 = new THREE.MeshLambertMaterial({ color: 0x2d7a1e });
         const grassMat2 = new THREE.MeshLambertMaterial({ color: 0x4a9c2a });
         const grassMat3 = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
 
         const grassAreaRadius = MAP_LIMIT - 50;
-        const grassCount = 1200; // 5000 → 1200
+        const grassCount = 1200;
 
         for (let i = 0; i < grassCount; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -425,7 +420,7 @@
             }
             if (inMountain) continue;
 
-            const bladeCount = 3; // 4 → 3
+            const bladeCount = 3;
             const grassGroup = new THREE.Group();
             
             for (let j = 0; j < bladeCount; j++) {
@@ -449,120 +444,664 @@
         }
 
         // ==========================================
-        // AHIR (Spawn Noktası)
+        // AHIR (DETAYLI)
         // ==========================================
         const buildings = [];
 
         function createBarn(x, z) {
             const barnGroup = new THREE.Group();
             
-            const width = 16;
-            const depth = 12;
-            const wallHeight = 6;
+            const width = 20;   // daha geniş
+            const depth = 24;   // daha uzun (resimdeki gibi)
+            const wallHeight = 7;
             
-            const wallMat = new THREE.MeshLambertMaterial({ color: 0x8b3a1a });
-            const wallGeo = new THREE.BoxGeometry(width, wallHeight, depth);
-            const wall = new THREE.Mesh(wallGeo, wallMat);
-            wall.position.y = wallHeight / 2;
-            barnGroup.add(wall);
+            // === MALZEMELER ===
+            const woodDarkMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });  // koyu ahşap
+            const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });      // orta ahşap
+            const woodLightMat = new THREE.MeshLambertMaterial({ color: 0xa87848 }); // açık ahşap
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x4a2a1a });      // çatı
+            const hayMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });       // saman
+            const metalMat = new THREE.MeshLambertMaterial({ color: 0x555555 });     // metal
+            const blackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+            const whiteMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
             
-            const roofMat = new THREE.MeshLambertMaterial({ color: 0x8b1a1a });
-            const roofGeo = new THREE.ConeGeometry(Math.sqrt(width * width + depth * depth) / 2, 5, 4);
-            const roof = new THREE.Mesh(roofGeo, roofMat);
-            roof.position.y = wallHeight + 2.5;
-            roof.rotation.y = Math.PI / 4;
-            barnGroup.add(roof);
+            // === ZEMİN (toprak) ===
+            const floorMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
+            const floorGeo = new THREE.PlaneGeometry(width - 1, depth - 1);
+            floorGeo.rotateX(-Math.PI / 2);
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.position.y = 0.02;
+            barnGroup.add(floor);
             
-            const doorMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
-            const doorGeo = new THREE.PlaneGeometry(4, 4);
-            const door = new THREE.Mesh(doorGeo, doorMat);
-            door.position.set(0, 2, depth / 2 + 0.01);
-            barnGroup.add(door);
+            // === ANA DUVARLAR (ahşap kalaslar) ===
+            // Sol duvar
+            const leftWallGeo = new THREE.BoxGeometry(0.5, wallHeight, depth);
+            const leftWall = new THREE.Mesh(leftWallGeo, woodMat);
+            leftWall.position.set(-width / 2, wallHeight / 2, 0);
+            barnGroup.add(leftWall);
             
-            const doorLineMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-            const doorLineGeo = new THREE.PlaneGeometry(0.15, 4);
-            const doorLine = new THREE.Mesh(doorLineGeo, doorLineMat);
-            doorLine.position.set(0, 2, depth / 2 + 0.02);
-            barnGroup.add(doorLine);
+            // Sağ duvar
+            const rightWallGeo = new THREE.BoxGeometry(0.5, wallHeight, depth);
+            const rightWall = new THREE.Mesh(rightWallGeo, woodMat);
+            rightWall.position.set(width / 2, wallHeight / 2, 0);
+            barnGroup.add(rightWall);
             
-            const handleMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-            const handleGeo = new THREE.CircleGeometry(0.15, 8);
-            const handle1 = new THREE.Mesh(handleGeo, handleMat);
-            handle1.position.set(-0.4, 2, depth / 2 + 0.03);
-            barnGroup.add(handle1);
-            const handle2 = new THREE.Mesh(handleGeo, handleMat);
-            handle2.position.set(0.4, 2, depth / 2 + 0.03);
-            barnGroup.add(handle2);
+            // Arka duvar
+            const backWallGeo = new THREE.BoxGeometry(width, wallHeight, 0.5);
+            const backWall = new THREE.Mesh(backWallGeo, woodMat);
+            backWall.position.set(0, wallHeight / 2, -depth / 2);
+            barnGroup.add(backWall);
             
-            const windowMat2 = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
-            const winGeo = new THREE.PlaneGeometry(1.5, 1.5);
-            const win = new THREE.Mesh(winGeo, windowMat2);
-            win.position.set(-5, 4.5, depth / 2 + 0.01);
-            barnGroup.add(win);
-            const win2 = new THREE.Mesh(winGeo, windowMat2);
-            win2.position.set(5, 4.5, depth / 2 + 0.01);
-            barnGroup.add(win2);
+            // ÖN duvar - iki parça (kapı boşluklu)
+            const frontWallLeftGeo = new THREE.BoxGeometry(width / 2 - 2, wallHeight, 0.5);
+            const frontWallLeft = new THREE.Mesh(frontWallLeftGeo, woodMat);
+            frontWallLeft.position.set(-width / 4 - 1, wallHeight / 2, depth / 2);
+            barnGroup.add(frontWallLeft);
             
-            const horseshoeMat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
-            const horseshoeGeo = new THREE.RingGeometry(0.6, 0.9, 12, 1, 0, Math.PI);
-            const horseshoe = new THREE.Mesh(horseshoeGeo, horseshoeMat);
-            horseshoe.position.set(0, 5.2, depth / 2 + 0.02);
-            barnGroup.add(horseshoe);
+            const frontWallRight = new THREE.Mesh(frontWallLeftGeo, woodMat);
+            frontWallRight.position.set(width / 4 + 1, wallHeight / 2, depth / 2);
+            barnGroup.add(frontWallRight);
             
-            const hayMat = new THREE.MeshLambertMaterial({ color: 0xddc060 });
-            const hayGeo = new THREE.BoxGeometry(2, 1.5, 1.5);
-            const hay1 = new THREE.Mesh(hayGeo, hayMat);
-            hay1.position.set(-8, 0.75, 4);
-            barnGroup.add(hay1);
-            const hay2 = new THREE.Mesh(hayGeo, hayMat);
-            hay2.position.set(-8, 0.75, 6);
-            barnGroup.add(hay2);
-            const hay3 = new THREE.Mesh(hayGeo, hayMat);
-            hay3.position.set(-8, 2.25, 4);
-            barnGroup.add(hay3);
+            // Kapı üstü kiriş
+            const doorTopGeo = new THREE.BoxGeometry(4, wallHeight - 4.5, 0.5);
+            const doorTop = new THREE.Mesh(doorTopGeo, woodMat);
+            doorTop.position.set(0, wallHeight - (wallHeight - 4.5) / 2, depth / 2);
+            barnGroup.add(doorTop);
             
-            const fenceMat = new THREE.MeshLambertMaterial({ color: 0x6a4a2a });
-            const fencePostGeo = new THREE.BoxGeometry(0.3, 2, 0.3);
-            const fenceCount = 12;
-            for (let i = 0; i < fenceCount; i++) {
-                const fencePost = new THREE.Mesh(fencePostGeo, fenceMat);
-                const angle = (i / fenceCount) * Math.PI * 2;
-                fencePost.position.set(
-                    Math.cos(angle) * 20,
-                    1,
-                    Math.sin(angle) * 20
-                );
-                barnGroup.add(fencePost);
+            // === ÇATI (iki eğimli) ===
+            const roofSlopeGeo = new THREE.BoxGeometry(width + 2, 0.3, depth + 2);
+            const roofLeft = new THREE.Mesh(roofSlopeGeo, roofMat);
+            roofLeft.position.set(-width / 4, wallHeight + 1, 0);
+            roofLeft.rotation.z = Math.PI / 8;
+            barnGroup.add(roofLeft);
+            
+            const roofRight = new THREE.Mesh(roofSlopeGeo, roofMat);
+            roofRight.position.set(width / 4, wallHeight + 1, 0);
+            roofRight.rotation.z = -Math.PI / 8;
+            barnGroup.add(roofRight);
+            
+            // Sırt kiriş
+            const roofPeakGeo = new THREE.BoxGeometry(0.5, 0.5, depth + 2);
+            const roofPeak = new THREE.Mesh(roofPeakGeo, woodDarkMat);
+            roofPeak.position.set(0, wallHeight + 2, 0);
+            barnGroup.add(roofPeak);
+            
+            // === AHŞAP KİRİŞLER (tavanda) ===
+            for (let i = 0; i < 5; i++) {
+                const beamZ = -depth / 2 + 2 + i * (depth / 5);
+                const beamGeo = new THREE.BoxGeometry(width, 0.4, 0.4);
+                const beam = new THREE.Mesh(beamGeo, woodDarkMat);
+                beam.position.set(0, wallHeight - 0.5, beamZ);
+                barnGroup.add(beam);
             }
             
-            const railMat = new THREE.MeshLambertMaterial({ color: 0x6a4a2a });
-            const railGeo1 = new THREE.BoxGeometry(0.15, 0.15, 40);
-            const rail1 = new THREE.Mesh(railGeo1, railMat);
-            rail1.position.set(-20, 1.5, 0);
-            barnGroup.add(rail1);
-            const rail2 = new THREE.Mesh(railGeo1, railMat);
-            rail2.position.set(20, 1.5, 0);
-            barnGroup.add(rail2);
-            const railGeo2 = new THREE.BoxGeometry(40, 0.15, 0.15);
-            const rail3 = new THREE.Mesh(railGeo2, railMat);
-            rail3.position.set(0, 1.5, -20);
-            barnGroup.add(rail3);
-            const rail4a = new THREE.Mesh(new THREE.BoxGeometry(15, 0.15, 0.15), railMat);
-            rail4a.position.set(-12, 1.5, 20);
-            barnGroup.add(rail4a);
-            const rail4b = new THREE.Mesh(new THREE.BoxGeometry(15, 0.15, 0.15), railMat);
-            rail4b.position.set(12, 1.5, 20);
-            barnGroup.add(rail4b);
+            // Dikey destek kirişleri
+            const colGeo = new THREE.BoxGeometry(0.5, wallHeight, 0.5);
+            // Sol kolon
+            const colL1 = new THREE.Mesh(colGeo, woodDarkMat);
+            colL1.position.set(-width / 2 + 1, wallHeight / 2, -depth / 2 + 2);
+            barnGroup.add(colL1);
+            const colL2 = new THREE.Mesh(colGeo, woodDarkMat);
+            colL2.position.set(-width / 2 + 1, wallHeight / 2, depth / 2 - 2);
+            barnGroup.add(colL2);
+            // Sağ kolon
+            const colR1 = new THREE.Mesh(colGeo, woodDarkMat);
+            colR1.position.set(width / 2 - 1, wallHeight / 2, -depth / 2 + 2);
+            barnGroup.add(colR1);
+            const colR2 = new THREE.Mesh(colGeo, woodDarkMat);
+            colR2.position.set(width / 2 - 1, wallHeight / 2, depth / 2 - 2);
+            barnGroup.add(colR2);
+            
+            // === AT BÖLMELERİ (sol taraf) ===
+            // Bölme 1 (ön)
+            createHorseStall(barnGroup, -width / 2 + 4, -depth / 2 + 5, woodDarkMat, metalMat);
+            // Bölme 2 (arka)
+            createHorseStall(barnGroup, -width / 2 + 4, -depth / 2 + 13, woodDarkMat, metalMat);
+            
+            // === HAYVAN BÖLMELERİ (sağ taraf) ===
+            // Ahşap çit (sağ taraf)
+            for (let i = 0; i < 3; i++) {
+                const railZ = -depth / 2 + 5 + i * 3;
+                const railGeo = new THREE.BoxGeometry(0.3, 0.3, width / 2 - 2);
+                const rail = new THREE.Mesh(railGeo, woodLightMat);
+                rail.position.set(width / 2 - 4, 1.5 + i * 0.6, -depth / 2 + 8);
+                barnGroup.add(rail);
+            }
+            // Çit dikmeleri
+            for (let i = 0; i < 5; i++) {
+                const postZ = -depth / 2 + 4 + i * 3;
+                const postGeo = new THREE.BoxGeometry(0.4, 3, 0.4);
+                const post = new THREE.Mesh(postGeo, woodLightMat);
+                post.position.set(width / 2 - 2, 1.5, postZ);
+                barnGroup.add(post);
+            }
+            
+            // === ARKA DUVARDA SAMAN RAFI ===
+            for (let i = 0; i < 4; i++) {
+                const shelfGeo = new THREE.BoxGeometry(width - 2, 0.3, 1.5);
+                const shelf = new THREE.Mesh(shelfGeo, woodDarkMat);
+                shelf.position.set(0, wallHeight - 2, -depth / 2 + 0.8);
+                barnGroup.add(shelf);
+                break; // sadece bir raf
+            }
+            
+            // === SAMAN BALYALARI (üst rafta) ===
+            for (let i = 0; i < 6; i++) {
+                const hayGeo = new THREE.BoxGeometry(2, 1.2, 1.2);
+                const hay = new THREE.Mesh(hayGeo, hayMat);
+                hay.position.set(
+                    -width / 2 + 3 + i * 2.5,
+                    wallHeight - 1.2,
+                    -depth / 2 + 0.8
+                );
+                barnGroup.add(hay);
+            }
+            // İkinci sıra
+            for (let i = 0; i < 6; i++) {
+                const hayGeo = new THREE.BoxGeometry(2, 1.2, 1.2);
+                const hay = new THREE.Mesh(hayGeo, hayMat);
+                hay.position.set(
+                    -width / 2 + 3 + i * 2.5,
+                    wallHeight - 2.4,
+                    -depth / 2 + 0.8
+                );
+                barnGroup.add(hay);
+            }
+            
+            // === YERDEKİ SAMAN YIĞINI ===
+            for (let i = 0; i < 8; i++) {
+                const hayGeo = new THREE.BoxGeometry(1.5, 1, 1);
+                const hay = new THREE.Mesh(hayGeo, hayMat);
+                hay.position.set(
+                    width / 2 - 4 + (Math.random() - 0.5) * 2,
+                    0.5,
+                    -depth / 2 + 3 + i * 1.5
+                );
+                hay.rotation.y = Math.random() * 0.3;
+                barnGroup.add(hay);
+            }
+            
+            // === ATLAR ===
+            // Sol bölmedeki kızıl at
+            createHorse(barnGroup, -width / 2 + 4, -depth / 2 + 5, 0xa85a2a);
+            // Arka bölmedeki gri at
+            createHorse(barnGroup, -width / 2 + 4, -depth / 2 + 13, 0x888888);
+            
+            // === İNEK (sağ tarafta) ===
+            createCow(barnGroup, width / 2 - 4, -depth / 2 + 6);
+            
+            // === KOYUNLAR (sağ tarafta) ===
+            createSheep(barnGroup, width / 2 - 4, -depth / 2 + 14);
+            createSheep(barnGroup, width / 2 - 3, -depth / 2 + 16);
+            
+            // === KAPILAR (çift açık kapı) ===
+            // Sol kapı
+            const doorLeftGeo = new THREE.BoxGeometry(1.8, 4.5, 0.2);
+            const doorLeft = new THREE.Mesh(doorLeftGeo, woodDarkMat);
+            doorLeft.position.set(-1, 2.25, depth / 2 + 0.3);
+            doorLeft.rotation.y = -Math.PI / 3;
+            barnGroup.add(doorLeft);
+            // Sağ kapı
+            const doorRight = new THREE.Mesh(doorLeftGeo, woodDarkMat);
+            doorRight.position.set(1, 2.25, depth / 2 + 0.3);
+            doorRight.rotation.y = Math.PI / 3;
+            barnGroup.add(doorRight);
+            
+            // === PENCERELER (ışık gelen) ===
+            const windowLightMat = new THREE.MeshBasicMaterial({ color: 0xfff5c0 });
+            // Sol duvarda 2 pencere
+            const winLGeo = new THREE.PlaneGeometry(1.5, 2);
+            const winL1 = new THREE.Mesh(winLGeo, windowLightMat);
+            winL1.position.set(-width / 2 + 0.26, 4.5, -depth / 2 + 4);
+            winL1.rotation.y = Math.PI / 2;
+            barnGroup.add(winL1);
+            const winL2 = new THREE.Mesh(winLGeo, windowLightMat);
+            winL2.position.set(-width / 2 + 0.26, 4.5, depth / 2 - 4);
+            winL2.rotation.y = Math.PI / 2;
+            barnGroup.add(winL2);
+            
+            // Sağ duvarda 2 pencere
+            const winR1 = new THREE.Mesh(winLGeo, windowLightMat);
+            winR1.position.set(width / 2 - 0.26, 4.5, -depth / 2 + 4);
+            winR1.rotation.y = -Math.PI / 2;
+            barnGroup.add(winR1);
+            const winR2 = new THREE.Mesh(winLGeo, windowLightMat);
+            winR2.position.set(width / 2 - 0.26, 4.5, depth / 2 - 4);
+            winR2.rotation.y = -Math.PI / 2;
+            barnGroup.add(winR2);
+            
+            // === EĞERLER VE HALATLAR (duvarda) ===
+            // Eğer (üstteki raf)
+            const saddleMat = new THREE.MeshLambertMaterial({ color: 0x5a2a1a });
+            const saddleGeo = new THREE.BoxGeometry(0.8, 0.3, 0.5);
+            for (let i = 0; i < 4; i++) {
+                const saddle = new THREE.Mesh(saddleGeo, saddleMat);
+                saddle.position.set(-width / 2 + 1.5, wallHeight - 2.5, -depth / 2 + 3 + i * 2);
+                barnGroup.add(saddle);
+            }
+            
+            // Halat (daire)
+            const ropeMat = new THREE.MeshLambertMaterial({ color: 0x8a6a3a });
+            const ropeGeo = new THREE.TorusGeometry(0.4, 0.08, 6, 12);
+            for (let i = 0; i < 3; i++) {
+                const rope = new THREE.Mesh(ropeGeo, ropeMat);
+                rope.position.set(width / 2 - 1.5, wallHeight - 3, -depth / 2 + 5 + i * 2);
+                barnGroup.add(rope);
+            }
+            
+            // === KOVALAR ===
+            const bucketMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+            const bucketGeo = new THREE.CylinderGeometry(0.4, 0.35, 0.7, 8);
+            const bucket1 = new THREE.Mesh(bucketGeo, bucketMat);
+            bucket1.position.set(-width / 2 + 5, 0.35, -depth / 2 + 3);
+            barnGroup.add(bucket1);
+            const bucket2 = new THREE.Mesh(bucketGeo, bucketMat);
+            bucket2.position.set(width / 2 - 3, 0.35, depth / 2 - 3);
+            barnGroup.add(bucket2);
+            
+            // === AHŞAP ÇİT (dış, gerçekçi) ===
+            createRealisticFence(barnGroup, width, depth, woodLightMat, woodDarkMat);
             
             barnGroup.position.set(x, 0, z);
             scene.add(barnGroup);
             
-            buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
-            buildings.push({ x: x - 20, z: z, halfW: 0.5, halfD: 20 });
-            buildings.push({ x: x + 20, z: z, halfW: 0.5, halfD: 20 });
-            buildings.push({ x: x, z: z - 20, halfW: 20, halfD: 0.5 });
-            buildings.push({ x: x - 12, z: z + 20, halfW: 7.5, halfD: 0.5 });
-            buildings.push({ x: x + 12, z: z + 20, halfW: 7.5, halfD: 0.5 });
+            // === ÇARPIŞMA ===
+            buildings.push({ x, z, halfW: width / 2 + 1, halfD: depth / 2 + 1 });
+        }
+        
+        // AT BÖLMESİ (stall)
+        function createHorseStall(parent, x, z, woodMat, metalMat) {
+            const stallGroup = new THREE.Group();
+            
+            const stallW = 3.5;
+            const stallD = 6;
+            const stallH = 3;
+            
+            // Arka duvar
+            const backGeo = new THREE.BoxGeometry(stallW, stallH, 0.2);
+            const backWall = new THREE.Mesh(backGeo, woodMat);
+            backWall.position.set(0, stallH / 2, -stallD / 2);
+            stallGroup.add(backWall);
+            
+            // Sol duvar
+            const sideGeo = new THREE.BoxGeometry(0.2, stallH, stallD);
+            const leftWall = new THREE.Mesh(sideGeo, woodMat);
+            leftWall.position.set(-stallW / 2, stallH / 2, 0);
+            stallGroup.add(leftWall);
+            
+            // Üst kısım (ahşap)
+            const topGeo = new THREE.BoxGeometry(stallW, 0.2, stallD);
+            const top = new THREE.Mesh(topGeo, woodMat);
+            top.position.set(0, stallH, 0);
+            stallGroup.add(top);
+            
+            // Ön demir parmaklıklar (metal çubuklar)
+            for (let i = 0; i < 6; i++) {
+                const barGeo = new THREE.CylinderGeometry(0.06, 0.06, stallH - 0.5, 6);
+                const bar = new THREE.Mesh(barGeo, metalMat);
+                bar.position.set(
+                    -stallW / 2 + 0.3 + i * (stallW / 6),
+                    (stallH - 0.5) / 2,
+                    stallD / 2
+                );
+                stallGroup.add(bar);
+            }
+            // Yatay metal çubuk
+            const railGeo = new THREE.CylinderGeometry(0.06, 0.06, stallW, 6);
+            const rail1 = new THREE.Mesh(railGeo, metalMat);
+            rail1.rotation.z = Math.PI / 2;
+            rail1.position.set(0, stallH - 0.5, stallD / 2);
+            stallGroup.add(rail1);
+            
+            const rail2 = new THREE.Mesh(railGeo, metalMat);
+            rail2.rotation.z = Math.PI / 2;
+            rail2.position.set(0, 1.2, stallD / 2);
+            stallGroup.add(rail2);
+            
+            // Saman yatağı (içeride)
+            const beddingMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
+            const beddingGeo = new THREE.PlaneGeometry(stallW - 0.5, stallD - 1);
+            beddingGeo.rotateX(-Math.PI / 2);
+            const bedding = new THREE.Mesh(beddingGeo, beddingMat);
+            bedding.position.set(0, 0.05, 0);
+            stallGroup.add(bedding);
+            
+            stallGroup.position.set(x, 0, z);
+            parent.add(stallGroup);
+        }
+        
+        // AT
+        function createHorse(parent, x, z, color) {
+            const horseGroup = new THREE.Group();
+            
+            const bodyMat = new THREE.MeshLambertMaterial({ color: color });
+            const darkMat = new THREE.MeshLambertMaterial({ color: 0x2a1a0a });
+            const maneMat = new THREE.MeshLambertMaterial({ color: 0x1a0a00 });
+            
+            // Gövde
+            const bodyGeo = new THREE.BoxGeometry(1.2, 1.4, 2.8);
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 1.5;
+            horseGroup.add(body);
+            
+            // Göğüs (öne doğru)
+            const chestGeo = new THREE.BoxGeometry(1.3, 1.5, 0.8);
+            const chest = new THREE.Mesh(chestGeo, bodyMat);
+            chest.position.set(0, 1.6, 1.2);
+            horseGroup.add(chest);
+            
+            // Boyun
+            const neckGeo = new THREE.BoxGeometry(0.8, 1.2, 0.9);
+            const neck = new THREE.Mesh(neckGeo, bodyMat);
+            neck.position.set(0, 2.4, 1.6);
+            neck.rotation.x = -0.3;
+            horseGroup.add(neck);
+            
+            // Kafa
+            const headGeo = new THREE.BoxGeometry(0.7, 0.7, 1.1);
+            const head = new THREE.Mesh(headGeo, bodyMat);
+            head.position.set(0, 3, 2.3);
+            horseGroup.add(head);
+            
+            // Burun
+            const muzzleGeo = new THREE.BoxGeometry(0.6, 0.5, 0.5);
+            const muzzle = new THREE.Mesh(muzzleGeo, darkMat);
+            muzzle.position.set(0, 2.85, 2.85);
+            horseGroup.add(muzzle);
+            
+            // Kulaklar
+            const earGeo = new THREE.ConeGeometry(0.15, 0.5, 4);
+            const ear1 = new THREE.Mesh(earGeo, bodyMat);
+            ear1.position.set(-0.2, 3.45, 2.1);
+            horseGroup.add(ear1);
+            const ear2 = new THREE.Mesh(earGeo, bodyMat);
+            ear2.position.set(0.2, 3.45, 2.1);
+            horseGroup.add(ear2);
+            
+            // Yele (boyun üstü)
+            const maneGeo = new THREE.BoxGeometry(0.15, 0.3, 1.2);
+            const mane = new THREE.Mesh(maneGeo, maneMat);
+            mane.position.set(0, 3, 1.5);
+            mane.rotation.x = -0.3;
+            horseGroup.add(mane);
+            
+            // Bacaklar (4)
+            const legGeo = new THREE.BoxGeometry(0.35, 1.5, 0.35);
+            const legPositions = [
+                [-0.45, 0.75, 1],
+                [0.45, 0.75, 1],
+                [-0.45, 0.75, -1],
+                [0.45, 0.75, -1]
+            ];
+            for (let pos of legPositions) {
+                const leg = new THREE.Mesh(legGeo, bodyMat);
+                leg.position.set(pos[0], pos[1], pos[2]);
+                horseGroup.add(leg);
+                
+                // Tırnak
+                const hoofGeo = new THREE.BoxGeometry(0.4, 0.2, 0.4);
+                const hoof = new THREE.Mesh(hoofGeo, darkMat);
+                hoof.position.set(pos[0], 0.1, pos[2]);
+                horseGroup.add(hoof);
+            }
+            
+            // Kuyruk
+            const tailGeo = new THREE.BoxGeometry(0.2, 1.2, 0.2);
+            const tail = new THREE.Mesh(tailGeo, maneMat);
+            tail.position.set(0, 1.5, -1.6);
+            tail.rotation.x = 0.3;
+            horseGroup.add(tail);
+            
+            horseGroup.position.set(x, 0, z);
+            horseGroup.rotation.y = Math.PI; // Öne baksın (kapıya doğru)
+            parent.add(horseGroup);
+        }
+        
+        // İNEK
+        function createCow(parent, x, z) {
+            const cowGroup = new THREE.Group();
+            
+            const whiteMat = new THREE.MeshLambertMaterial({ color: 0xf5f5f5 });
+            const brownMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+            const blackMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+            
+            // Gövde
+            const bodyGeo = new THREE.BoxGeometry(1.3, 1.4, 2.2);
+            const body = new THREE.Mesh(bodyGeo, whiteMat);
+            body.position.y = 1.3;
+            cowGroup.add(body);
+            
+            // Kahverengi yamalar
+            const patch1Geo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+            const patch1 = new THREE.Mesh(patch1Geo, brownMat);
+            patch1.position.set(0.7, 1.5, 0.5);
+            cowGroup.add(patch1);
+            
+            const patch2Geo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+            const patch2 = new THREE.Mesh(patch2Geo, brownMat);
+            patch2.position.set(0.7, 1.2, -0.6);
+            cowGroup.add(patch2);
+            
+            // Kafa
+            const headGeo = new THREE.BoxGeometry(0.8, 0.8, 0.9);
+            const head = new THREE.Mesh(headGeo, whiteMat);
+            head.position.set(0, 1.5, 1.4);
+            cowGroup.add(head);
+            
+            // Burun (pembe)
+            const noseMat = new THREE.MeshLambertMaterial({ color: 0xffaaaa });
+            const noseGeo = new THREE.BoxGeometry(0.7, 0.4, 0.3);
+            const nose = new THREE.Mesh(noseGeo, noseMat);
+            nose.position.set(0, 1.3, 1.85);
+            cowGroup.add(nose);
+            
+            // Boynuzlar
+            const hornGeo = new THREE.ConeGeometry(0.1, 0.4, 6);
+            const hornMat = new THREE.MeshLambertMaterial({ color: 0xdddddd });
+            const horn1 = new THREE.Mesh(hornGeo, hornMat);
+            horn1.position.set(-0.35, 2, 1.3);
+            horn1.rotation.z = 0.4;
+            cowGroup.add(horn1);
+            const horn2 = new THREE.Mesh(hornGeo, hornMat);
+            horn2.position.set(0.35, 2, 1.3);
+            horn2.rotation.z = -0.4;
+            cowGroup.add(horn2);
+            
+            // Gözler
+            const eyeGeo = new THREE.SphereGeometry(0.08, 6, 6);
+            const eye1 = new THREE.Mesh(eyeGeo, blackMat);
+            eye1.position.set(-0.25, 1.6, 1.85);
+            cowGroup.add(eye1);
+            const eye2 = new THREE.Mesh(eyeGeo, blackMat);
+            eye2.position.set(0.25, 1.6, 1.85);
+            cowGroup.add(eye2);
+            
+            // Bacaklar
+            const legGeo = new THREE.BoxGeometry(0.3, 1.3, 0.3);
+            const legPositions = [
+                [-0.45, 0.65, 0.7],
+                [0.45, 0.65, 0.7],
+                [-0.45, 0.65, -0.7],
+                [0.45, 0.65, -0.7]
+            ];
+            for (let pos of legPositions) {
+                const leg = new THREE.Mesh(legGeo, whiteMat);
+                leg.position.set(pos[0], pos[1], pos[2]);
+                cowGroup.add(leg);
+            }
+            
+            // Kuyruk
+            const tailGeo = new THREE.BoxGeometry(0.15, 0.8, 0.15);
+            const tail = new THREE.Mesh(tailGeo, whiteMat);
+            tail.position.set(0, 1.2, -1.2);
+            cowGroup.add(tail);
+            
+            cowGroup.position.set(x, 0, z);
+            cowGroup.rotation.y = -Math.PI / 2;
+            parent.add(cowGroup);
+        }
+        
+        // KOYUN
+        function createSheep(parent, x, z) {
+            const sheepGroup = new THREE.Group();
+            
+            const woolMat = new THREE.MeshLambertMaterial({ color: 0xeeeecc });
+            const skinMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            const whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            
+            // Gövde (yün)
+            const bodyGeo = new THREE.SphereGeometry(0.6, 8, 8);
+            const body = new THREE.Mesh(bodyGeo, woolMat);
+            body.position.y = 0.9;
+            body.scale.set(1, 1.2, 1.4);
+            sheepGroup.add(body);
+            
+            // Kafa
+            const headGeo = new THREE.BoxGeometry(0.4, 0.5, 0.6);
+            const head = new THREE.Mesh(headGeo, skinMat);
+            head.position.set(0, 1.1, 0.7);
+            sheepGroup.add(head);
+            
+            // Yüz yünü
+            const faceWoolGeo = new THREE.SphereGeometry(0.3, 6, 6);
+            const faceWool = new THREE.Mesh(faceWoolGeo, woolMat);
+            faceWool.position.set(0, 1.2, 0.6);
+            sheepGroup.add(faceWool);
+            
+            // Kulaklar
+            const earGeo = new THREE.BoxGeometry(0.15, 0.15, 0.3);
+            const ear1 = new THREE.Mesh(earGeo, skinMat);
+            ear1.position.set(-0.25, 1.25, 0.65);
+            ear1.rotation.z = 0.3;
+            sheepGroup.add(ear1);
+            const ear2 = new THREE.Mesh(earGeo, skinMat);
+            ear2.position.set(0.25, 1.25, 0.65);
+            ear2.rotation.z = -0.3;
+            sheepGroup.add(ear2);
+            
+            // Bacaklar (4)
+            const legGeo = new THREE.BoxGeometry(0.15, 0.7, 0.15);
+            const legPositions = [
+                [-0.3, 0.35, 0.4],
+                [0.3, 0.35, 0.4],
+                [-0.3, 0.35, -0.4],
+                [0.3, 0.35, -0.4]
+            ];
+            for (let pos of legPositions) {
+                const leg = new THREE.Mesh(legGeo, skinMat);
+                leg.position.set(pos[0], pos[1], pos[2]);
+                sheepGroup.add(leg);
+            }
+            
+            sheepGroup.position.set(x, 0, z);
+            sheepGroup.rotation.y = Math.random() * Math.PI * 2;
+            parent.add(sheepGroup);
+        }
+        
+        // GERÇEKÇİ AHŞAP ÇİT
+        function createRealisticFence(parent, width, depth, woodLightMat, woodDarkMat) {
+            const fenceGroup = new THREE.Group();
+            
+            const fenceOffset = 20;
+            const postSpacing = 4;
+            const postHeight = 2;
+            const railHeight1 = 0.7;
+            const railHeight2 = 1.4;
+            
+            // ÖN ÇİT (kapı boşluklu)
+            // Sol ön çit
+            for (let x = -fenceOffset; x < -3; x += postSpacing) {
+                const postGeo = new THREE.BoxGeometry(0.3, postHeight, 0.3);
+                const post = new THREE.Mesh(postGeo, woodDarkMat);
+                post.position.set(x, postHeight / 2, fenceOffset);
+                fenceGroup.add(post);
+            }
+            // Sağ ön çit
+            for (let x = 3; x <= fenceOffset; x += postSpacing) {
+                const postGeo = new THREE.BoxGeometry(0.3, postHeight, 0.3);
+                const post = new THREE.Mesh(postGeo, woodDarkMat);
+                post.position.set(x, postHeight / 2, fenceOffset);
+                fenceGroup.add(post);
+            }
+            
+            // Yatay çubuklar (ön)
+            // Sol
+            const railGeoFrontL = new THREE.BoxGeometry(17, 0.15, 0.15);
+            const railFL1 = new THREE.Mesh(railGeoFrontL, woodLightMat);
+            railFL1.position.set(-11.5, railHeight1, fenceOffset);
+            fenceGroup.add(railFL1);
+            const railFL2 = new THREE.Mesh(railGeoFrontL, woodLightMat);
+            railFL2.position.set(-11.5, railHeight2, fenceOffset);
+            fenceGroup.add(railFL2);
+            // Sağ
+            const railGeoFrontR = new THREE.BoxGeometry(17, 0.15, 0.15);
+            const railFR1 = new THREE.Mesh(railGeoFrontR, woodLightMat);
+            railFR1.position.set(11.5, railHeight1, fenceOffset);
+            fenceGroup.add(railFR1);
+            const railFR2 = new THREE.Mesh(railGeoFrontR, woodLightMat);
+            railFR2.position.set(11.5, railHeight2, fenceOffset);
+            fenceGroup.add(railFR2);
+            
+            // ARKA ÇİT
+            for (let x = -fenceOffset; x <= fenceOffset; x += postSpacing) {
+                const postGeo = new THREE.BoxGeometry(0.3, postHeight, 0.3);
+                const post = new THREE.Mesh(postGeo, woodDarkMat);
+                post.position.set(x, postHeight / 2, -fenceOffset);
+                fenceGroup.add(post);
+            }
+            const railGeoBack = new THREE.BoxGeometry(fenceOffset * 2, 0.15, 0.15);
+            const railB1 = new THREE.Mesh(railGeoBack, woodLightMat);
+            railB1.position.set(0, railHeight1, -fenceOffset);
+            fenceGroup.add(railB1);
+            const railB2 = new THREE.Mesh(railGeoBack, woodLightMat);
+            railB2.position.set(0, railHeight2, -fenceOffset);
+            fenceGroup.add(railB2);
+            
+            // SOL ÇİT
+            for (let z = -fenceOffset; z <= fenceOffset; z += postSpacing) {
+                const postGeo = new THREE.BoxGeometry(0.3, postHeight, 0.3);
+                const post = new THREE.Mesh(postGeo, woodDarkMat);
+                post.position.set(-fenceOffset, postHeight / 2, z);
+                fenceGroup.add(post);
+            }
+            const railGeoSide = new THREE.BoxGeometry(0.15, 0.15, fenceOffset * 2);
+            const railS1 = new THREE.Mesh(railGeoSide, woodLightMat);
+            railS1.position.set(-fenceOffset, railHeight1, 0);
+            fenceGroup.add(railS1);
+            const railS2 = new THREE.Mesh(railGeoSide, woodLightMat);
+            railS2.position.set(-fenceOffset, railHeight2, 0);
+            fenceGroup.add(railS2);
+            
+            // SAĞ ÇİT
+            for (let z = -fenceOffset; z <= fenceOffset; z += postSpacing) {
+                const postGeo = new THREE.BoxGeometry(0.3, postHeight, 0.3);
+                const post = new THREE.Mesh(postGeo, woodDarkMat);
+                post.position.set(fenceOffset, postHeight / 2, z);
+                fenceGroup.add(post);
+            }
+            const railSR1 = new THREE.Mesh(railGeoSide, woodLightMat);
+            railSR1.position.set(fenceOffset, railHeight1, 0);
+            fenceGroup.add(railSR1);
+            const railSR2 = new THREE.Mesh(railGeoSide, woodLightMat);
+            railSR2.position.set(fenceOffset, railHeight2, 0);
+            fenceGroup.add(railSR2);
+            
+            // ÇİT KÖŞE DESTEK (X şeklinde)
+            const bracePositions = [
+                [-fenceOffset, 0, fenceOffset],
+                [fenceOffset, 0, fenceOffset],
+                [-fenceOffset, 0, -fenceOffset],
+                [fenceOffset, 0, -fenceOffset]
+            ];
+            for (let pos of bracePositions) {
+                const braceGeo = new THREE.BoxGeometry(0.2, 2.2, 0.2);
+                const brace = new THREE.Mesh(braceGeo, woodDarkMat);
+                brace.position.set(pos[0] + (pos[0] > 0 ? -0.5 : 0.5), 1.1, pos[2]);
+                brace.rotation.z = pos[0] > 0 ? Math.PI / 6 : -Math.PI / 6;
+                fenceGroup.add(brace);
+            }
+            
+            parent.add(fenceGroup);
         }
 
         createBarn(SPAWN_X, SPAWN_Z);
@@ -597,7 +1136,6 @@
             road.position.set(CITY_CENTER_X, 0.03, roadZ);
             scene.add(road);
             
-            // OPTİMİZASYON: çizgi sayısı yarıya düşürüldü
             const dashCount = Math.floor(cityWidth / 12);
             for (let d = 0; d < dashCount; d++) {
                 const dashGeo = new THREE.PlaneGeometry(3, 0.4);
@@ -634,7 +1172,6 @@
             }
         }
 
-        // Kaldırımlar
         for (let bx = 0; bx < gridCount; bx++) {
             for (let bz = 0; bz < gridCount; bz++) {
                 const blockCenterX = firstBlockCenterX + bx * GRID_STEP;
@@ -666,7 +1203,6 @@
 
         const windowMat = new THREE.MeshBasicMaterial({ color: 0xffff99 });
 
-        // OPTİMİZASYON: Pencereler azaltıldı (2 cephe, her cephede az)
         function createSkyscraper(x, z, width, depth, height, color) {
             const group = new THREE.Group();
             
@@ -676,7 +1212,6 @@
             body.position.y = height / 2;
             group.add(body);
             
-            // OPTİMİZASYON: Sadece 2 cephede pencere, kat sayısı /2
             const floors = Math.floor(height / 6);
             const colsX = Math.floor(width / 5);
             
@@ -695,7 +1230,6 @@
                 }
             }
             
-            // Anten (sadece çok yüksek binalarda)
             if (height > 60) {
                 const antennaGeo = new THREE.CylinderGeometry(0.15, 0.15, 8, 4);
                 const antennaMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
@@ -709,7 +1243,6 @@
             buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
         }
 
-        // OPTİMİZASYON: Ev pencereleri 5 → 2
         function createHouse(x, z, width, depth, color) {
             const group = new THREE.Group();
             const height = 8;
@@ -734,7 +1267,6 @@
             door.position.set(0, 1.5, depth / 2 + 0.01);
             group.add(door);
             
-            // Sadece 2 pencere
             const winGeo = new THREE.PlaneGeometry(1.2, 1.2);
             const win1 = new THREE.Mesh(winGeo, windowMat);
             win1.position.set(-width / 2 + 1.5, 5, depth / 2 + 0.01);
@@ -808,7 +1340,6 @@
                 group.add(line2);
             }
             
-            // Sadece 2 araba
             const carColors = [0xcc4444, 0x4444cc];
             for (let i = 0; i < 2; i++) {
                 const carColor = carColors[i];
@@ -895,7 +1426,6 @@
             const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
             const leafMat = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
             
-            // OPTİMİZASYON: 4 → 2 ağaç
             const treePositions = [
                 [-width/3, -depth/3],
                 [ width/3,  depth/3]
@@ -1016,9 +1546,6 @@
             }
         }
 
-        // ==========================================
-        // SOKAK LAMBALARI (OPTİMİZASYON: 144 → 36)
-        // ==========================================
         const lampPoleMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
         const lampLightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
 
@@ -1036,7 +1563,6 @@
             scene.add(lampGroup);
         }
 
-        // OPTİMİZASYON: Her kavşağa sadece 1 lamba
         for (let i = 0; i <= gridCount; i++) {
             for (let j = 0; j <= gridCount; j++) {
                 const interX = CITY_CENTER_X - cityWidth / 2 + ROAD_WIDTH / 2 + i * (ROAD_WIDTH + BLOCK_TOTAL);
@@ -1045,9 +1571,6 @@
             }
         }
 
-        // ==========================================
-        // ŞEHİR DIŞI AĞAÇLAR (OPTİMİZASYON: 300 → 80)
-        // ==========================================
         const treeTrunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
         const treeLeafMat = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
 
@@ -1092,9 +1615,6 @@
             createTree(x, z);
         }
 
-        // ==========================================
-        // BULUTLAR (OPTİMİZASYON: 20 → 8)
-        // ==========================================
         const clouds = [];
         const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
 
@@ -1124,9 +1644,6 @@
             createCloud(x, y, z);
         }
 
-        // ==========================================
-        // KUŞLAR (OPTİMİZASYON: 25 → 10)
-        // ==========================================
         const birds = [];
         const birdMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
 
@@ -1164,9 +1681,6 @@
             birds.push(bird);
         }
 
-        // ==========================================
-        // EŞEK MODELİ
-        // ==========================================
         function createDonkeyModel() {
             const donkeyGroup = new THREE.Group();
             const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
