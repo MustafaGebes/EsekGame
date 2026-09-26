@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eşek Game - Gözden Bakış</title>
+    <title>Eşek Game - 3. Şahıs & Online Hazırlık</title>
     <style>
         body {
             margin: 0;
@@ -148,16 +148,6 @@
         }
 
         .health-fill { background-color: #e74c3c; }
-
-        @keyframes flashing {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.2; transform: scale(1.1); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-
-        .flashing {
-            animation: flashing 0.5s infinite ease-in-out;
-        }
     </style>
 </head>
 <body>
@@ -169,8 +159,8 @@
 
     <div id="menu">
         <h1>Eşek Game</h1>
-        <h2>Göz Hizası Kamera Modu</h2>
-        <button id="startBtn" class="btn btn-green selected">BAŞLA</button>
+        <h2>3. Şahıs & Ortak Alan Modu</h2>
+        <button id="startBtn" class="btn btn-green selected">BAŞLA (ORTAK ALAN)</button>
     </div>
 
     <div id="pauseMenu">
@@ -185,7 +175,7 @@
         <button id="deathMainMenuBtn" class="btn btn-red">Menüye Dön</button>
     </div>
 
-    <div id="info">W,A,S,D: Yürü | Space: Zıpla | ESC: Duraklat</div>
+    <div id="info">W,A,S,D: Yürü | Fare: Etrafa Bak | Space: Zıpla | ESC: Duraklat</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
@@ -216,10 +206,12 @@
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
+        // --- ORTAK BAŞLANGIÇ NOKTASI (LOBİ / SPAWN) ---
+        const SPAWN_POINT = { x: 0, y: 0, z: 0 };
+
         // --- EŞEK MODELİ ---
         const donkeyGroup = new THREE.Group();
         const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
-        const darkGreyMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
         const muzzleMat = new THREE.MeshLambertMaterial({ color: 0xdddddd });
         const blackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
 
@@ -268,20 +260,17 @@
             donkeyGroup.add(legGroup);
         });
 
-        donkeyGroup.position.set(0, 0, 0);
+        donkeyGroup.position.set(SPAWN_POINT.x, SPAWN_POINT.y, SPAWN_POINT.z);
         scene.add(donkeyGroup);
 
         let gameStarted = false, isPaused = false, isDead = false;
-        let yaw = 0, pitch = 0.0, velocityY = 0;
+        let yaw = 0, pitch = 0.3, velocityY = 0;
         let isGrounded = true;
-        let health = 18;
 
-        const keys = { w: false, a: false, s: false, d: false, space: false };
+        const keys = { w: false, a: false, s: false, d: false };
 
-        // UI Elemanları
         const menuEl = document.getElementById('menu');
         const pauseMenuEl = document.getElementById('pauseMenu');
-        const deathMenuEl = document.getElementById('deathMenu');
         const infoEl = document.getElementById('info');
         const hudEl = document.getElementById('hud');
 
@@ -290,6 +279,11 @@
             infoEl.style.display = 'block';
             hudEl.style.display = 'block';
             gameStarted = true;
+            
+            donkeyGroup.position.set(SPAWN_POINT.x, SPAWN_POINT.y, SPAWN_POINT.z);
+            yaw = 0;
+            pitch = 0.3;
+
             document.body.requestPointerLock();
         });
 
@@ -303,7 +297,7 @@
             if (document.pointerLockElement === document.body && gameStarted && !isPaused && !isDead) {
                 yaw -= e.movementX * 0.003;
                 pitch -= e.movementY * 0.003;
-                pitch = Math.max(-1.0, Math.min(1.0, pitch)); // Göz hizası için dikey bakış sınırı
+                pitch = Math.max(-0.2, Math.min(1.2, pitch));
             }
         });
 
@@ -335,12 +329,10 @@
             if (k === 'd') keys.d = false;
         });
 
-        // Oyun Döngüsü
         function animate() {
             requestAnimationFrame(animate);
 
             if (gameStarted && !isPaused && !isDead) {
-                // Hareket Mantığı
                 const speed = 0.12;
                 let moveX = 0, moveZ = 0;
                 if (keys.w) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; }
@@ -352,7 +344,6 @@
                 donkeyGroup.position.z += moveZ;
                 donkeyGroup.rotation.y = yaw;
 
-                // Yerçekimi ve Zıplama
                 velocityY -= 0.015;
                 donkeyGroup.position.y += velocityY;
                 if (donkeyGroup.position.y <= 0) {
@@ -361,22 +352,22 @@
                     isGrounded = true;
                 }
 
-                // --- GÖZ HİZASI (FIRST-PERSON) KAMERA KONUMLANDIRMASI ---
-                // Kamera doğrudan eşeğin kafa/göz hizasına yerleştirilir
-                const eyeHeight = 2.7; 
-                camera.position.set(
+                // 3. Şahıs Kamera
+                const distance = 6;
+                const heightOffset = 2.5;
+
+                const camX = donkeyGroup.position.x + Math.sin(yaw) * distance;
+                const camZ = donkeyGroup.position.z + Math.cos(yaw) * distance;
+                const camY = donkeyGroup.position.y + heightOffset + (pitch * 3);
+
+                camera.position.set(camX, camY, camZ);
+                
+                const lookAtTarget = new THREE.Vector3(
                     donkeyGroup.position.x,
-                    donkeyGroup.position.y + eyeHeight,
+                    donkeyGroup.position.y + 1.5,
                     donkeyGroup.position.z
                 );
-
-                // Kameranın baktığı yönü yaw ve pitch değerlerine göre ayarlıyoruz
-                const lookTarget = new THREE.Vector3(
-                    donkeyGroup.position.x - Math.sin(yaw) * 10,
-                    donkeyGroup.position.y + eyeHeight + pitch * 10,
-                    donkeyGroup.position.z - Math.cos(yaw) * 10
-                );
-                camera.lookAt(lookTarget);
+                camera.lookAt(lookAtTarget);
             }
 
             renderer.render(scene, camera);
