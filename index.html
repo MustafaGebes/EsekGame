@@ -216,7 +216,7 @@
         <div><span class="label">Saat:</span> <span id="hudTime">00:00</span></div>
         <div><span class="label">FPS:</span> <span id="hudFps">60</span></div>
         <div><span class="label">Gün:</span> <span id="hudDay">1</span></div>
-        <div><span class="label">Görüş:</span> <span id="hudChunk">150</span></div>
+        <div><span class="label">Görüş:</span> <span id="hudChunk">200</span></div>
         <div><span class="label">Kamera:</span> <span id="hudCam">3. Şahıs</span></div>
     </div>
 
@@ -226,8 +226,8 @@
 
     <div id="settingsPanel">
         <h3>⚙️ Ayarlar</h3>
-        <label>Görüş Mesafesi (Chunk): <span class="value-display" id="chunkValue">150</span></label>
-        <input type="range" id="chunkSlider" min="30" max="300" value="150" step="10">
+        <label>Görüş Mesafesi (Chunk): <span class="value-display" id="chunkValue">200</span></label>
+        <input type="range" id="chunkSlider" min="50" max="500" value="200" step="10">
         <p style="font-size:12px; color:#888; margin-top:5px;">Az = daha az kasma, Çok = daha geniş görüş</p>
 
         <label>Hassasiyet (Sensitivity): <span class="value-display" id="sensValue">1.0</span></label>
@@ -262,9 +262,10 @@
         const otherPlayers = {};
         let controlMode = 'pc';
 
-        const MAP_LIMIT = 200;
+        // HARİTA BÜYÜTÜLDÜ
+        const MAP_LIMIT = 400;
 
-        let viewDistance = 150;
+        let viewDistance = 200;
         let sensitivity = 1.0;
 
         let cameraMode = 'third';
@@ -288,10 +289,10 @@
         sunLight.castShadow = true;
         sunLight.shadow.mapSize.width = 1024;
         sunLight.shadow.mapSize.height = 1024;
-        sunLight.shadow.camera.left = -100;
-        sunLight.shadow.camera.right = 100;
-        sunLight.shadow.camera.top = 100;
-        sunLight.shadow.camera.bottom = -100;
+        sunLight.shadow.camera.left = -150;
+        sunLight.shadow.camera.right = 150;
+        sunLight.shadow.camera.top = 150;
+        sunLight.shadow.camera.bottom = -150;
         sunLight.shadow.camera.near = 1;
         sunLight.shadow.camera.far = 500;
         scene.add(sunLight);
@@ -312,6 +313,7 @@
         );
         scene.add(moonMesh);
 
+        // === YILDIZLAR ===
         const starGeometry = new THREE.BufferGeometry();
         const starCount = 1500;
         const starPositions = new Float32Array(starCount * 3);
@@ -350,12 +352,16 @@
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        const terrainGeo = new THREE.PlaneGeometry(500, 500, 50, 50);
+        // === ZEMİN (Harita büyütüldü) ===
+        const terrainGeo = new THREE.PlaneGeometry(1000, 1000, 50, 50);
         terrainGeo.rotateX(-Math.PI / 2);
         const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0x2d5a1e }));
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
+        // ==========================================
+        // DAĞLAR
+        // ==========================================
         const mountains = [];
 
         function createMountain(x, z, baseRadius, height) {
@@ -384,24 +390,27 @@
             mountains.push({ x, z, radius: baseRadius * 0.95 });
         }
 
-        const mountainRingRadius = MAP_LIMIT - 10;
-        const mountainCount = 40;
+        const mountainRingRadius = MAP_LIMIT - 20;
+        const mountainCount = 60;
 
         for (let i = 0; i < mountainCount; i++) {
             const angle = (i / mountainCount) * Math.PI * 2;
             const x = Math.cos(angle) * mountainRingRadius;
             const z = Math.sin(angle) * mountainRingRadius;
-            const baseRadius = 22 + Math.random() * 5;
-            const height = 50 + Math.random() * 20;
+            const baseRadius = 25 + Math.random() * 8;
+            const height = 60 + Math.random() * 25;
             createMountain(x, z, baseRadius, height);
         }
 
+        // ==========================================
+        // OTLAR (5000 ot - artırıldı)
+        // ==========================================
         const grassMat1 = new THREE.MeshLambertMaterial({ color: 0x2d7a1e });
         const grassMat2 = new THREE.MeshLambertMaterial({ color: 0x4a9c2a });
         const grassMat3 = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
 
-        const grassAreaRadius = MAP_LIMIT - 30;
-        const grassCount = 1500;
+        const grassAreaRadius = MAP_LIMIT - 50;
+        const grassCount = 5000;
 
         for (let i = 0; i < grassCount; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -445,6 +454,248 @@
             scene.add(grassGroup);
         }
 
+        // ==========================================
+        // ŞEHİR
+        // ==========================================
+        const CITY_CENTER_X = -150;
+        const CITY_CENTER_Z = -150;
+        const CITY_SIZE = 150;
+        const BLOCK_SIZE = 25;
+        const ROAD_WIDTH = 8;
+
+        const buildings = [];
+
+        // --- YOLLAR ---
+        const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+
+        const gridCount = 6;
+        const cityStartX = CITY_CENTER_X - (gridCount * BLOCK_SIZE) / 2;
+        const cityStartZ = CITY_CENTER_Z - (gridCount * BLOCK_SIZE) / 2;
+
+        // Yatay yollar
+        for (let i = 0; i <= gridCount; i++) {
+            const roadZ = cityStartZ + i * BLOCK_SIZE;
+            const roadGeo = new THREE.PlaneGeometry(gridCount * BLOCK_SIZE + ROAD_WIDTH, ROAD_WIDTH);
+            roadGeo.rotateX(-Math.PI / 2);
+            const road = new THREE.Mesh(roadGeo, roadMat);
+            road.position.set(CITY_CENTER_X, 0.02, roadZ);
+            road.receiveShadow = true;
+            scene.add(road);
+        }
+
+        // Dikey yollar
+        for (let i = 0; i <= gridCount; i++) {
+            const roadX = cityStartX + i * BLOCK_SIZE;
+            const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, gridCount * BLOCK_SIZE + ROAD_WIDTH);
+            roadGeo.rotateX(-Math.PI / 2);
+            const road = new THREE.Mesh(roadGeo, roadMat);
+            road.position.set(roadX, 0.02, CITY_CENTER_Z);
+            road.receiveShadow = true;
+            scene.add(road);
+        }
+
+        // --- BİNALAR ---
+        const buildingColors = [
+            0xcc4444, 0x44cc44, 0x4444cc, 0xcccc44,
+            0xcc44cc, 0x44cccc, 0xcccccc, 0x888888,
+            0xaa6644, 0x6644aa, 0x44aa66, 0xaa4466,
+            0xddaa77, 0x7799dd, 0x99dd77, 0xdd7799
+        ];
+
+        const windowMat = new THREE.MeshBasicMaterial({ color: 0xffff99 });
+
+        function createBuilding(x, z, width, depth, height, color) {
+            const buildingGroup = new THREE.Group();
+            
+            const buildingMat = new THREE.MeshLambertMaterial({ color: color });
+            const buildingGeo = new THREE.BoxGeometry(width, height, depth);
+            const buildingMesh = new THREE.Mesh(buildingGeo, buildingMat);
+            buildingMesh.position.y = height / 2;
+            buildingMesh.castShadow = true;
+            buildingMesh.receiveShadow = true;
+            buildingGroup.add(buildingMesh);
+
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+            const roofGeo = new THREE.BoxGeometry(width + 0.5, 0.5, depth + 0.5);
+            const roofMesh = new THREE.Mesh(roofGeo, roofMat);
+            roofMesh.position.y = height + 0.25;
+            roofMesh.castShadow = true;
+            buildingGroup.add(roofMesh);
+
+            // Pencereler
+            const floors = Math.floor(height / 2.5);
+            for (let f = 0; f < floors; f++) {
+                const y = 2 + f * 2.5;
+                const cols = Math.floor(width / 2);
+                for (let c = 0; c < cols; c++) {
+                    const wx = -width / 2 + 1.2 + c * 2;
+                    if (Math.random() > 0.3) {
+                        const winGeo = new THREE.PlaneGeometry(1, 1.2);
+                        const win = new THREE.Mesh(winGeo, windowMat);
+                        win.position.set(wx, y, depth / 2 + 0.01);
+                        buildingGroup.add(win);
+                    }
+                }
+                for (let c = 0; c < cols; c++) {
+                    const wx = -width / 2 + 1.2 + c * 2;
+                    if (Math.random() > 0.3) {
+                        const winGeo = new THREE.PlaneGeometry(1, 1.2);
+                        const win = new THREE.Mesh(winGeo, windowMat);
+                        win.position.set(wx, y, -depth / 2 - 0.01);
+                        win.rotation.y = Math.PI;
+                        buildingGroup.add(win);
+                    }
+                }
+            }
+
+            buildingGroup.position.set(x, 0, z);
+            scene.add(buildingGroup);
+
+            buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
+        }
+
+        // Her blok içine bina yerleştir (merkez hariç)
+        for (let bx = 0; bx < gridCount; bx++) {
+            for (let bz = 0; bz < gridCount; bz++) {
+                // Merkez bloğu atla (anıt için)
+                if (bx === 3 && bz === 3) continue;
+                
+                const blockCenterX = cityStartX + bx * BLOCK_SIZE + BLOCK_SIZE / 2;
+                const blockCenterZ = cityStartZ + bz * BLOCK_SIZE + BLOCK_SIZE / 2;
+                
+                const buildingCount = Math.random() > 0.5 ? 2 : 1;
+                
+                if (buildingCount === 1) {
+                    const w = 12 + Math.random() * 6;
+                    const d = 12 + Math.random() * 6;
+                    const h = 10 + Math.random() * 25;
+                    const color = buildingColors[Math.floor(Math.random() * buildingColors.length)];
+                    createBuilding(blockCenterX, blockCenterZ, w, d, h, color);
+                } else {
+                    const w1 = 8 + Math.random() * 4;
+                    const d1 = 8 + Math.random() * 4;
+                    const h1 = 8 + Math.random() * 15;
+                    const color1 = buildingColors[Math.floor(Math.random() * buildingColors.length)];
+                    
+                    const offset = 6;
+                    createBuilding(blockCenterX - offset, blockCenterZ - offset, w1, d1, h1, color1);
+                    
+                    const w2 = 8 + Math.random() * 4;
+                    const d2 = 8 + Math.random() * 4;
+                    const h2 = 8 + Math.random() * 15;
+                    const color2 = buildingColors[Math.floor(Math.random() * buildingColors.length)];
+                    createBuilding(blockCenterX + offset, blockCenterZ + offset, w2, d2, h2, color2);
+                }
+            }
+        }
+
+        // --- MERKEZ MEYDAN ---
+        const centerBlockX = cityStartX + 3 * BLOCK_SIZE + BLOCK_SIZE / 2;
+        const centerBlockZ = cityStartZ + 3 * BLOCK_SIZE + BLOCK_SIZE / 2;
+
+        const plazaGeo = new THREE.PlaneGeometry(BLOCK_SIZE, BLOCK_SIZE);
+        plazaGeo.rotateX(-Math.PI / 2);
+        const plazaMat = new THREE.MeshLambertMaterial({ color: 0xbbbbbb });
+        const plaza = new THREE.Mesh(plazaGeo, plazaMat);
+        plaza.position.set(centerBlockX, 0.03, centerBlockZ);
+        plaza.receiveShadow = true;
+        scene.add(plaza);
+
+        // Anıt
+        const monumentBaseGeo = new THREE.CylinderGeometry(3.5, 4, 2, 8);
+        const monumentBaseMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+        const monumentBase = new THREE.Mesh(monumentBaseGeo, monumentBaseMat);
+        monumentBase.position.set(centerBlockX, 1, centerBlockZ);
+        monumentBase.castShadow = true;
+        monumentBase.receiveShadow = true;
+        scene.add(monumentBase);
+
+        const monumentGeo = new THREE.CylinderGeometry(0.6, 1, 15, 8);
+        const monumentMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
+        const monument = new THREE.Mesh(monumentGeo, monumentMat);
+        monument.position.set(centerBlockX, 9.5, centerBlockZ);
+        monument.castShadow = true;
+        scene.add(monument);
+
+        const monumentTopGeo = new THREE.SphereGeometry(1.2, 16, 16);
+        const monumentTopMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
+        const monumentTop = new THREE.Mesh(monumentTopGeo, monumentTopMat);
+        monumentTop.position.set(centerBlockX, 17, centerBlockZ);
+        monumentTop.castShadow = true;
+        scene.add(monumentTop);
+
+        buildings.push({ x: centerBlockX, z: centerBlockZ, halfW: 5, halfD: 5 });
+
+        // --- SOKAK LAMBALARI ---
+        const lampPoleMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const lampLightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+
+        function createStreetLamp(x, z) {
+            const lampGroup = new THREE.Group();
+            
+            const poleGeo = new THREE.CylinderGeometry(0.15, 0.15, 6, 6);
+            const pole = new THREE.Mesh(poleGeo, lampPoleMat);
+            pole.position.y = 3;
+            pole.castShadow = true;
+            lampGroup.add(pole);
+
+            const lampGeo = new THREE.SphereGeometry(0.5, 8, 8);
+            const lampMesh = new THREE.Mesh(lampGeo, lampLightMat);
+            lampMesh.position.y = 6;
+            lampGroup.add(lampMesh);
+
+            lampGroup.position.set(x, 0, z);
+            scene.add(lampGroup);
+        }
+
+        for (let i = 0; i <= gridCount; i++) {
+            for (let j = 0; j <= gridCount; j++) {
+                const lx = cityStartX + i * BLOCK_SIZE + 4;
+                const lz = cityStartZ + j * BLOCK_SIZE + 4;
+                createStreetLamp(lx, lz);
+            }
+        }
+
+        // --- AĞAÇLAR ---
+        const treeTrunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
+        const treeLeafMat = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
+
+        function createTree(x, z) {
+            const treeGroup = new THREE.Group();
+            
+            const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 3, 6);
+            const trunk = new THREE.Mesh(trunkGeo, treeTrunkMat);
+            trunk.position.y = 1.5;
+            trunk.castShadow = true;
+            treeGroup.add(trunk);
+
+            const leafGeo = new THREE.SphereGeometry(1.5, 8, 8);
+            const leaf = new THREE.Mesh(leafGeo, treeLeafMat);
+            leaf.position.y = 4;
+            leaf.castShadow = true;
+            treeGroup.add(leaf);
+
+            treeGroup.position.set(x, 0, z);
+            scene.add(treeGroup);
+        }
+
+        // Şehir dışına rastgele ağaçlar
+        for (let i = 0; i < 200; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 100 + Math.random() * 250;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            
+            // Şehirden uzak olsun
+            const distToCity = Math.sqrt((x - CITY_CENTER_X) ** 2 + (z - CITY_CENTER_Z) ** 2);
+            if (distToCity < 120) continue;
+            
+            createTree(x, z);
+        }
+
+        // ==========================================
+        // BULUTLAR
+        // ==========================================
         const clouds = [];
         const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
 
@@ -467,13 +718,16 @@
             clouds.push(cloudGroup);
         }
 
-        for (let i = 0; i < 12; i++) {
-            const x = (Math.random() - 0.5) * 400;
-            const z = (Math.random() - 0.5) * 400;
-            const y = 80 + Math.random() * 40;
+        for (let i = 0; i < 20; i++) {
+            const x = (Math.random() - 0.5) * 600;
+            const z = (Math.random() - 0.5) * 600;
+            const y = 100 + Math.random() * 50;
             createCloud(x, y, z);
         }
 
+        // ==========================================
+        // KUŞLAR
+        // ==========================================
         const birds = [];
         const birdMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
 
@@ -498,16 +752,16 @@
             return birdGroup;
         }
 
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 25; i++) {
             const bird = createBird();
             bird.position.set(
-                (Math.random() - 0.5) * 300,
-                30 + Math.random() * 40,
-                (Math.random() - 0.5) * 300
+                (Math.random() - 0.5) * 500,
+                40 + Math.random() * 50,
+                (Math.random() - 0.5) * 500
             );
             bird.userData.speed = 0.05 + Math.random() * 0.05;
             bird.userData.angle = Math.random() * Math.PI * 2;
-            bird.userData.radius = 20 + Math.random() * 60;
+            bird.userData.radius = 30 + Math.random() * 80;
             bird.userData.centerX = bird.position.x;
             bird.userData.centerZ = bird.position.z;
             bird.userData.altitude = bird.position.y;
@@ -515,6 +769,9 @@
             birds.push(bird);
         }
 
+        // ==========================================
+        // EŞEK MODELİ
+        // ==========================================
         function createDonkeyModel() {
             const donkeyGroup = new THREE.Group();
             const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
@@ -844,13 +1101,10 @@
             if (settingsPanel.style.display === 'block') return;
             
             if (cameraMode === 'first') {
-                // 1. ŞAHIS: direkt fare hareketi ile dön
-                // Fareyi yukarı hareket ettirince movementY negatif olur, bu yüzden -= kullanıyoruz
                 yaw -= e.movementX * 0.005 * sensitivity;
                 pitch -= e.movementY * 0.005 * sensitivity;
                 pitch = Math.max(-1.2, Math.min(1.4, pitch));
             } else {
-                // 3. ŞAHIS: sadece basılıysa dön
                 if (isMouseDown) {
                     yaw -= (e.clientX - mouseX) * 0.005 * sensitivity;
                     pitch -= (e.clientY - mouseY) * 0.005 * sensitivity;
@@ -1024,12 +1278,23 @@
         mobSprintBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isSprintingMobile = true; }, { passive: false });
         mobSprintBtn.addEventListener('touchend', (e) => { e.preventDefault(); isSprintingMobile = false; }, { passive: false });
 
+        // ÇARPIŞMA - Hem dağ hem bina
         function checkMountainCollision(x, z, radius) {
+            // Dağ kontrolü
             for (let m of mountains) {
                 const dx = x - m.x;
                 const dz = z - m.z;
                 const dist = Math.sqrt(dx * dx + dz * dz);
                 if (dist < m.radius + radius) {
+                    return true;
+                }
+            }
+            // Bina kontrolü (AABB - kutu çarpışma)
+            for (let b of buildings) {
+                if (x + radius > b.x - b.halfW &&
+                    x - radius < b.x + b.halfW &&
+                    z + radius > b.z - b.halfD &&
+                    z - radius < b.z + b.halfD) {
                     return true;
                 }
             }
@@ -1089,7 +1354,7 @@
 
             for (let c of clouds) {
                 c.position.x += 0.02;
-                if (c.position.x > 250) c.position.x = -250;
+                if (c.position.x > 350) c.position.x = -350;
             }
 
             for (let b of birds) {
@@ -1121,7 +1386,7 @@
 
                 const dayProgress = (gameTime - 6) / 12;
                 const sunAngle = dayProgress * Math.PI;
-                const sunRadius = 300;
+                const sunRadius = 400;
                 const sunX = Math.cos(sunAngle - Math.PI / 2) * sunRadius;
                 const sunY = Math.sin(sunAngle - Math.PI / 2) * sunRadius;
                 const sunZ = -100;
@@ -1136,7 +1401,7 @@
                 } else {
                     const nightProgress = gameTime > 18 ? (gameTime - 18) / 12 : (gameTime + 6) / 12;
                     const moonAngle = nightProgress * Math.PI;
-                    const moonRadius = 300;
+                    const moonRadius = 400;
                     const moonX = Math.cos(moonAngle - Math.PI / 2) * moonRadius;
                     const moonY = Math.sin(moonAngle - Math.PI / 2) * moonRadius;
                     const moonZ = -100;
@@ -1325,8 +1590,6 @@
                     
                     camera.position.set(eyeX, eyeY, eyeZ);
                     
-                    // DÜZELTİLDİ: Artık + kullanıyoruz
-                    // pitch pozitif = yukarı bak, pitch negatif = aşağı bak
                     const lookX = eyeX + Math.sin(yaw) * Math.cos(pitch);
                     const lookY = eyeY + Math.sin(pitch);
                     const lookZ = eyeZ + Math.cos(yaw) * Math.cos(pitch);
