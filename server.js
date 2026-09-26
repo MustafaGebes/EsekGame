@@ -7,12 +7,10 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Statik dosyaları sun
 app.use(express.static(__dirname));
 
-// Ana sayfaya girildiğinde EsekGame.html dosyasını gönder
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'EsekGame.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 let players = {};
@@ -21,7 +19,7 @@ wss.on('connection', (ws) => {
     const id = Math.random().toString(36).substring(2, 9);
     console.log(`Oyuncu katıldı: ${id}`);
 
-    players[id] = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
+    players[id] = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, isCrouching: false };
 
     ws.send(JSON.stringify({ type: 'init', id: id }));
 
@@ -35,7 +33,8 @@ wss.on('connection', (ws) => {
                         y: data.y,
                         z: data.z,
                         yaw: data.yaw,
-                        pitch: data.pitch
+                        pitch: data.pitch,
+                        isCrouching: data.isCrouching || false  // EĞİLME BİLGİSİ KAYDEDİLİYOR
                     };
                 }
             }
@@ -50,7 +49,6 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Herkese güncel oyuncu konumlarını gönder
 setInterval(() => {
     const dataToSend = JSON.stringify({ type: "players", players: players });
     wss.clients.forEach(client => {
