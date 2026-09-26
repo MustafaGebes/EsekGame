@@ -37,6 +37,25 @@
             z-index: 25;
         }
 
+        #settingsBtn {
+            position: absolute;
+            top: 20px;
+            left: 80px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #ffffff;
+            color: #ffffff;
+            font-size: 24px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 25;
+        }
+
         #joystickZone { position: absolute; bottom: 40px; left: 40px; width: 130px; height: 130px; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; pointer-events: auto; touch-action: none; }
         #joystickKnob { position: absolute; top: 40px; left: 40px; width: 50px; height: 50px; background: rgba(255, 255, 255, 0.7); border-radius: 50%; pointer-events: none; }
         
@@ -50,18 +69,100 @@
             top: 20px;
             right: 20px;
             color: #ffffff;
-            font-size: 16px;
+            font-size: 14px;
             font-family: monospace;
             background: rgba(0, 0, 0, 0.5);
-            padding: 10px 15px;
+            padding: 8px 12px;
             border-radius: 8px;
             pointer-events: none;
             z-index: 15;
             text-shadow: 1px 1px 2px #000;
             display: none;
         }
-        #hud div { margin: 3px 0; }
+        #hud div { margin: 2px 0; }
         #hud .label { color: #ffd700; font-weight: bold; }
+
+        /* AYARLAR PANELİ */
+        #settingsPanel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 320px;
+            background: rgba(20, 20, 30, 0.95);
+            border: 2px solid #4CAF50;
+            border-radius: 12px;
+            padding: 25px;
+            z-index: 100;
+            display: none;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        }
+        #settingsPanel h3 { margin: 0 0 20px 0; color: #ffd700; text-align: center; font-size: 22px; }
+        #settingsPanel label { display: block; margin: 15px 0 5px 0; color: #cccccc; font-size: 14px; }
+        #settingsPanel input[type="range"] {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        #settingsPanel input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            background: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #fff;
+        }
+        #settingsPanel input[type="range"]::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            background: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #fff;
+        }
+        #settingsPanel .value-display {
+            float: right;
+            color: #ffd700;
+            font-weight: bold;
+        }
+        #settingsPanel .close-btn {
+            width: 100%;
+            margin-top: 20px;
+            padding: 12px;
+            background: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #settingsPanel .close-btn:hover { background: #45a049; }
+
+        #settingsBtnInGame {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #ffffff;
+            color: #ffffff;
+            font-size: 22px;
+            border-radius: 50%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 26;
+        }
     </style>
 </head>
 <body>
@@ -88,10 +189,24 @@
         <div><span class="label">Saat:</span> <span id="hudTime">00:00</span></div>
         <div><span class="label">FPS:</span> <span id="hudFps">60</span></div>
         <div><span class="label">Gün:</span> <span id="hudDay">1</span></div>
+        <div><span class="label">Görüş:</span> <span id="hudChunk">100</span></div>
+    </div>
+
+    <!-- Oyun içi ayarlar butonu -->
+    <div id="settingsBtnInGame">⚙️</div>
+
+    <!-- Ayarlar Paneli -->
+    <div id="settingsPanel">
+        <h3>⚙️ Ayarlar</h3>
+        <label>Görüş Mesafesi (Chunk): <span class="value-display" id="chunkValue">150</span></label>
+        <input type="range" id="chunkSlider" min="30" max="300" value="150" step="10">
+        <p style="font-size:12px; color:#888; margin-top:5px;">Az = daha az kasma, Çok = daha geniş görüş</p>
+        <button class="close-btn" id="closeSettings">KAPAT</button>
     </div>
 
     <div id="mobileControls">
         <div id="mobMenuBtn">☰</div>
+        <div id="settingsBtn">⚙️</div>
 
         <div id="joystickZone">
             <div id="joystickKnob"></div>
@@ -116,10 +231,14 @@
 
         const MAP_LIMIT = 200;
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb); // Menüdeyken de mavi gökyüzü
+        // AYARLAR
+        let viewDistance = 150; // Chunk / görüş mesafesi
 
-        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 3000);
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, viewDistance * 0.7, viewDistance);
+
+        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, viewDistance);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
@@ -133,41 +252,43 @@
         const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
         sunLight.position.set(100, 200, 100);
         sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 2048;
-        sunLight.shadow.mapSize.height = 2048;
-        sunLight.shadow.camera.left = -300;
-        sunLight.shadow.camera.right = 300;
-        sunLight.shadow.camera.top = 300;
-        sunLight.shadow.camera.bottom = -300;
+        sunLight.shadow.mapSize.width = 1024;
+        sunLight.shadow.mapSize.height = 1024;
+        sunLight.shadow.camera.left = -100;
+        sunLight.shadow.camera.right = 100;
+        sunLight.shadow.camera.top = 100;
+        sunLight.shadow.camera.bottom = -100;
         sunLight.shadow.camera.near = 1;
-        sunLight.shadow.camera.far = 1000;
+        sunLight.shadow.camera.far = 500;
         scene.add(sunLight);
 
+        // Güneş görsel modeli
         const sunMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(15, 16, 16),
+            new THREE.SphereGeometry(20, 16, 16),
             new THREE.MeshBasicMaterial({ color: 0xffff00 })
         );
         scene.add(sunMesh);
 
+        // Ay
         const moonLight = new THREE.DirectionalLight(0xaaccff, 0.3);
         moonLight.position.set(-100, 200, -100);
         scene.add(moonLight);
 
         const moonMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(10, 16, 16),
+            new THREE.SphereGeometry(12, 16, 16),
             new THREE.MeshBasicMaterial({ color: 0xeeeeee })
         );
         scene.add(moonMesh);
 
         // === ZEMİN ===
-        const terrainGeo = new THREE.PlaneGeometry(500, 500, 100, 100);
+        const terrainGeo = new THREE.PlaneGeometry(500, 500, 50, 50);
         terrainGeo.rotateX(-Math.PI / 2);
         const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0x2d5a1e }));
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
         // ==========================================
-        // ÖNCE DAĞLARI OLUŞTUR (Otlar dağlardan kaçınsın diye)
+        // DAĞLAR - Sadece harita sınırı (tek sıra, tam çember)
         // ==========================================
         const mountains = [];
 
@@ -175,7 +296,7 @@
             const mountainGroup = new THREE.Group();
             
             const mountainMat = new THREE.MeshLambertMaterial({ color: 0x8b7355 });
-            const mountainGeo = new THREE.ConeGeometry(baseRadius, height, 8);
+            const mountainGeo = new THREE.ConeGeometry(baseRadius, height, 6);
             const mountainMesh = new THREE.Mesh(mountainGeo, mountainMat);
             mountainMesh.position.y = height / 2;
             mountainMesh.castShadow = true;
@@ -185,7 +306,7 @@
             const snowMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
             const snowHeight = height * 0.3;
             const snowRadius = baseRadius * 0.35;
-            const snowGeo = new THREE.ConeGeometry(snowRadius, snowHeight, 8);
+            const snowGeo = new THREE.ConeGeometry(snowRadius, snowHeight, 6);
             const snowMesh = new THREE.Mesh(snowGeo, snowMat);
             snowMesh.position.y = height - snowHeight / 2;
             snowMesh.castShadow = true;
@@ -197,49 +318,30 @@
             mountains.push({ x, z, radius: baseRadius * 0.95 });
         }
 
-        // Haritanın etrafına dağlar - BOŞLUK KALMAYACAK
-        const mountainRingRadius = MAP_LIMIT - 5;
-        const mountainCount = 48;
-        
+        // Sadece TEK SIRA dağ - tam çember (boşluk yok)
+        const mountainRingRadius = MAP_LIMIT - 10;
+        const mountainCount = 40; // Daha az sayı, ama geniş dağlar
+
         for (let i = 0; i < mountainCount; i++) {
             const angle = (i / mountainCount) * Math.PI * 2;
             const x = Math.cos(angle) * mountainRingRadius;
             const z = Math.sin(angle) * mountainRingRadius;
-            const baseRadius = 18 + Math.random() * 6;
-            const height = 45 + Math.random() * 25;
-            createMountain(x, z, baseRadius, height);
-        }
-
-        // İkinci sıra (daha sağlam duvar)
-        for (let i = 0; i < mountainCount; i++) {
-            const angle = ((i + 0.5) / mountainCount) * Math.PI * 2;
-            const x = Math.cos(angle) * (mountainRingRadius + 15);
-            const z = Math.sin(angle) * (mountainRingRadius + 15);
-            const baseRadius = 20 + Math.random() * 6;
-            const height = 50 + Math.random() * 30;
-            createMountain(x, z, baseRadius, height);
-        }
-
-        // İçeride dekoratif dağlar
-        for (let i = 0; i < 6; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const radius = 100 + Math.random() * 60;
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
-            const baseRadius = 10 + Math.random() * 6;
-            const height = 20 + Math.random() * 15;
+            // Geniş dağlar (üst üste binsin)
+            const baseRadius = 22 + Math.random() * 5;
+            const height = 50 + Math.random() * 20;
             createMountain(x, z, baseRadius, height);
         }
 
         // ==========================================
-        // ŞİMDİ OTLARI OLUŞTUR (dağlar tanımlı)
+        // OTLAR - Sadece dağların içindeki alanda
         // ==========================================
         const grassMat1 = new THREE.MeshLambertMaterial({ color: 0x2d7a1e });
         const grassMat2 = new THREE.MeshLambertMaterial({ color: 0x4a9c2a });
         const grassMat3 = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
 
-        const grassAreaRadius = 180;
-        const grassCount = 5000;
+        // Otlar için sadece 1500 tane (performans için)
+        const grassAreaRadius = MAP_LIMIT - 30;
+        const grassCount = 1500;
 
         for (let i = 0; i < grassCount; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -247,7 +349,6 @@
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
             
-            // Dağ çarpışması kontrolü
             let inMountain = false;
             for (let m of mountains) {
                 const dx = x - m.x;
@@ -259,7 +360,7 @@
             }
             if (inMountain) continue;
 
-            const bladeCount = 4 + Math.floor(Math.random() * 4);
+            const bladeCount = 4;
             const grassGroup = new THREE.Group();
             
             for (let j = 0; j < bladeCount; j++) {
@@ -282,6 +383,85 @@
             grassGroup.position.set(x, 0, z);
             grassGroup.rotation.y = Math.random() * Math.PI * 2;
             scene.add(grassGroup);
+        }
+
+        // ==========================================
+        // BULUTLAR
+        // ==========================================
+        const clouds = [];
+        const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+
+        function createCloud(x, y, z) {
+            const cloudGroup = new THREE.Group();
+            const parts = 4 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < parts; i++) {
+                const size = 8 + Math.random() * 8;
+                const geo = new THREE.SphereGeometry(size, 8, 8);
+                const part = new THREE.Mesh(geo, cloudMat);
+                part.position.set(
+                    (Math.random() - 0.5) * 15,
+                    (Math.random() - 0.5) * 3,
+                    (Math.random() - 0.5) * 15
+                );
+                cloudGroup.add(part);
+            }
+            cloudGroup.position.set(x, y, z);
+            scene.add(cloudGroup);
+            clouds.push(cloudGroup);
+        }
+
+        for (let i = 0; i < 12; i++) {
+            const x = (Math.random() - 0.5) * 400;
+            const z = (Math.random() - 0.5) * 400;
+            const y = 80 + Math.random() * 40;
+            createCloud(x, y, z);
+        }
+
+        // ==========================================
+        // KUŞLAR
+        // ==========================================
+        const birds = [];
+        const birdMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+
+        function createBird() {
+            const birdGroup = new THREE.Group();
+            
+            // Gövde
+            const bodyGeo = new THREE.ConeGeometry(0.3, 1.5, 4);
+            bodyGeo.rotateX(Math.PI / 2);
+            const body = new THREE.Mesh(bodyGeo, birdMat);
+            birdGroup.add(body);
+
+            // Kanatlar
+            const wingGeo = new THREE.BoxGeometry(2, 0.05, 0.6);
+            const wingLeft = new THREE.Mesh(wingGeo, birdMat);
+            wingLeft.position.set(-1, 0, 0);
+            wingLeft.userData.baseRotation = 0;
+            birdGroup.add(wingLeft);
+
+            const wingRight = new THREE.Mesh(wingGeo, birdMat);
+            wingRight.position.set(1, 0, 0);
+            birdGroup.add(wingRight);
+
+            birdGroup.userData = { wingLeft, wingRight, flapPhase: Math.random() * Math.PI * 2 };
+            return birdGroup;
+        }
+
+        for (let i = 0; i < 15; i++) {
+            const bird = createBird();
+            bird.position.set(
+                (Math.random() - 0.5) * 300,
+                30 + Math.random() * 40,
+                (Math.random() - 0.5) * 300
+            );
+            bird.userData.speed = 0.05 + Math.random() * 0.05;
+            bird.userData.angle = Math.random() * Math.PI * 2;
+            bird.userData.radius = 20 + Math.random() * 60;
+            bird.userData.centerX = bird.position.x;
+            bird.userData.centerZ = bird.position.z;
+            bird.userData.altitude = bird.position.y;
+            scene.add(bird);
+            birds.push(bird);
         }
 
         // ==========================================
@@ -437,6 +617,34 @@
         const hudTimeEl = document.getElementById('hudTime');
         const hudFpsEl = document.getElementById('hudFps');
         const hudDayEl = document.getElementById('hudDay');
+        const hudChunkEl = document.getElementById('hudChunk');
+
+        // AYARLAR
+        const settingsPanel = document.getElementById('settingsPanel');
+        const chunkSlider = document.getElementById('chunkSlider');
+        const chunkValue = document.getElementById('chunkValue');
+        const closeSettings = document.getElementById('closeSettings');
+        const settingsBtnInGame = document.getElementById('settingsBtnInGame');
+
+        function openSettings() {
+            settingsPanel.style.display = 'block';
+        }
+        function closeSettingsPanel() {
+            settingsPanel.style.display = 'none';
+        }
+
+        settingsBtnInGame.addEventListener('click', openSettings);
+        document.getElementById('settingsBtn').addEventListener('click', openSettings);
+        closeSettings.addEventListener('click', closeSettingsPanel);
+
+        chunkSlider.addEventListener('input', () => {
+            viewDistance = parseInt(chunkSlider.value);
+            chunkValue.textContent = viewDistance;
+            camera.far = viewDistance;
+            camera.updateProjectionMatrix();
+            scene.fog = new THREE.Fog(scene.background, viewDistance * 0.7, viewDistance);
+            hudChunkEl.textContent = viewDistance;
+        });
 
         function startGame(mode) {
             controlMode = mode;
@@ -446,6 +654,7 @@
             menuEl.style.display = 'none';
             playerDonkey.visible = true;
             hudEl.style.display = 'block';
+            settingsBtnInGame.style.display = 'flex';
 
             if (controlMode === 'pc') {
                 infoEl.style.display = 'block';
@@ -465,6 +674,7 @@
             menuEl.style.display = 'none';
             playerDonkey.visible = true;
             hudEl.style.display = 'block';
+            settingsBtnInGame.style.display = 'flex';
             infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
             mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
         });
@@ -477,6 +687,8 @@
             infoEl.style.display = 'none';
             mobileControlsEl.style.display = 'none';
             hudEl.style.display = 'none';
+            settingsBtnInGame.style.display = 'none';
+            settingsPanel.style.display = 'none';
             playerDonkey.visible = false;
             if (ws) { ws.close(); ws = null; }
             for (let id in otherPlayers) {
@@ -487,6 +699,10 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && gameStarted) {
+                if (settingsPanel.style.display === 'block') {
+                    closeSettingsPanel();
+                    return;
+                }
                 gameStarted = false;
                 menuEl.style.display = 'flex';
                 mainButtons.style.display = 'none';
@@ -494,6 +710,7 @@
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
                 hudEl.style.display = 'none';
+                settingsBtnInGame.style.display = 'none';
                 playerDonkey.visible = false;
                 return;
             }
@@ -525,6 +742,7 @@
 
         document.addEventListener('mousedown', (e) => {
             if (!gameStarted || controlMode !== 'pc' || e.button !== 0) return;
+            if (e.target.closest('#settingsPanel') || e.target.closest('#settingsBtnInGame')) return;
             isMouseDown = true;
             mouseX = e.clientX;
             mouseY = e.clientY;
@@ -557,6 +775,7 @@
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
                 hudEl.style.display = 'none';
+                settingsBtnInGame.style.display = 'none';
                 playerDonkey.visible = false;
             }
         });
@@ -619,6 +838,7 @@
         // KAMERA DÖNDÜRME
         window.addEventListener('touchstart', (e) => {
             if (!gameStarted || controlMode !== 'mobile') return;
+            if (settingsPanel.style.display === 'block') return;
             
             for (let i = 0; i < e.changedTouches.length; i++) {
                 const touch = e.changedTouches[i];
@@ -628,6 +848,8 @@
                 if (target.closest('#joystickZone') || 
                     target.closest('.mob-btn-group') || 
                     target.closest('#mobMenuBtn') ||
+                    target.closest('#settingsBtn') ||
+                    target.closest('#settingsPanel') ||
                     target.closest('#menu')) {
                     continue;
                 }
@@ -755,6 +977,27 @@
                 fpsLastTime = now;
             }
 
+            // BULUTLAR (her zaman hareket etsin)
+            for (let c of clouds) {
+                c.position.x += 0.02;
+                if (c.position.x > 250) c.position.x = -250;
+            }
+
+            // KUŞLAR (her zaman hareket etsin)
+            for (let b of birds) {
+                b.userData.angle += b.userData.speed * 0.01;
+                b.position.x = b.userData.centerX + Math.cos(b.userData.angle) * b.userData.radius;
+                b.position.z = b.userData.centerZ + Math.sin(b.userData.angle) * b.userData.radius;
+                b.position.y = b.userData.altitude + Math.sin(b.userData.angle * 3) * 3;
+                b.rotation.y = -b.userData.angle + Math.PI / 2;
+                
+                // Kanat çırpma
+                b.userData.flapPhase += 0.3;
+                const flap = Math.sin(b.userData.flapPhase) * 0.5;
+                b.userData.wingLeft.rotation.z = flap;
+                b.userData.wingRight.rotation.z = -flap;
+            }
+
             if (gameStarted) {
                 gameTime += TIME_SPEED * deltaSec;
                 if (gameTime >= DAY_DURATION) {
@@ -767,19 +1010,45 @@
                 hudTimeEl.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                 hudFpsEl.textContent = currentFps;
                 hudDayEl.textContent = gameDay;
+                hudChunkEl.textContent = viewDistance;
 
-                // Güneş/Ay
-                const sunAngle = ((gameTime - 6) / 12) * Math.PI;
-                const sunX = Math.cos(sunAngle - Math.PI / 2) * 250;
-                const sunY = Math.sin(sunAngle) * 250;
-                const sunZ = 0;
+                // === GÜNEŞ/AY DÖNGÜSÜ (Gerçekçi) ===
+                // Güneş 6:00'da doğar, 18:00'da batar. Gökyüzünde yarım daire çizer.
+                // Gece Ay çıkar.
+                const dayProgress = (gameTime - 6) / 12; // 6:00 -> 0, 18:00 -> 1
+                
+                // Güneş pozisyonu (yarım daire)
+                const sunAngle = dayProgress * Math.PI; // 0 -> PI
+                const sunRadius = 300;
+                const sunX = Math.cos(sunAngle - Math.PI / 2) * sunRadius;
+                const sunY = Math.sin(sunAngle - Math.PI / 2) * sunRadius;
+                const sunZ = -100; // Sabit Z
 
-                sunMesh.position.set(sunX, sunY, sunZ);
-                sunLight.position.set(sunX, sunY, sunZ);
+                if (gameTime >= 6 && gameTime <= 18) {
+                    sunMesh.position.set(sunX, sunY, sunZ);
+                    sunMesh.visible = true;
+                    sunLight.position.set(sunX, sunY + 50, sunZ);
+                    sunLight.intensity = 1.0;
+                    moonMesh.visible = false;
+                    moonLight.intensity = 0.0;
+                } else {
+                    // Gece: Ay gökyüzünde
+                    const nightProgress = gameTime > 18 ? (gameTime - 18) / 12 : (gameTime + 6) / 12;
+                    const moonAngle = nightProgress * Math.PI;
+                    const moonRadius = 300;
+                    const moonX = Math.cos(moonAngle - Math.PI / 2) * moonRadius;
+                    const moonY = Math.sin(moonAngle - Math.PI / 2) * moonRadius;
+                    const moonZ = -100;
+                    
+                    moonMesh.position.set(moonX, moonY, moonZ);
+                    moonMesh.visible = true;
+                    moonLight.position.set(moonX, moonY + 50, moonZ);
+                    moonLight.intensity = 0.3;
+                    sunMesh.visible = false;
+                    sunLight.intensity = 0.0;
+                }
 
-                moonMesh.position.set(-sunX, -sunY, -sunZ);
-                moonLight.position.set(-sunX, -sunY, -sunZ);
-
+                // Gökyüzü rengi
                 let skyR, skyG, skyB;
                 if (gameTime >= 6 && gameTime <= 18) {
                     const t = (gameTime - 6) / 12;
@@ -795,10 +1064,9 @@
                     skyR = 0.05; skyG = 0.05; skyB = 0.15;
                 }
                 scene.background = new THREE.Color(skyR, skyG, skyB);
+                scene.fog.color = scene.background;
 
                 const isDay = gameTime >= 6 && gameTime <= 18;
-                sunLight.intensity = isDay ? 1.0 : 0.0;
-                moonLight.intensity = isDay ? 0.0 : 0.3;
                 ambientLight.intensity = isDay ? 0.5 : 0.15;
 
                 // HAREKET
