@@ -286,14 +286,14 @@
         const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
         sunLight.position.set(100, 200, 100);
         sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 1024;
-        sunLight.shadow.mapSize.height = 1024;
-        sunLight.shadow.camera.left = -150;
-        sunLight.shadow.camera.right = 150;
-        sunLight.shadow.camera.top = 150;
-        sunLight.shadow.camera.bottom = -150;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.left = -250;
+        sunLight.shadow.camera.right = 250;
+        sunLight.shadow.camera.top = 250;
+        sunLight.shadow.camera.bottom = -250;
         sunLight.shadow.camera.near = 1;
-        sunLight.shadow.camera.far = 500;
+        sunLight.shadow.camera.far = 800;
         scene.add(sunLight);
 
         const sunMesh = new THREE.Mesh(
@@ -454,66 +454,34 @@
         }
 
         // ==========================================
-        // ŞEHİR (Detaylı)
+        // ŞEHİR (Düzgün yerleşim, gerçekçi boyutlar)
         // ==========================================
         const CITY_CENTER_X = -150;
         const CITY_CENTER_Z = -150;
-        const BLOCK_SIZE = 30;
-        const ROAD_WIDTH = 10;
-        const SIDEWALK_WIDTH = 2.5;
-
-        const buildings = []; // Çarpışma için
-
-        const gridCount = 6;
-        const cityStartX = CITY_CENTER_X - (gridCount * BLOCK_SIZE) / 2;
-        const cityStartZ = CITY_CENTER_Z - (gridCount * BLOCK_SIZE) / 2;
-
-        // --- KALDIRIMLAR (bina ve yol arası) ---
-        const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
         
-        // Yatay kaldırımlar
-        for (let i = 0; i < gridCount; i++) {
-            for (let j = 0; j < gridCount; j++) {
-                const blockCenterX = cityStartX + i * BLOCK_SIZE + BLOCK_SIZE / 2;
-                const blockCenterZ = cityStartZ + j * BLOCK_SIZE + BLOCK_SIZE / 2;
-                
-                // Kaldırım çerçevesi (blok etrafında)
-                const sideGeo = new THREE.PlaneGeometry(BLOCK_SIZE, SIDEWALK_WIDTH);
-                sideGeo.rotateX(-Math.PI / 2);
-                
-                const sideN = new THREE.Mesh(sideGeo, sidewalkMat);
-                sideN.position.set(blockCenterX, 0.05, blockCenterZ - BLOCK_SIZE / 2 + SIDEWALK_WIDTH / 2);
-                sideN.receiveShadow = true;
-                scene.add(sideN);
-                
-                const sideS = new THREE.Mesh(sideGeo, sidewalkMat);
-                sideS.position.set(blockCenterX, 0.05, blockCenterZ + BLOCK_SIZE / 2 - SIDEWALK_WIDTH / 2);
-                sideS.receiveShadow = true;
-                scene.add(sideS);
-                
-                const sideGeoV = new THREE.PlaneGeometry(SIDEWALK_WIDTH, BLOCK_SIZE);
-                sideGeoV.rotateX(-Math.PI / 2);
-                
-                const sideW = new THREE.Mesh(sideGeoV, sidewalkMat);
-                sideW.position.set(blockCenterX - BLOCK_SIZE / 2 + SIDEWALK_WIDTH / 2, 0.05, blockCenterZ);
-                sideW.receiveShadow = true;
-                scene.add(sideW);
-                
-                const sideE = new THREE.Mesh(sideGeoV, sidewalkMat);
-                sideE.position.set(blockCenterX + BLOCK_SIZE / 2 - SIDEWALK_WIDTH / 2, 0.05, blockCenterZ);
-                sideE.receiveShadow = true;
-                scene.add(sideE);
-            }
-        }
+        // GRID (yol + blok)
+        const ROAD_WIDTH = 12;        // Yol genişliği
+        const BLOCK_INNER = 35;       // Blok iç alanı (kaldırım hariç)
+        const SIDEWALK_WIDTH = 3;     // Kaldırım genişliği
+        const BLOCK_TOTAL = BLOCK_INNER + SIDEWALK_WIDTH * 2; // Toplam blok (kaldırım dahil)
+        const GRID_STEP = BLOCK_TOTAL + ROAD_WIDTH; // İki blok merkezi arası mesafe
 
-        // --- YOLLAR ---
+        const gridCount = 5; // 5x5 blok
+        const cityWidth = gridCount * BLOCK_TOTAL + (gridCount + 1) * ROAD_WIDTH;
+        const cityStartX = CITY_CENTER_X - cityWidth / 2 + ROAD_WIDTH / 2 + SIDEWALK_WIDTH / 2;
+        const cityStartZ = CITY_CENTER_Z - cityWidth / 2 + ROAD_WIDTH / 2 + SIDEWALK_WIDTH / 2;
+
+        const buildings = [];
+
+        // --- YOLLAR VE KALDIRIMLAR ---
         const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
         const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-        // Yatay yollar (orta çizgili)
+        // Yatay yollar
         for (let i = 0; i <= gridCount; i++) {
-            const roadZ = cityStartZ + i * BLOCK_SIZE;
-            const roadGeo = new THREE.PlaneGeometry(gridCount * BLOCK_SIZE + ROAD_WIDTH, ROAD_WIDTH);
+            const roadZ = cityStartZ - BLOCK_TOTAL / 2 - SIDEWALK_WIDTH / 2 + i * (BLOCK_TOTAL + ROAD_WIDTH);
+            const roadGeo = new THREE.PlaneGeometry(cityWidth, ROAD_WIDTH);
             roadGeo.rotateX(-Math.PI / 2);
             const road = new THREE.Mesh(roadGeo, roadMat);
             road.position.set(CITY_CENTER_X, 0.03, roadZ);
@@ -521,14 +489,14 @@
             scene.add(road);
             
             // Orta çizgi (kesikli)
-            const totalLen = gridCount * BLOCK_SIZE;
-            const dashCount = Math.floor(totalLen / 4);
+            const totalLen = cityWidth;
+            const dashCount = Math.floor(totalLen / 6);
             for (let d = 0; d < dashCount; d++) {
-                const dashGeo = new THREE.PlaneGeometry(2, 0.3);
+                const dashGeo = new THREE.PlaneGeometry(3, 0.4);
                 dashGeo.rotateX(-Math.PI / 2);
                 const dash = new THREE.Mesh(dashGeo, lineMat);
                 dash.position.set(
-                    cityStartX + d * 4 + 2,
+                    CITY_CENTER_X - totalLen / 2 + d * 6 + 3,
                     0.04,
                     roadZ
                 );
@@ -538,33 +506,68 @@
 
         // Dikey yollar
         for (let i = 0; i <= gridCount; i++) {
-            const roadX = cityStartX + i * BLOCK_SIZE;
-            const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, gridCount * BLOCK_SIZE + ROAD_WIDTH);
+            const roadX = cityStartX - BLOCK_TOTAL / 2 - SIDEWALK_WIDTH / 2 + i * (BLOCK_TOTAL + ROAD_WIDTH);
+            const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, cityWidth);
             roadGeo.rotateX(-Math.PI / 2);
             const road = new THREE.Mesh(roadGeo, roadMat);
             road.position.set(roadX, 0.03, CITY_CENTER_Z);
             road.receiveShadow = true;
             scene.add(road);
             
-            // Orta çizgi
-            const totalLen = gridCount * BLOCK_SIZE;
-            const dashCount = Math.floor(totalLen / 4);
+            const totalLen = cityWidth;
+            const dashCount = Math.floor(totalLen / 6);
             for (let d = 0; d < dashCount; d++) {
-                const dashGeo = new THREE.PlaneGeometry(0.3, 2);
+                const dashGeo = new THREE.PlaneGeometry(0.4, 3);
                 dashGeo.rotateX(-Math.PI / 2);
                 const dash = new THREE.Mesh(dashGeo, lineMat);
                 dash.position.set(
                     roadX,
                     0.04,
-                    cityStartZ + d * 4 + 2
+                    CITY_CENTER_Z - totalLen / 2 + d * 6 + 3
                 );
                 scene.add(dash);
             }
         }
 
-        // --- BİNA TİPLERİ ---
+        // Kaldırımlar (her bloğun etrafında)
+        for (let bx = 0; bx < gridCount; bx++) {
+            for (let bz = 0; bz < gridCount; bz++) {
+                const blockCenterX = cityStartX + bx * GRID_STEP;
+                const blockCenterZ = cityStartZ + bz * GRID_STEP;
+                
+                // Kaldırım çerçevesi (blok etrafında ince)
+                // Kuzey ve güney
+                const sideGeoH = new THREE.PlaneGeometry(BLOCK_TOTAL, SIDEWALK_WIDTH);
+                sideGeoH.rotateX(-Math.PI / 2);
+                
+                const sideN = new THREE.Mesh(sideGeoH, sidewalkMat);
+                sideN.position.set(blockCenterX, 0.05, blockCenterZ - BLOCK_INNER / 2 - SIDEWALK_WIDTH / 2);
+                sideN.receiveShadow = true;
+                scene.add(sideN);
+                
+                const sideS = new THREE.Mesh(sideGeoH, sidewalkMat);
+                sideS.position.set(blockCenterX, 0.05, blockCenterZ + BLOCK_INNER / 2 + SIDEWALK_WIDTH / 2);
+                sideS.receiveShadow = true;
+                scene.add(sideS);
+                
+                // Doğu ve batı
+                const sideGeoV = new THREE.PlaneGeometry(SIDEWALK_WIDTH, BLOCK_INNER);
+                sideGeoV.rotateX(-Math.PI / 2);
+                
+                const sideW = new THREE.Mesh(sideGeoV, sidewalkMat);
+                sideW.position.set(blockCenterX - BLOCK_INNER / 2 - SIDEWALK_WIDTH / 2, 0.05, blockCenterZ);
+                sideW.receiveShadow = true;
+                scene.add(sideW);
+                
+                const sideE = new THREE.Mesh(sideGeoV, sidewalkMat);
+                sideE.position.set(blockCenterX + BLOCK_INNER / 2 + SIDEWALK_WIDTH / 2, 0.05, blockCenterZ);
+                sideE.receiveShadow = true;
+                scene.add(sideE);
+            }
+        }
+
+        // --- BİNA FONKSİYONLARI (Büyük boyutlar) ---
         const windowMat = new THREE.MeshBasicMaterial({ color: 0xffff99 });
-        const darkWindowMat = new THREE.MeshBasicMaterial({ color: 0x334455 });
 
         // 1) GÖKDELEN (yüksek, cam pencereli)
         function createSkyscraper(x, z, width, depth, height, color) {
@@ -578,35 +581,35 @@
             body.receiveShadow = true;
             group.add(body);
             
-            // Cam pencereler (grid halinde)
-            const floors = Math.floor(height / 3);
-            const colsX = Math.floor(width / 2);
-            const colsZ = Math.floor(depth / 2);
+            // Pencereler (grid halinde)
+            const floors = Math.floor(height / 4);
+            const colsX = Math.floor(width / 3);
+            const colsZ = Math.floor(depth / 3);
             
             for (let f = 1; f < floors; f++) {
-                const y = f * 3;
+                const y = f * 4;
                 for (let c = 0; c < colsX; c++) {
-                    const wx = -width / 2 + 1 + c * 2;
-                    // Ön yüz
-                    const winGeo = new THREE.PlaneGeometry(1.4, 2);
+                    const wx = -width / 2 + 1.5 + c * 3;
+                    const winGeo = new THREE.PlaneGeometry(2, 2.5);
+                    
                     const win = new THREE.Mesh(winGeo, windowMat);
                     win.position.set(wx, y, depth / 2 + 0.01);
                     group.add(win);
-                    // Arka yüz
+                    
                     const win2 = new THREE.Mesh(winGeo, windowMat);
                     win2.position.set(wx, y, -depth / 2 - 0.01);
                     win2.rotation.y = Math.PI;
                     group.add(win2);
                 }
                 for (let c = 0; c < colsZ; c++) {
-                    const wz = -depth / 2 + 1 + c * 2;
-                    // Sol yüz
-                    const winGeo = new THREE.PlaneGeometry(1.4, 2);
+                    const wz = -depth / 2 + 1.5 + c * 3;
+                    const winGeo = new THREE.PlaneGeometry(2, 2.5);
+                    
                     const win = new THREE.Mesh(winGeo, windowMat);
                     win.position.set(-width / 2 - 0.01, y, wz);
                     win.rotation.y = -Math.PI / 2;
                     group.add(win);
-                    // Sağ yüz
+                    
                     const win2 = new THREE.Mesh(winGeo, windowMat);
                     win2.position.set(width / 2 + 0.01, y, wz);
                     win2.rotation.y = Math.PI / 2;
@@ -614,18 +617,18 @@
                 }
             }
             
-            // Çatı anteni
-            if (height > 40) {
-                const antennaGeo = new THREE.CylinderGeometry(0.1, 0.1, 5, 4);
+            // Anten
+            if (height > 50) {
+                const antennaGeo = new THREE.CylinderGeometry(0.15, 0.15, 8, 4);
                 const antennaMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
                 const antenna = new THREE.Mesh(antennaGeo, antennaMat);
-                antenna.position.y = height + 2.5;
+                antenna.position.y = height + 4;
                 group.add(antenna);
                 
-                const redLightGeo = new THREE.SphereGeometry(0.3, 6, 6);
+                const redLightGeo = new THREE.SphereGeometry(0.5, 6, 6);
                 const redLightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
                 const redLight = new THREE.Mesh(redLightGeo, redLightMat);
-                redLight.position.y = height + 5;
+                redLight.position.y = height + 8;
                 group.add(redLight);
             }
             
@@ -634,10 +637,10 @@
             buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
         }
 
-        // 2) EV (küçük, çatılı)
+        // 2) EV (2 katlı, çatılı, gerçekçi boyut)
         function createHouse(x, z, width, depth, color) {
             const group = new THREE.Group();
-            const height = 4;
+            const height = 8; // 2 katlı ev (8 birim)
             
             // Ana gövde
             const bodyMat = new THREE.MeshLambertMaterial({ color: color });
@@ -648,40 +651,61 @@
             body.receiveShadow = true;
             group.add(body);
             
-            // Çatı (üçgen prizma)
+            // Çatı (üçgen prizma - 4 kenarlı koni)
             const roofMat = new THREE.MeshLambertMaterial({ color: 0x8b3a3a });
-            const roofGeo = new THREE.ConeGeometry(Math.max(width, depth) * 0.75, 3, 4);
+            const roofGeo = new THREE.ConeGeometry(Math.max(width, depth) * 0.8, 4, 4);
             const roof = new THREE.Mesh(roofGeo, roofMat);
-            roof.position.y = height + 1.5;
+            roof.position.y = height + 2;
             roof.rotation.y = Math.PI / 4;
             roof.castShadow = true;
             group.add(roof);
             
             // Kapı
             const doorMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
-            const doorGeo = new THREE.PlaneGeometry(1.2, 2.5);
+            const doorGeo = new THREE.PlaneGeometry(1.8, 3.5);
             const door = new THREE.Mesh(doorGeo, doorMat);
-            door.position.set(0, 1.25, depth / 2 + 0.01);
+            door.position.set(0, 1.75, depth / 2 + 0.01);
             group.add(door);
             
-            // Pencereler (2 tane ön yüzde)
-            const winGeo = new THREE.PlaneGeometry(1, 1);
+            // Pencereler (2 kat, ön yüz)
+            const winGeo = new THREE.PlaneGeometry(1.5, 1.5);
+            
+            // Alt kat pencereler (kapının iki yanında)
             const win1 = new THREE.Mesh(winGeo, windowMat);
-            win1.position.set(-width / 2 + 1.5, 2.5, depth / 2 + 0.01);
+            win1.position.set(-width / 2 + 2, 3, depth / 2 + 0.01);
             group.add(win1);
             const win2 = new THREE.Mesh(winGeo, windowMat);
-            win2.position.set(width / 2 - 1.5, 2.5, depth / 2 + 0.01);
+            win2.position.set(width / 2 - 2, 3, depth / 2 + 0.01);
             group.add(win2);
+            
+            // Üst kat pencereler
+            const win3 = new THREE.Mesh(winGeo, windowMat);
+            win3.position.set(-width / 2 + 2, 6.5, depth / 2 + 0.01);
+            group.add(win3);
+            const win4 = new THREE.Mesh(winGeo, windowMat);
+            win4.position.set(0, 6.5, depth / 2 + 0.01);
+            group.add(win4);
+            const win5 = new THREE.Mesh(winGeo, windowMat);
+            win5.position.set(width / 2 - 2, 6.5, depth / 2 + 0.01);
+            group.add(win5);
+            
+            // Baca (şömine)
+            const chimneyMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+            const chimneyGeo = new THREE.BoxGeometry(1, 3, 1);
+            const chimney = new THREE.Mesh(chimneyGeo, chimneyMat);
+            chimney.position.set(width / 2 - 2, height + 2, 0);
+            chimney.castShadow = true;
+            group.add(chimney);
             
             group.position.set(x, 0, z);
             scene.add(group);
             buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
         }
 
-        // 3) MARKET/DÜKKAN (geniş vitrin, tabelalı)
+        // 3) MARKET/DÜKKAN (geniş, tabelalı)
         function createShop(x, z, width, depth, color, signColor) {
             const group = new THREE.Group();
-            const height = 5;
+            const height = 7;
             
             const bodyMat = new THREE.MeshLambertMaterial({ color: color });
             const bodyGeo = new THREE.BoxGeometry(width, height, depth);
@@ -691,22 +715,30 @@
             body.receiveShadow = true;
             group.add(body);
             
-            // Geniş vitrin (ön yüz, büyük cam)
+            // Düz çatı
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
+            const roofGeo = new THREE.BoxGeometry(width + 0.5, 0.5, depth + 0.5);
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = height + 0.25;
+            roof.castShadow = true;
+            group.add(roof);
+            
+            // Geniş vitrin (cam)
             const glassMat = new THREE.MeshLambertMaterial({ 
                 color: 0x88ccff, 
                 transparent: true, 
                 opacity: 0.7 
             });
-            const glassGeo = new THREE.PlaneGeometry(width - 1, height - 1.5);
+            const glassGeo = new THREE.PlaneGeometry(width - 2, height - 2.5);
             const glass = new THREE.Mesh(glassGeo, glassMat);
-            glass.position.set(0, height / 2, depth / 2 + 0.01);
+            glass.position.set(0, (height - 2.5) / 2 + 0.5, depth / 2 + 0.01);
             group.add(glass);
             
             // Tabela
             const signMat = new THREE.MeshLambertMaterial({ color: signColor });
-            const signGeo = new THREE.BoxGeometry(width - 1, 1, 0.2);
+            const signGeo = new THREE.BoxGeometry(width - 1, 1.5, 0.3);
             const sign = new THREE.Mesh(signGeo, signMat);
-            sign.position.set(0, height - 0.3, depth / 2 + 0.15);
+            sign.position.set(0, height - 0.3, depth / 2 + 0.2);
             group.add(sign);
             
             group.position.set(x, 0, z);
@@ -718,7 +750,6 @@
         function createParkingLot(x, z, width, depth) {
             const group = new THREE.Group();
             
-            // Asfalt zemin
             const parkMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
             const parkGeo = new THREE.PlaneGeometry(width, depth);
             parkGeo.rotateX(-Math.PI / 2);
@@ -727,41 +758,39 @@
             park.receiveShadow = true;
             group.add(park);
             
-            // Park çizgileri (beyaz)
             const lineMat2 = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const spotsPerRow = Math.floor(width / 3);
+            const spotsPerRow = Math.floor(width / 4);
             for (let i = 0; i < spotsPerRow; i++) {
                 const lineGeo = new THREE.PlaneGeometry(0.15, depth / 2 - 1);
                 lineGeo.rotateX(-Math.PI / 2);
                 const line = new THREE.Mesh(lineGeo, lineMat2);
-                line.position.set(-width / 2 + i * 3, 0.06, -depth / 4);
+                line.position.set(-width / 2 + i * 4, 0.06, -depth / 4);
                 group.add(line);
                 
                 const line2 = new THREE.Mesh(lineGeo, lineMat2);
-                line2.position.set(-width / 2 + i * 3, 0.06, depth / 4);
+                line2.position.set(-width / 2 + i * 4, 0.06, depth / 4);
                 group.add(line2);
             }
             
-            // Arabalar (birkaç tane)
             const carColors = [0xcc4444, 0x4444cc, 0x444444, 0xcccccc, 0x44cc44, 0xffaa00];
             for (let i = 0; i < Math.min(spotsPerRow, 4); i++) {
                 const carColor = carColors[Math.floor(Math.random() * carColors.length)];
                 const carMat = new THREE.MeshLambertMaterial({ color: carColor });
                 
                 const carGroup = new THREE.Group();
-                const carBodyGeo = new THREE.BoxGeometry(2, 0.8, 3);
+                const carBodyGeo = new THREE.BoxGeometry(2, 1, 4);
                 const carBody = new THREE.Mesh(carBodyGeo, carMat);
-                carBody.position.y = 0.5;
+                carBody.position.y = 0.7;
                 carBody.castShadow = true;
                 carGroup.add(carBody);
                 
-                const carTopGeo = new THREE.BoxGeometry(1.8, 0.7, 1.5);
+                const carTopGeo = new THREE.BoxGeometry(1.8, 0.9, 2);
                 const carTopMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
                 const carTop = new THREE.Mesh(carTopGeo, carTopMat);
-                carTop.position.set(0, 1.1, -0.2);
+                carTop.position.set(0, 1.6, -0.2);
                 carGroup.add(carTop);
                 
-                carGroup.position.set(-width / 2 + i * 3 + 1.5, 0, -depth / 4);
+                carGroup.position.set(-width / 2 + i * 4 + 2, 0, -depth / 4);
                 group.add(carGroup);
             }
             
@@ -769,11 +798,10 @@
             scene.add(group);
         }
 
-        // 5) PARK (yeşil alan, ağaçlar, banklar)
+        // 5) PARK
         function createPark(x, z, width, depth) {
             const group = new THREE.Group();
             
-            // Yeşil zemin
             const parkMat = new THREE.MeshLambertMaterial({ color: 0x3d8c28 });
             const parkGeo = new THREE.PlaneGeometry(width, depth);
             parkGeo.rotateX(-Math.PI / 2);
@@ -782,53 +810,52 @@
             park.receiveShadow = true;
             group.add(park);
             
-            // Ağaçlar
             const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
             const leafMat = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
             
-            for (let i = 0; i < 6; i++) {
+            for (let i = 0; i < 8; i++) {
                 const treeX = (Math.random() - 0.5) * (width - 4);
                 const treeZ = (Math.random() - 0.5) * (depth - 4);
                 
-                const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 3, 6);
+                const trunkGeo = new THREE.CylinderGeometry(0.4, 0.5, 5, 6);
                 const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-                trunk.position.set(treeX, 1.5, treeZ);
+                trunk.position.set(treeX, 2.5, treeZ);
                 trunk.castShadow = true;
                 group.add(trunk);
                 
-                const leafGeo = new THREE.SphereGeometry(1.5, 8, 8);
+                const leafGeo = new THREE.SphereGeometry(2.5, 8, 8);
                 const leaf = new THREE.Mesh(leafGeo, leafMat);
-                leaf.position.set(treeX, 4, treeZ);
+                leaf.position.set(treeX, 6.5, treeZ);
                 leaf.castShadow = true;
                 group.add(leaf);
             }
             
             // Banklar
             const benchMat = new THREE.MeshLambertMaterial({ color: 0x6a4a2a });
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 4; i++) {
                 const benchGroup = new THREE.Group();
-                const seatGeo = new THREE.BoxGeometry(2.5, 0.2, 0.6);
+                const seatGeo = new THREE.BoxGeometry(3, 0.3, 0.8);
                 const seat = new THREE.Mesh(seatGeo, benchMat);
-                seat.position.y = 0.6;
+                seat.position.y = 0.8;
                 benchGroup.add(seat);
                 
-                const backGeo = new THREE.BoxGeometry(2.5, 0.6, 0.1);
+                const backGeo = new THREE.BoxGeometry(3, 0.8, 0.15);
                 const back = new THREE.Mesh(backGeo, benchMat);
-                back.position.set(0, 0.9, -0.25);
+                back.position.set(0, 1.2, -0.3);
                 benchGroup.add(back);
                 
-                const legGeo = new THREE.BoxGeometry(0.1, 0.6, 0.1);
+                const legGeo = new THREE.BoxGeometry(0.15, 0.8, 0.15);
                 const leg1 = new THREE.Mesh(legGeo, benchMat);
-                leg1.position.set(-1, 0.3, 0);
+                leg1.position.set(-1.2, 0.4, 0);
                 benchGroup.add(leg1);
                 const leg2 = new THREE.Mesh(legGeo, benchMat);
-                leg2.position.set(1, 0.3, 0);
+                leg2.position.set(1.2, 0.4, 0);
                 benchGroup.add(leg2);
                 
                 benchGroup.position.set(
-                    (Math.random() - 0.5) * (width - 4),
+                    (Math.random() - 0.5) * (width - 6),
                     0,
-                    (Math.random() - 0.5) * (depth - 4)
+                    (Math.random() - 0.5) * (depth - 6)
                 );
                 benchGroup.rotation.y = Math.random() * Math.PI * 2;
                 group.add(benchGroup);
@@ -838,28 +865,33 @@
             scene.add(group);
         }
 
-        // --- ŞEHİR BLOKLARINI DOLDUR (düzenli) ---
-        // Her blok için içerik tipini belirle (düzenli dağılım)
+        // --- ŞEHİR BLOKLARINI DOLDUR (Düzenli) ---
+        // Her blok içine 1 bina tipi (sıkışmadan)
         const blockTypes = [
-            'skyscraper', 'house', 'house', 'shop', 'park', 'house',
-            'house', 'skyscraper', 'shop', 'house', 'park', 'house',
-            'shop', 'house', 'house', 'skyscraper', 'house', 'house',
-            'house', 'park', 'house', 'shop', 'house', 'skyscraper',
-            'house', 'house', 'house', 'park', 'house', 'house',
-            'park', 'shop', 'house', 'house', 'skyscraper', 'house'
+            'skyscraper', 'house', 'shop', 'house', 'park',
+            'house', 'house', 'skyscraper', 'house', 'shop',
+            'shop', 'park', 'MONUMENT', 'house', 'house',
+            'house', 'skyscraper', 'house', 'shop', 'park',
+            'park', 'house', 'house', 'skyscraper', 'house'
         ];
 
         let blockIndex = 0;
 
         for (let bx = 0; bx < gridCount; bx++) {
             for (let bz = 0; bz < gridCount; bz++) {
-                const blockCenterX = cityStartX + bx * BLOCK_SIZE + BLOCK_SIZE / 2;
-                const blockCenterZ = cityStartZ + bz * BLOCK_SIZE + BLOCK_SIZE / 2;
+                const blockCenterX = cityStartX + bx * GRID_STEP;
+                const blockCenterZ = cityStartZ + bz * GRID_STEP;
                 
-                // Merkez bloğu özel (anıt)
-                if (bx === 3 && bz === 3) {
-                    // Anıt
-                    const plazaGeo = new THREE.PlaneGeometry(BLOCK_SIZE - SIDEWALK_WIDTH * 2, BLOCK_SIZE - SIDEWALK_WIDTH * 2);
+                const type = blockTypes[blockIndex % blockTypes.length];
+                blockIndex++;
+                
+                // Kaldırımın içine sığacak boyutlar
+                const maxW = BLOCK_INNER - 2;  // Kaldırımdan 2 birim içerde
+                const maxD = BLOCK_INNER - 2;
+                
+                if (type === 'MONUMENT') {
+                    // Merkez anıt
+                    const plazaGeo = new THREE.PlaneGeometry(BLOCK_INNER, BLOCK_INNER);
                     plazaGeo.rotateX(-Math.PI / 2);
                     const plazaMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
                     const plaza = new THREE.Mesh(plazaGeo, plazaMat);
@@ -867,105 +899,100 @@
                     plaza.receiveShadow = true;
                     scene.add(plaza);
                     
-                    // Anıt sütunu
-                    const monBaseGeo = new THREE.CylinderGeometry(3, 3.5, 2, 8);
+                    const monBaseGeo = new THREE.CylinderGeometry(4, 5, 3, 8);
                     const monBaseMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
                     const monBase = new THREE.Mesh(monBaseGeo, monBaseMat);
-                    monBase.position.set(blockCenterX, 1, blockCenterZ);
+                    monBase.position.set(blockCenterX, 1.5, blockCenterZ);
                     monBase.castShadow = true;
                     scene.add(monBase);
                     
-                    const monGeo = new THREE.CylinderGeometry(0.6, 1, 15, 8);
+                    const monGeo = new THREE.CylinderGeometry(0.8, 1.5, 20, 8);
                     const monMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
                     const mon = new THREE.Mesh(monGeo, monMat);
-                    mon.position.set(blockCenterX, 9.5, blockCenterZ);
+                    mon.position.set(blockCenterX, 13, blockCenterZ);
                     mon.castShadow = true;
                     scene.add(mon);
                     
-                    const monTopGeo = new THREE.SphereGeometry(1.2, 16, 16);
+                    const monTopGeo = new THREE.SphereGeometry(1.8, 16, 16);
                     const monTopMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
                     const monTop = new THREE.Mesh(monTopGeo, monTopMat);
-                    monTop.position.set(blockCenterX, 17, blockCenterZ);
+                    monTop.position.set(blockCenterX, 23.5, blockCenterZ);
                     monTop.castShadow = true;
                     scene.add(monTop);
                     
-                    buildings.push({ x: blockCenterX, z: blockCenterZ, halfW: 5, halfD: 5 });
-                    blockIndex++;
-                    continue;
-                }
-                
-                const type = blockTypes[blockIndex % blockTypes.length];
-                blockIndex++;
-                
-                // Kaldırımın içine sığacak şekilde yerleştir
-                const usableSize = BLOCK_SIZE - SIDEWALK_WIDTH * 2 - 2;
-                
-                if (type === 'skyscraper') {
-                    const w = usableSize - 4;
-                    const d = usableSize - 4;
-                    const h = 30 + Math.random() * 30;
-                    const colors = [0x7799bb, 0x99aabb, 0x6688aa, 0xaabbcc, 0x8899aa];
+                    buildings.push({ x: blockCenterX, z: blockCenterZ, halfW: 6, halfD: 6 });
+                } else if (type === 'skyscraper') {
+                    const w = maxW - 4;
+                    const d = maxD - 4;
+                    const h = 50 + Math.random() * 50;
+                    const colors = [0x7799bb, 0x99aabb, 0x6688aa, 0xaabbcc, 0x8899aa, 0xbbccdd];
                     const color = colors[Math.floor(Math.random() * colors.length)];
                     createSkyscraper(blockCenterX, blockCenterZ, w, d, h, color);
                 } else if (type === 'house') {
-                    // 2 ev
-                    const w = usableSize / 2 - 1;
-                    const d = usableSize - 2;
-                    const colors = [0xddaa77, 0xcc8855, 0xbb9966, 0xaaccaa, 0xccaaaa, 0xaaaacc];
+                    // 2 ev yan yana (büyük)
+                    const w = maxW / 2 - 1.5;
+                    const d = maxD - 4;
+                    const colors = [0xddaa77, 0xcc8855, 0xbb9966, 0xaaccaa, 0xccaaaa, 0xaaaacc, 0xeeddcc];
                     const color1 = colors[Math.floor(Math.random() * colors.length)];
                     const color2 = colors[Math.floor(Math.random() * colors.length)];
-                    createHouse(blockCenterX - usableSize / 4, blockCenterZ, w, d, color1);
-                    createHouse(blockCenterX + usableSize / 4, blockCenterZ, w, d, color2);
+                    
+                    // Sol ev
+                    createHouse(blockCenterX - maxW / 4 + 0.5, blockCenterZ, w, d, color1);
+                    // Sağ ev
+                    createHouse(blockCenterX + maxW / 4 - 0.5, blockCenterZ, w, d, color2);
                 } else if (type === 'shop') {
-                    const w = usableSize - 2;
-                    const d = usableSize - 4;
+                    const w = maxW - 4;
+                    const d = maxD - 6;
                     const colors = [0xdddddd, 0xeeeeee, 0xcccccc, 0xffccaa, 0xaaccff];
                     const color = colors[Math.floor(Math.random() * colors.length)];
                     const signColors = [0xff3333, 0x33ff33, 0x3333ff, 0xffaa00, 0xff33ff];
                     const signColor = signColors[Math.floor(Math.random() * signColors.length)];
                     createShop(blockCenterX, blockCenterZ, w, d, color, signColor);
                 } else if (type === 'park') {
-                    createPark(blockCenterX, blockCenterZ, usableSize + 4, usableSize + 4);
+                    createPark(blockCenterX, blockCenterZ, BLOCK_INNER, BLOCK_INNER);
                 }
             }
         }
 
-        // --- OTOPARKLAR (yol kenarlarına) ---
-        // Şehrin dış çevresine otoparklar
-        createParkingLot(cityStartX - 20, CITY_CENTER_Z, 20, 15);
-        createParkingLot(cityStartX + gridCount * BLOCK_SIZE + 20, CITY_CENTER_Z, 20, 15);
-        createParkingLot(CITY_CENTER_X, cityStartZ - 20, 20, 15);
-        createParkingLot(CITY_CENTER_X, cityStartZ + gridCount * BLOCK_SIZE + 20, 20, 15);
+        // --- OTOPARKLAR (şehir dışı) ---
+        createParkingLot(cityStartX - GRID_STEP, CITY_CENTER_Z, 25, 20);
+        createParkingLot(cityStartX + gridCount * GRID_STEP, CITY_CENTER_Z, 25, 20);
+        createParkingLot(CITY_CENTER_X, cityStartZ - GRID_STEP, 25, 20);
+        createParkingLot(CITY_CENTER_X, cityStartZ + gridCount * GRID_STEP, 25, 20);
 
-        // --- SOKAK LAMBALARI ---
+        // --- SOKAK LAMBALARI (yol kenarlarında, kaldırım köşelerinde) ---
         const lampPoleMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
         const lampLightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
 
         function createStreetLamp(x, z) {
             const lampGroup = new THREE.Group();
             
-            const poleGeo = new THREE.CylinderGeometry(0.15, 0.15, 6, 6);
+            const poleGeo = new THREE.CylinderGeometry(0.15, 0.15, 7, 6);
             const pole = new THREE.Mesh(poleGeo, lampPoleMat);
-            pole.position.y = 3;
+            pole.position.y = 3.5;
             pole.castShadow = true;
             lampGroup.add(pole);
 
-            const lampGeo = new THREE.SphereGeometry(0.5, 8, 8);
+            const lampGeo = new THREE.SphereGeometry(0.6, 8, 8);
             const lampMesh = new THREE.Mesh(lampGeo, lampLightMat);
-            lampMesh.position.y = 6;
+            lampMesh.position.y = 7;
             lampGroup.add(lampMesh);
 
             lampGroup.position.set(x, 0, z);
             scene.add(lampGroup);
         }
 
-        // Kaldırım köşelerine lambalar
-        for (let i = 0; i <= gridCount; i++) {
-            for (let j = 0; j <= gridCount; j++) {
-                const lx = cityStartX + i * BLOCK_SIZE - SIDEWALK_WIDTH - 1;
-                const lz = cityStartZ + j * BLOCK_SIZE - SIDEWALK_WIDTH - 1;
-                createStreetLamp(lx, lz);
-                createStreetLamp(lx + 2, lz + 2);
+        // Her kaldırım köşesine lamba (yol tarafında, blok içinde değil)
+        for (let bx = 0; bx <= gridCount; bx++) {
+            for (let bz = 0; bz <= gridCount; bz++) {
+                // Kaldırım köşesinin konumu (yol ile blok arası)
+                const cornerX = cityStartX - BLOCK_TOTAL / 2 - SIDEWALK_WIDTH / 2 + bx * GRID_STEP - ROAD_WIDTH / 2 + 1;
+                const cornerZ = cityStartZ - BLOCK_TOTAL / 2 - SIDEWALK_WIDTH / 2 + bz * GRID_STEP - ROAD_WIDTH / 2 + 1;
+                
+                // Köşede lamba (yol tarafı, kaldırımda)
+                if (bx < gridCount && bz < gridCount) {
+                    createStreetLamp(cornerX, cornerZ);
+                }
             }
         }
 
@@ -976,15 +1003,15 @@
         function createTree(x, z) {
             const treeGroup = new THREE.Group();
             
-            const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 3, 6);
+            const trunkGeo = new THREE.CylinderGeometry(0.4, 0.5, 5, 6);
             const trunk = new THREE.Mesh(trunkGeo, treeTrunkMat);
-            trunk.position.y = 1.5;
+            trunk.position.y = 2.5;
             trunk.castShadow = true;
             treeGroup.add(trunk);
 
-            const leafGeo = new THREE.SphereGeometry(1.5, 8, 8);
+            const leafGeo = new THREE.SphereGeometry(2.5, 8, 8);
             const leaf = new THREE.Mesh(leafGeo, treeLeafMat);
-            leaf.position.y = 4;
+            leaf.position.y = 6;
             leaf.castShadow = true;
             treeGroup.add(leaf);
 
@@ -999,7 +1026,7 @@
             const z = Math.sin(angle) * radius;
             
             const distToCity = Math.sqrt((x - CITY_CENTER_X) ** 2 + (z - CITY_CENTER_Z) ** 2);
-            if (distToCity < 120) continue;
+            if (distToCity < 140) continue;
             
             createTree(x, z);
         }
