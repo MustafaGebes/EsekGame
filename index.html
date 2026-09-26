@@ -209,7 +209,6 @@
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // === IŞIKLAR ===
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(ambientLight);
 
@@ -243,17 +242,15 @@
         scene.add(moonMesh);
 
         // === YILDIZLAR ===
-        // Gece görünecek parlayan yıldızlar
         const starGeometry = new THREE.BufferGeometry();
         const starCount = 1500;
         const starPositions = new Float32Array(starCount * 3);
         const starColors = new Float32Array(starCount * 3);
 
         for (let i = 0; i < starCount; i++) {
-            // Yıldızları büyük bir küre üzerine dağıt (sadece üst yarımküre)
             const radius = 800 + Math.random() * 200;
             const theta = Math.random() * Math.PI * 2;
-            const phi = Math.random() * Math.PI * 0.5; // 0 - 90 derece (üst yarımküre)
+            const phi = Math.random() * Math.PI * 0.5;
             
             const x = radius * Math.sin(phi) * Math.cos(theta);
             const y = radius * Math.cos(phi);
@@ -263,7 +260,6 @@
             starPositions[i * 3 + 1] = y;
             starPositions[i * 3 + 2] = z;
             
-            // Renk: beyazdan hafif maviye/sarıya
             const tint = Math.random();
             starColors[i * 3] = 0.8 + tint * 0.2;
             starColors[i * 3 + 1] = 0.8 + tint * 0.2;
@@ -277,23 +273,19 @@
             size: 3,
             vertexColors: true,
             transparent: true,
-            opacity: 0, // Başlangıçta görünmez (gündüz)
+            opacity: 0,
             sizeAttenuation: false
         });
 
         const stars = new THREE.Points(starGeometry, starMaterial);
         scene.add(stars);
 
-        // === ZEMİN ===
         const terrainGeo = new THREE.PlaneGeometry(500, 500, 50, 50);
         terrainGeo.rotateX(-Math.PI / 2);
         const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0x2d5a1e }));
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
-        // ==========================================
-        // DAĞLAR
-        // ==========================================
         const mountains = [];
 
         function createMountain(x, z, baseRadius, height) {
@@ -334,9 +326,6 @@
             createMountain(x, z, baseRadius, height);
         }
 
-        // ==========================================
-        // OTLAR
-        // ==========================================
         const grassMat1 = new THREE.MeshLambertMaterial({ color: 0x2d7a1e });
         const grassMat2 = new THREE.MeshLambertMaterial({ color: 0x4a9c2a });
         const grassMat3 = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
@@ -386,9 +375,6 @@
             scene.add(grassGroup);
         }
 
-        // ==========================================
-        // BULUTLAR
-        // ==========================================
         const clouds = [];
         const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
 
@@ -418,9 +404,6 @@
             createCloud(x, y, z);
         }
 
-        // ==========================================
-        // KUŞLAR
-        // ==========================================
         const birds = [];
         const birdMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
 
@@ -462,9 +445,6 @@
             birds.push(bird);
         }
 
-        // ==========================================
-        // EŞEK MODELİ
-        // ==========================================
         function createDonkeyModel() {
             const donkeyGroup = new THREE.Group();
             const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
@@ -752,7 +732,7 @@
             if (settingsPanel.style.display === 'block') return;
             yaw -= (e.clientX - mouseX) * 0.005 * sensitivity;
             pitch -= (e.clientY - mouseY) * 0.005 * sensitivity;
-            pitch = Math.max(-0.6, Math.min(1.0, pitch));
+            pitch = Math.max(-1.2, Math.min(1.4, pitch));  // GENİŞLETİLDİ
             mouseX = e.clientX;
             mouseY = e.clientY;
         });
@@ -779,7 +759,6 @@
             }
         });
 
-        // JOYSTICK
         joystickZone.addEventListener('touchstart', (e) => {
             e.preventDefault();
             if (joystickTouchId !== null) return;
@@ -834,7 +813,6 @@
             joystickMoveX = 0; joystickMoveZ = 0;
         });
 
-        // KAMERA DÖNDÜRME
         window.addEventListener('touchstart', (e) => {
             if (!gameStarted || controlMode !== 'mobile') return;
             if (settingsPanel.style.display === 'block') return;
@@ -878,7 +856,7 @@
             
             yaw -= (tX - cameraLastX) * 0.005 * sensitivity;
             pitch -= (tY - cameraLastY) * 0.005 * sensitivity;
-            pitch = Math.max(-0.6, Math.min(1.0, pitch));
+            pitch = Math.max(-1.2, Math.min(1.4, pitch));  // GENİŞLETİLDİ
             
             cameraLastX = tX;
             cameraLastY = tY;
@@ -957,13 +935,11 @@
             }
         }
 
-        // === ZAMAN ===
         let gameTime = 8.0;
         let gameDay = 1;
         const TIME_SPEED = 0.4;
         const DAY_DURATION = 24;
 
-        // === FPS ===
         let fpsFrames = 0;
         let fpsLastTime = performance.now();
         let currentFps = 60;
@@ -984,13 +960,11 @@
                 fpsLastTime = now;
             }
 
-            // BULUTLAR
             for (let c of clouds) {
                 c.position.x += 0.02;
                 if (c.position.x > 250) c.position.x = -250;
             }
 
-            // KUŞLAR
             for (let b of birds) {
                 b.userData.angle += b.userData.speed * 0.01;
                 b.position.x = b.userData.centerX + Math.cos(b.userData.angle) * b.userData.radius;
@@ -1018,7 +992,6 @@
                 hudDayEl.textContent = gameDay;
                 hudChunkEl.textContent = viewDistance;
 
-                // ========== GÜNEŞ/AY ==========
                 const dayProgress = (gameTime - 6) / 12;
                 const sunAngle = dayProgress * Math.PI;
                 const sunRadius = 300;
@@ -1049,14 +1022,6 @@
                     sunLight.intensity = 0.0;
                 }
 
-                // ========== GÖKYÜZÜ RENGİ - KADEMELİ GEÇİŞ ==========
-                // Renk paleti:
-                // Gece: koyu lacivert (0.02, 0.02, 0.08)
-                // Şafak: kızıl/turuncu (1.0, 0.5, 0.2)
-                // Gündüz: açık mavi (0.53, 0.81, 0.92)
-                // Gün batımı: turuncu/kızıl (1.0, 0.4, 0.15)
-                // Gece: koyu lacivert
-                
                 const nightColor = { r: 0.02, g: 0.02, b: 0.08 };
                 const dayColor = { r: 0.53, g: 0.81, b: 0.92 };
                 const sunsetColor = { r: 1.0, g: 0.45, b: 0.15 };
@@ -1064,38 +1029,31 @@
 
                 let skyR, skyG, skyB;
 
-                // Saat dilimlerine göre geçiş
                 if (gameTime >= 5 && gameTime < 7) {
-                    // Şafak: Gece -> Gündoğumu
-                    const t = (gameTime - 5) / 2; // 0 -> 1
+                    const t = (gameTime - 5) / 2;
                     skyR = nightColor.r * (1 - t) + sunriseColor.r * t;
                     skyG = nightColor.g * (1 - t) + sunriseColor.g * t;
                     skyB = nightColor.b * (1 - t) + sunriseColor.b * t;
                 } else if (gameTime >= 7 && gameTime < 9) {
-                    // Gündoğumu -> Gündüz
-                    const t = (gameTime - 7) / 2; // 0 -> 1
+                    const t = (gameTime - 7) / 2;
                     skyR = sunriseColor.r * (1 - t) + dayColor.r * t;
                     skyG = sunriseColor.g * (1 - t) + dayColor.g * t;
                     skyB = sunriseColor.b * (1 - t) + dayColor.b * t;
                 } else if (gameTime >= 9 && gameTime < 16) {
-                    // Tam gündüz
                     skyR = dayColor.r;
                     skyG = dayColor.g;
                     skyB = dayColor.b;
                 } else if (gameTime >= 16 && gameTime < 18) {
-                    // Gündüz -> Gün batımı
-                    const t = (gameTime - 16) / 2; // 0 -> 1
+                    const t = (gameTime - 16) / 2;
                     skyR = dayColor.r * (1 - t) + sunsetColor.r * t;
                     skyG = dayColor.g * (1 - t) + sunsetColor.g * t;
                     skyB = dayColor.b * (1 - t) + sunsetColor.b * t;
                 } else if (gameTime >= 18 && gameTime < 20) {
-                    // Gün batımı -> Gece
-                    const t = (gameTime - 18) / 2; // 0 -> 1
+                    const t = (gameTime - 18) / 2;
                     skyR = sunsetColor.r * (1 - t) + nightColor.r * t;
                     skyG = sunsetColor.g * (1 - t) + nightColor.g * t;
                     skyB = sunsetColor.b * (1 - t) + nightColor.b * t;
                 } else {
-                    // Tam gece (20:00 - 05:00)
                     skyR = nightColor.r;
                     skyG = nightColor.g;
                     skyB = nightColor.b;
@@ -1107,29 +1065,21 @@
                 const isDay = gameTime >= 7 && gameTime <= 17;
                 ambientLight.intensity = isDay ? 0.5 : 0.15;
 
-                // ========== YILDIZLARIN GÖRÜNÜRLÜĞÜ ==========
-                // Gece tam görünür, gündüz görünmez, geçişlerde yumuşak
                 let starOpacity = 0;
                 if (gameTime >= 20 || gameTime < 5) {
-                    // Tam gece
                     starOpacity = 1.0;
                 } else if (gameTime >= 5 && gameTime < 7) {
-                    // Şafak: yavaşça kaybol
                     starOpacity = 1.0 - (gameTime - 5) / 2;
                 } else if (gameTime >= 18 && gameTime < 20) {
-                    // Gün batımı: yavaşça ortaya çık
                     starOpacity = (gameTime - 18) / 2;
                 } else {
-                    // Gündüz
                     starOpacity = 0;
                 }
                 starMaterial.opacity = starOpacity;
 
-                // Yıldızları kameraya göre döndür (hep aynı yerde kalsınlar)
                 stars.position.copy(camera.position);
-                stars.rotation.y = yaw * 0.5; // Hafif paralaks etkisi
+                stars.rotation.y = yaw * 0.5;
 
-                // HAREKET
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
                 
@@ -1223,7 +1173,7 @@
                 const distance = 6, heightOffset = isCrouching ? 1.8 : 2.5;
                 camera.position.set(
                     playerDonkey.position.x - Math.sin(yaw) * distance,
-                    playerDonkey.position.y + heightOffset + (pitch * 2),
+                    playerDonkey.position.y + heightOffset + (pitch * 2.5),  // 2 → 2.5
                     playerDonkey.position.z - Math.cos(yaw) * distance
                 );
                 camera.lookAt(new THREE.Vector3(playerDonkey.position.x, playerDonkey.position.y + (isCrouching ? 1.0 : 1.5), playerDonkey.position.z));
