@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eşek Game - 3. Şahıs & Online Hazırlık</title>
+    <title>Eşek Game - Online 3. Şahıs</title>
     <style>
         body {
             margin: 0;
@@ -11,19 +11,6 @@
             background-color: #1a1a1a;
             font-family: Arial, sans-serif;
             user-select: none;
-        }
-
-        #damageOverlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 0, 0, 0.4);
-            pointer-events: none;
-            display: none;
-            z-index: 12;
-            transition: opacity 0.3s ease;
         }
 
         #menu {
@@ -36,7 +23,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
             z-index: 20;
         }
 
@@ -45,53 +32,30 @@
             font-size: 64px;
             margin: 0;
             text-shadow: 3px 3px 6px #000;
-            letter-spacing: 2px;
         }
 
         h2 {
             color: #ffffff;
-            font-size: 28px;
+            font-size: 24px;
             margin: 10px 0 30px 0;
-            text-shadow: 2px 2px 4px #000;
             font-weight: 300;
         }
 
-        #pauseMenu, #deathMenu {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 30;
-        }
-
         .btn {
-            padding: 12px 35px;
-            font-size: 20px;
+            padding: 15px 40px;
+            font-size: 22px;
             font-weight: bold;
             color: #ffffff;
-            border: 3px solid transparent;
+            background-color: #4CAF50;
+            border: none;
             border-radius: 8px;
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            transition: all 0.2s ease;
-            margin: 10px;
-            min-width: 220px;
-            outline: none;
+            transition: transform 0.2s;
         }
 
-        .btn-green { background-color: #4CAF50; }
-        .btn-red { background-color: #e74c3c; }
-
-        .btn.selected {
-            border-color: #ffff00;
+        .btn:hover {
             transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(255, 255, 0, 0.6);
         }
 
         #info {
@@ -106,80 +70,24 @@
             display: none;
             z-index: 15;
         }
-
-        #hud {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            display: none;
-            z-index: 15;
-            box-sizing: border-box;
-            padding: 20px;
-        }
-
-        #healthBar {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .bar-square {
-            width: 45px;
-            height: 62px;
-            background-color: #444444;
-            border-radius: 7px;
-            box-shadow: inset 0 0 4px rgba(0,0,0,0.6);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .bar-fill {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            transition: width 0.3s;
-        }
-
-        .health-fill { background-color: #e74c3c; }
     </style>
 </head>
 <body>
 
-    <div id="damageOverlay"></div>
-    <div id="hud">
-        <div id="healthBar"></div>
-    </div>
-
     <div id="menu">
         <h1>Eşek Game</h1>
-        <h2>3. Şahıs & Ortak Alan Modu</h2>
-        <button id="startBtn" class="btn btn-green selected">BAŞLA (ORTAK ALAN)</button>
+        <h2>Online 3. Şahıs Modu</h2>
+        <button id="startBtn" class="btn">OYUNA BAŞLA</button>
     </div>
 
-    <div id="pauseMenu">
-        <h1 style="font-size: 48px; color: #ffffff; margin-bottom: 20px;">Oyun Durduruldu</h1>
-        <button id="resumeBtn" class="btn btn-green selected">Devam Et</button>
-        <button id="pauseMainMenuBtn" class="btn btn-red">Menüye Dön</button>
-    </div>
-
-    <div id="deathMenu">
-        <h1 style="font-size: 56px; color: #e74c3c; margin-bottom: 25px; text-shadow: 2px 2px 8px #000;">Öldün!</h1>
-        <button id="respawnBtn" class="btn btn-green selected">Tekrar Oyna</button>
-        <button id="deathMainMenuBtn" class="btn btn-red">Menüye Dön</button>
-    </div>
-
-    <div id="info">W,A,S,D: Yürü | Fare: Etrafa Bak | Space: Zıpla | ESC: Duraklat</div>
+    <div id="info">W,A,S,D: Yürü | Fare: Etrafa Bak | Space: Zıpla</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
 
     <script>
+        const socket = io();
+
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
 
@@ -190,9 +98,7 @@
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-        scene.add(ambientLight);
-
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
         dirLight.position.set(100, 200, 100);
         dirLight.castShadow = true;
@@ -201,100 +107,83 @@
         // Zemin
         const terrainGeo = new THREE.PlaneGeometry(500, 500, 100, 100);
         terrainGeo.rotateX(-Math.PI / 2);
-        const terrainMat = new THREE.MeshLambertMaterial({ color: 0x3d8c28 });
-        const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
+        const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0x3d8c28 }));
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
-        // --- ORTAK BAŞLANGIÇ NOKTASI (LOBİ / SPAWN) ---
-        const SPAWN_POINT = { x: 0, y: 0, z: 0 };
+        // Eşek Modeli Oluşturma Fonksiyonu
+        function createDonkeyModel() {
+            const donkeyGroup = new THREE.Group();
+            const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
+            const muzzleMat = new THREE.MeshLambertMaterial({ color: 0xdddddd });
+            const blackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
 
-        // --- EŞEK MODELİ ---
-        const donkeyGroup = new THREE.Group();
-        const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
-        const muzzleMat = new THREE.MeshLambertMaterial({ color: 0xdddddd });
-        const blackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+            function createBox(w, h, d, mat, x, y, z) {
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+                mesh.position.set(x, y, z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                return mesh;
+            }
 
-        function createBox(w, h, d, mat, x, y, z) {
-            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-            mesh.position.set(x, y, z);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            return mesh;
+            // Gövde
+            donkeyGroup.add(createBox(1.2, 1.0, 2.0, greyMat, 0, 1.5, 0));
+
+            // Boyun ve Baş Grubu (Yüzü öne bakacak şekilde)
+            const neckHeadGroup = new THREE.Group();
+            neckHeadGroup.position.set(0, 1.8, 0.7);
+
+            const neck = createBox(0.6, 0.9, 0.6, greyMat, 0, 0.4, 0);
+            neck.rotation.x = 0.3;
+            neckHeadGroup.add(neck);
+            
+            const head = createBox(0.6, 0.6, 0.9, greyMat, 0, 0.9, 0.3);
+            neckHeadGroup.add(head);
+            
+            const muzzle = createBox(0.58, 0.4, 0.4, muzzleMat, 0, 0.8, 0.75);
+            neckHeadGroup.add(muzzle);
+
+            const normalEyesGroup = new THREE.Group();
+            normalEyesGroup.add(createBox(0.1, 0.1, 0.1, blackMat, 0.31, 1.0, 0.3));
+            normalEyesGroup.add(createBox(0.1, 0.1, 0.1, blackMat, -0.31, 1.0, 0.3));
+            neckHeadGroup.add(normalEyesGroup);
+
+            const earLeft = createBox(0.15, 0.8, 0.2, greyMat, 0.25, 1.5, 0); earLeft.rotation.set(-0.2, 0, -0.2);
+            const earRight = createBox(0.15, 0.8, 0.2, greyMat, -0.25, 1.5, 0); earRight.rotation.set(-0.2, 0, 0.2);
+            neckHeadGroup.add(earLeft); neckHeadGroup.add(earRight);
+
+            donkeyGroup.add(neckHeadGroup);
+
+            // Bacaklar
+            [[0.4, 1.0, 0.7], [-0.4, 1.0, 0.7], [0.4, 1.0, -0.7], [-0.4, 1.0, -0.7]].forEach(pos => {
+                const legGroup = new THREE.Group();
+                legGroup.position.set(pos[0], pos[1], pos[2]);
+                legGroup.add(createBox(0.3, 0.8, 0.3, greyMat, 0, -0.4, 0));
+                legGroup.add(createBox(0.32, 0.2, 0.32, blackMat, 0, -0.9, 0));
+                donkeyGroup.add(legGroup);
+            });
+
+            return donkeyGroup;
         }
 
-        // Gövde
-        donkeyGroup.add(createBox(1.2, 1.0, 2.0, greyMat, 0, 1.5, 0));
+        const playerDonkey = createDonkeyModel();
+        scene.add(playerDonkey);
 
-        // Boyun ve Baş Grubu
-        const neckHeadGroup = new THREE.Group();
-        neckHeadGroup.position.set(0, 1.8, 0.7);
-
-        const neck = createBox(0.6, 0.9, 0.6, greyMat, 0, 0.4, 0);
-        neck.rotation.x = 0.3;
-        neckHeadGroup.add(neck);
-        
-        const head = createBox(0.6, 0.6, 0.9, greyMat, 0, 0.9, 0.3);
-        neckHeadGroup.add(head);
-        
-        const muzzle = createBox(0.58, 0.4, 0.4, muzzleMat, 0, 0.8, 0.75);
-        neckHeadGroup.add(muzzle);
-
-        const normalEyesGroup = new THREE.Group();
-        normalEyesGroup.add(createBox(0.1, 0.1, 0.1, blackMat, 0.31, 1.0, 0.3));
-        normalEyesGroup.add(createBox(0.1, 0.1, 0.1, blackMat, -0.31, 1.0, 0.3));
-        neckHeadGroup.add(normalEyesGroup);
-
-        const earLeft = createBox(0.15, 0.8, 0.2, greyMat, 0.25, 1.5, 0); earLeft.rotation.set(-0.2, 0, -0.2);
-        const earRight = createBox(0.15, 0.8, 0.2, greyMat, -0.25, 1.5, 0); earRight.rotation.set(-0.2, 0, 0.2);
-        neckHeadGroup.add(earLeft); neckHeadGroup.add(earRight);
-
-        donkeyGroup.add(neckHeadGroup);
-
-        // Bacaklar
-        [[0.4, 1.0, 0.7], [-0.4, 1.0, 0.7], [0.4, 1.0, -0.7], [-0.4, 1.0, -0.7]].forEach(pos => {
-            const legGroup = new THREE.Group();
-            legGroup.position.set(pos[0], pos[1], pos[2]);
-            legGroup.add(createBox(0.3, 0.8, 0.3, greyMat, 0, -0.4, 0));
-            legGroup.add(createBox(0.32, 0.2, 0.32, blackMat, 0, -0.9, 0));
-            donkeyGroup.add(legGroup);
-        });
-
-        donkeyGroup.position.set(SPAWN_POINT.x, SPAWN_POINT.y, SPAWN_POINT.z);
-        scene.add(donkeyGroup);
-
-        let gameStarted = false, isPaused = false, isDead = false;
+        let gameStarted = false;
         let yaw = 0, pitch = 0.3, velocityY = 0;
         let isGrounded = true;
-
         const keys = { w: false, a: false, s: false, d: false };
-
-        const menuEl = document.getElementById('menu');
-        const pauseMenuEl = document.getElementById('pauseMenu');
-        const infoEl = document.getElementById('info');
-        const hudEl = document.getElementById('hud');
+        const otherPlayers = {};
 
         document.getElementById('startBtn').addEventListener('click', () => {
-            menuEl.style.display = 'none';
-            infoEl.style.display = 'block';
-            hudEl.style.display = 'block';
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('info').style.display = 'block';
             gameStarted = true;
-            
-            donkeyGroup.position.set(SPAWN_POINT.x, SPAWN_POINT.y, SPAWN_POINT.z);
-            yaw = 0;
-            pitch = 0.3;
-
-            document.body.requestPointerLock();
-        });
-
-        document.getElementById('resumeBtn').addEventListener('click', () => {
-            isPaused = false;
-            pauseMenuEl.style.display = 'none';
             document.body.requestPointerLock();
         });
 
         document.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement === document.body && gameStarted && !isPaused && !isDead) {
+            if (document.pointerLockElement === document.body && gameStarted) {
                 yaw -= e.movementX * 0.003;
                 pitch -= e.movementY * 0.003;
                 pitch = Math.max(-0.2, Math.min(1.2, pitch));
@@ -302,14 +191,7 @@
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Escape' && gameStarted && !isDead) {
-                isPaused = true;
-                pauseMenuEl.style.display = 'flex';
-                document.exitPointerLock();
-                return;
-            }
-            if (!gameStarted || isPaused || isDead) return;
-
+            if (!gameStarted) return;
             const k = e.key.toLowerCase();
             if (k === 'w') keys.w = true;
             if (k === 'a') keys.a = true;
@@ -329,10 +211,45 @@
             if (k === 'd') keys.d = false;
         });
 
+        // --- SOCKET.IO ONLINE SENKRONİZASYON ---
+        socket.on('currentPlayers', (players) => {
+            Object.keys(players).forEach((id) => {
+                if (id !== socket.id) {
+                    addOtherPlayer(players[id]);
+                }
+            });
+        });
+
+        socket.on('newPlayer', (playerInfo) => {
+            addOtherPlayer(playerInfo);
+        });
+
+        socket.on('playerDisconnected', (id) => {
+            if (otherPlayers[id]) {
+                scene.remove(otherPlayers[id]);
+                delete otherPlayers[id];
+            }
+        });
+
+        socket.on('playerMoved', (playerInfo) => {
+            if (otherPlayers[playerInfo.id]) {
+                otherPlayers[playerInfo.id].position.set(playerInfo.x, playerInfo.y, playerInfo.z);
+                otherPlayers[playerInfo.id].rotation.y = playerInfo.rotation;
+            }
+        });
+
+        function addOtherPlayer(info) {
+            const donkey = createDonkeyModel();
+            donkey.position.set(info.x, info.y, info.z);
+            scene.add(donkey);
+            otherPlayers[info.id] = donkey;
+        }
+
+        // Oyun Döngüsü
         function animate() {
             requestAnimationFrame(animate);
 
-            if (gameStarted && !isPaused && !isDead) {
+            if (gameStarted) {
                 const speed = 0.12;
                 let moveX = 0, moveZ = 0;
                 if (keys.w) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; }
@@ -340,32 +257,42 @@
                 if (keys.a) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; }
                 if (keys.d) { moveX += Math.cos(yaw) * speed; moveZ -= Math.sin(yaw) * speed; }
 
-                donkeyGroup.position.x += moveX;
-                donkeyGroup.position.z += moveZ;
-                donkeyGroup.rotation.y = yaw;
+                playerDonkey.position.x += moveX;
+                playerDonkey.position.z += moveZ;
+                playerDonkey.rotation.y = yaw;
 
                 velocityY -= 0.015;
-                donkeyGroup.position.y += velocityY;
-                if (donkeyGroup.position.y <= 0) {
-                    donkeyGroup.position.y = 0;
+                playerDonkey.position.y += velocityY;
+                if (playerDonkey.position.y <= 0) {
+                    playerDonkey.position.y = 0;
                     velocityY = 0;
                     isGrounded = true;
                 }
 
-                // 3. Şahıs Kamera
-                const distance = 6;
-                const heightOffset = 2.5;
+                // Konumumuzu sunucuya bildir
+                socket.emit('playerMovement', {
+                    x: playerDonkey.position.x,
+                    y: playerDonkey.position.y,
+                    z: playerDonkey.position.z,
+                    rotation: yaw
+                });
 
-                const camX = donkeyGroup.position.x + Math.sin(yaw) * distance;
-                const camZ = donkeyGroup.position.z + Math.cos(yaw) * distance;
-                const camY = donkeyGroup.position.y + heightOffset + (pitch * 3);
+                // --- DÜZELTİLMİŞ 3. ŞAHIS KAMERA (ARKADAN ÖNE BAKIŞ) ---
+                const distance = 6; // Eşeğe uzaklık
+                const heightOffset = 2.5; // Yükseklik
+
+                // Kameranın eşeğin arkasında kalmasını sağlayan hesaplama
+                const camX = playerDonkey.position.x - Math.sin(yaw) * distance;
+                const camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
+                const camY = playerDonkey.position.y + heightOffset + (pitch * 3);
 
                 camera.position.set(camX, camY, camZ);
                 
+                // Kameranın eşeğin arkasından öne (yüzüne/gövdesine) doğru bakması
                 const lookAtTarget = new THREE.Vector3(
-                    donkeyGroup.position.x,
-                    donkeyGroup.position.y + 1.5,
-                    donkeyGroup.position.z
+                    playerDonkey.position.x,
+                    playerDonkey.position.y + 1.5,
+                    playerDonkey.position.z
                 );
                 camera.lookAt(lookAtTarget);
             }
