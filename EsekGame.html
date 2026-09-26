@@ -23,7 +23,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.7);
             z-index: 20;
         }
 
@@ -85,8 +85,48 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
+        // WebSocket Bağlantısı (Sunucu ile haberleşme)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+        let myId = null;
+        const otherPlayers = {};
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === "players") {
+                    myId = data.me;
+                    const serverPlayers = data.players;
+
+                    // Diğer oyuncuları güncelle veya oluştur
+                    for (let id in serverPlayers) {
+                        if (id !== myId) {
+                            if (!otherPlayers[id]) {
+                                const newDonkey = createDonkeyModel();
+                                scene.add(newDonkey);
+                                otherPlayers[id] = newDonkey;
+                            }
+                            otherPlayers[id].position.x = serverPlayers[id].x;
+                            otherPlayers[id].position.z = serverPlayers[id].z;
+                        }
+                    }
+
+                    // Oyundan çıkanları temizle
+                    for (let id in otherPlayers) {
+                        if (!serverPlayers[id]) {
+                            scene.remove(otherPlayers[id]);
+                            delete otherPlayers[id];
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("WebSocket veri hatası:", e);
+            }
+        };
+
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb);
+        scene.background = new THREE.Color(0x87ceeb); // Siyah ekranı önleyen gökyüzü rengi
 
         const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 3000);
 
@@ -126,7 +166,7 @@
             // Gövde
             donkeyGroup.add(createBox(1.2, 1.0, 2.0, greyMat, 0, 1.5, 0));
 
-            // Boyun ve Baş Grubu (Yüzü öne bakacak şekilde)
+            // Boyun ve Baş Grubu
             const neckHeadGroup = new THREE.Group();
             neckHeadGroup.position.set(0, 1.8, 0.7);
 
@@ -231,18 +271,25 @@
                     isGrounded = true;
                 }
 
-                // --- ARKADAN BAKIŞ 3. ŞAHIS KAMERA ---
-                const distance = 6; // Eşeğe uzaklık
-                const heightOffset = 2.5; // Yükseklik
+                // Sunucuya konum gönder
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: "move",
+                        x: playerDonkey.position.x,
+                        z: playerDonkey.position.z
+                    }));
+                }
 
-                // Kameranın eşeğin tam arkasında kalmasını sağlayan hesaplama
+                // --- ARKADAN BAKIŞ 3. ŞAHIS KAMERA ---
+                const distance = 6;
+                const heightOffset = 2.5;
+
                 const camX = playerDonkey.position.x - Math.sin(yaw) * distance;
                 const camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
                 const camY = playerDonkey.position.y + heightOffset + (pitch * 3);
 
                 camera.position.set(camX, camY, camZ);
                 
-                // Kameranın eşeğin arkasından öne doğru bakması
                 const lookAtTarget = new THREE.Vector3(
                     playerDonkey.position.x,
                     playerDonkey.position.y + 1.5,
@@ -255,6 +302,13 @@
         }
 
         animate();
+
+        // Pencere boyutu değiştiğinde
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
