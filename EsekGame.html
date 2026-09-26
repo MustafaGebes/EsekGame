@@ -1,257 +1,388 @@
-<!doctype html>
-<html lang="tr"><head><meta charset="utf-8"><title>Eşek Game</title>
-<style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial}
-#menu{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#222;color:#fff;z-index:5}
-#menu h1{font-size:60px;margin:0 0 30px}
-#play{font-size:25px;padding:15px 50px;cursor:pointer}
-#info{position:absolute;top:10px;left:10px;padding:8px;background:#0009;color:#fff;z-index:2;pointer-events:none}
-</style>
-</head><body>
-<div id="menu"><h1>Eşek Game</h1><button id="play">Oyuna Başla (Tıkla)</button></div>
-<div id="info" style="display:none">WASD: Hareket | Fare: Etrafa Bakma | SPACE: Zıpla | SHIFT: Koş | C: Eğil</div>
-<script type="module">
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js";
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eşek Game - Gözden Bakış</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            font-family: Arial, sans-serif;
+            user-select: none;
+        }
 
-const menu=document.querySelector("#menu"), info=document.querySelector("#info");
-let scene, camera, renderer, ws;
-let playerGroup, otherPlayers=new Map();
-let keys={};
-let velocityY=0, isGrounded=true;
-let yaw=0, pitch=0; // Fare açıları
+        #damageOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 0, 0, 0.4);
+            pointer-events: none;
+            display: none;
+            z-index: 12;
+            transition: opacity 0.3s ease;
+        }
 
-document.querySelector("#play").onclick=()=>{
-    menu.style.display="none";
-    info.style.display="block";
-    document.body.requestPointerLock();
-    init();
-};
+        #menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 20;
+        }
 
-document.addEventListener("pointerlockchange",()=>{
-    if(document.pointerLockElement!==document.body && menu.style.display==="none"){
-        menu.style.display="flex";
-        info.style.display="none";
-    }
-});
+        h1 {
+            color: #ffd700;
+            font-size: 64px;
+            margin: 0;
+            text-shadow: 3px 3px 6px #000;
+            letter-spacing: 2px;
+        }
 
-addEventListener("mousemove",e=>{
-    if(document.pointerLockElement===document.body){
-        yaw -= e.movementX * 0.003;
-        pitch -= e.movementY * 0.003;
-        pitch = Math.max(-Math.random()*0.1 - 0.2, Math.min(1.2, pitch));
-    }
-});
+        h2 {
+            color: #ffffff;
+            font-size: 28px;
+            margin: 10px 0 30px 0;
+            text-shadow: 2px 2px 4px #000;
+            font-weight: 300;
+        }
 
-addEventListener("keydown",e=>{ keys[e.key.toLowerCase()]=true; });
-addEventListener("keyup",e=>{ keys[e.key.toLowerCase()]=false; });
+        #pauseMenu, #deathMenu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 30;
+        }
 
-// Detaylı Eşek Modeli Oluşturma Fonksiyonu
-function createDonkeyModel(isMe = true) {
-    const group = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({color: 0x887766});
-    const darkMat = new THREE.MeshStandardMaterial({color: 0x443322});
-    const whiteMat = new THREE.MeshStandardMaterial({color: 0xeeeedd});
+        .btn {
+            padding: 12px 35px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffffff;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: all 0.2s ease;
+            margin: 10px;
+            min-width: 220px;
+            outline: none;
+        }
 
-    // Gövde
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 2.2), bodyMat);
-    body.position.y = 1.1;
-    body.castShadow = true;
-    group.add(body);
+        .btn-green { background-color: #4CAF50; }
+        .btn-red { background-color: #e74c3c; }
 
-    // Kafa
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 1.3), bodyMat);
-    head.position.set(0, 1.8, 1.2);
-    group.add(head);
+        .btn.selected {
+            border-color: #ffff00;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.6);
+        }
 
-    // Burun
-    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.5), whiteMat);
-    snout.position.set(0, 1.65, 1.8);
-    group.add(snout);
+        #info {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: #ffffff;
+            font-size: 16px;
+            pointer-events: none;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+            display: none;
+            z-index: 15;
+        }
 
-    // Kulaklar (Uzun eşek kulakları)
-    const earGeo = new THREE.BoxGeometry(0.15, 0.9, 0.25);
-    const ear1 = new THREE.Mesh(earGeo, bodyMat);
-    ear1.position.set(0.25, 2.4, 0.9);
-    ear1.rotation.z = -0.1;
-    group.add(ear1);
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+            z-index: 15;
+            box-sizing: border-box;
+            padding: 20px;
+        }
 
-    const ear2 = new THREE.Mesh(earGeo, bodyMat);
-    ear2.position.set(-0.25, 2.4, 0.9);
-    ear2.rotation.z = 0.1;
-    group.add(ear2);
+        #healthBar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+        }
 
-    // Bacaklar
-    const legGeo = new THREE.BoxGeometry(0.3, 1.0, 0.3);
-    const leg1 = new THREE.Mesh(legGeo, darkMat); leg1.position.set(0.4, 0.5, 0.8); group.add(leg1);
-    const leg2 = new THREE.Mesh(legGeo, darkMat); leg2.position.set(-0.4, 0.5, 0.8); group.add(leg2);
-    const leg3 = new THREE.Mesh(legGeo, darkMat); leg3.position.set(0.4, 0.5, -0.8); group.add(leg3);
-    const leg4 = new THREE.Mesh(legGeo, darkMat); leg4.position.set(-0.4, 0.5, -0.8); group.add(leg4);
+        .bar-square {
+            width: 45px;
+            height: 62px;
+            background-color: #444444;
+            border-radius: 7px;
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.6);
+            position: relative;
+            overflow: hidden;
+        }
 
-    // Kuyruk
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.1), darkMat);
-    tail.position.set(0, 1.0, -1.2);
-    tail.rotation.x = 0.3;
-    group.add(tail);
+        .bar-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: width 0.3s;
+        }
 
-    return group;
-}
+        .health-fill { background-color: #e74c3c; }
 
-function init(){
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb);
-    scene.fog = new THREE.FogExp2(0x87ceeb, 0.005);
+        @keyframes flashing {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.2; transform: scale(1.1); }
+            100% { opacity: 1; transform: scale(1); }
+        }
 
-    camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
-    renderer = new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(innerWidth, innerWidth);
-    renderer.setSize(innerWidth, innerHeight);
-    document.body.appendChild(renderer.domElement);
+        .flashing {
+            animation: flashing 0.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body>
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.2);
-    sun.position.set(100, 200, 100);
-    scene.add(sun);
+    <div id="damageOverlay"></div>
+    <div id="hud">
+        <div id="healthBar"></div>
+    </div>
 
-    // Koçaman Çimen Zemin (Boyut: 400x400)
-    const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry(400, 400),
-        new THREE.MeshStandardMaterial({color: 0x3b8a3b, roughness: 0.9})
-    );
-    ground.rotation.x = -Math.PI/2;
-    scene.add(ground);
+    <div id="menu">
+        <h1>Eşek Game</h1>
+        <h2>Göz Hizası Kamera Modu</h2>
+        <button id="startBtn" class="btn btn-green selected">BAŞLA</button>
+    </div>
 
-    // Yerlerde Gerçekçi Küçük Çimen Detayları (Instanced / Rastgele Kutucuklar)
-    const grassMat = new THREE.MeshStandardMaterial({color: 0x2e7d32});
-    const grassGeo = new THREE.BoxGeometry(0.15, 0.6, 0.15);
-    for(let i=0; i<1500; i++){
-        const g = new THREE.Mesh(grassGeo, grassMat);
-        const x = (Math.random() - 0.5) * 360;
-        const z = (Math.random() - 0.5) * 360;
-        g.position.set(x, 0.3, z);
-        scene.add(g);
-    }
+    <div id="pauseMenu">
+        <h1 style="font-size: 48px; color: #ffffff; margin-bottom: 20px;">Oyun Durduruldu</h1>
+        <button id="resumeBtn" class="btn btn-green selected">Devam Et</button>
+        <button id="pauseMainMenuBtn" class="btn btn-red">Menüye Dön</button>
+    </div>
 
-    // Etrafı Çeviren Dağlar (Sınır Oluşturma)
-    const mountainMat = new THREE.MeshStandardMaterial({color: 0x5c5243, roughness: 1.0});
-    for(let i=0; i<30; i++){
-        const angle = (i / 30) * Math.PI * 2;
-        const radius = 180;
-        const mountain = new THREE.Mesh(
-            new THREE.ConeGeometry(35 + Math.random()*15, 60 + Math.random()*30, 4),
-            mountainMat
-        );
-        mountain.position.set(Math.cos(angle)*radius, 25, Math.sin(angle)*radius);
-        scene.add(mountain);
-    }
+    <div id="deathMenu">
+        <h1 style="font-size: 56px; color: #e74c3c; margin-bottom: 25px; text-shadow: 2px 2px 8px #000;">Öldün!</h1>
+        <button id="respawnBtn" class="btn btn-green selected">Tekrar Oyna</button>
+        <button id="deathMainMenuBtn" class="btn btn-red">Menüye Dön</button>
+    </div>
 
-    // Oyuncu Eşek Modeli
-    playerGroup = createDonkeyModel(true);
-    playerGroup.position.set(0, 0, 0);
-    scene.add(playerGroup);
+    <div id="info">W,A,S,D: Yürü | Space: Zıpla | ESC: Duraklat</div>
 
-    // WebSocket Bağlantısı
-    ws = new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);
-    let last=0;
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-    ws.onmessage = e => {
-        const data = JSON.parse(e.data);
-        if(data.type!=="players") return;
-        const seen = new Set();
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+
+        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 3000);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        dirLight.position.set(100, 200, 100);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // Zemin
+        const terrainGeo = new THREE.PlaneGeometry(500, 500, 100, 100);
+        terrainGeo.rotateX(-Math.PI / 2);
+        const terrainMat = new THREE.MeshLambertMaterial({ color: 0x3d8c28 });
+        const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
+        terrainMesh.receiveShadow = true;
+        scene.add(terrainMesh);
+
+        // --- EŞEK MODELİ ---
+        const donkeyGroup = new THREE.Group();
+        const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
+        const darkGreyMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+        const muzzleMat = new THREE.MeshLambertMaterial({ color: 0xdddddd });
+        const blackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+
+        function createBox(w, h, d, mat, x, y, z) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            return mesh;
+        }
+
+        // Gövde
+        donkeyGroup.add(createBox(1.2, 1.0, 2.0, greyMat, 0, 1.5, 0));
+
+        // Boyun ve Baş Grubu
+        const neckHeadGroup = new THREE.Group();
+        neckHeadGroup.position.set(0, 1.8, 0.7);
+
+        const neck = createBox(0.6, 0.9, 0.6, greyMat, 0, 0.4, 0);
+        neck.rotation.x = 0.3;
+        neckHeadGroup.add(neck);
         
-        for(const [id, p] of Object.entries(data.players)){
-            if(id === data.me) continue;
-            seen.add(id);
-            let donkey = otherPlayers.get(id);
-            if(!donkey){
-                donkey = createDonkeyModel(false);
-                scene.add(donkey);
-                otherPlayers.set(id, donkey);
-            }
-            donkey.position.set(p.x, p.y, p.z);
-            donkey.rotation.y = p.ry || 0;
-        }
-        for(const [id, donkey] of otherPlayers){
-            if(!seen.has(id)){
-                scene.remove(donkey);
-                otherPlayers.delete(id);
-            }
-        }
-    };
-
-    function animate(t){
-        requestAnimationFrame(animate);
-
-        let speed = 0.12;
-        if(keys["shift"]) speed = 0.24; // Koşma
-
-        // Hareket yönleri (Fare açısına göre)
-        let moveX = 0, moveZ = 0;
-        if(keys["w"]){ moveX -= Math.sin(yaw)*speed; moveZ -= Math.cos(yaw)*speed; }
-        if(keys["s"]){ moveX += Math.sin(yaw)*speed; moveZ += Math.cos(yaw)*speed; }
-        if(keys["a"]){ moveX -= Math.cos(yaw)*speed; moveZ += Math.sin(yaw)*speed; }
-        if(keys["d"]){ moveX += Math.cos(yaw)*speed; moveZ -= Math.sin(yaw)*speed; }
-
-        playerGroup.position.x += moveX;
-        playerGroup.position.z += moveZ;
-
-        // Dağ Sınırları İçinde Tutma (Geçilmez Sınır - Map Sınırı)
-        playerGroup.position.x = Math.max(-175, Math.min(175, playerGroup.position.x));
-        playerGroup.position.z = Math.max(-175, Math.min(175, playerGroup.position.z));
-
-        // Eğilme (C tuşu)
-        if(keys["c"]){
-            playerGroup.scale.set(1, 0.6, 1);
-        } else {
-            playerGroup.scale.set(1, 1, 1);
-        }
-
-        // Zıplama ve Yerçekimi
-        if(keys[" "] && isGrounded){
-            velocityY = 0.18;
-            isGrounded = false;
-        }
-        velocityY -= 0.01; // Yerçekimi
-        playerGroup.position.y += velocityY;
-        if(playerGroup.position.y <= 0){
-            playerGroup.position.y = 0;
-            velocityY = 0;
-            isGrounded = true;
-        }
-
-        // Eşek Yönünü Fareye Göre Çevirme
-        playerGroup.rotation.y = yaw;
-
-        // Sunucuya Konum Gönderme
-        if(ws.readyState===WebSocket.OPEN && t-last > 50){
-            last = t;
-            ws.send(JSON.stringify({
-                type: "move",
-                x: playerGroup.position.x,
-                y: playerGroup.position.y,
-                z: playerGroup.position.z,
-                ry: playerGroup.rotation.y
-            }));
-        }
-
-        // Kamera Takibi (Üçüncü Şahıs / Arkadan Bakış)
-        let camDist = 6;
-        let camHeight = 2.5;
-        let cx = playerGroup.position.x + Math.sin(yaw) * camDist;
-        let cz = playerGroup.position.z + Math.cos(yaw) * camDist;
-        let cy = playerGroup.position.y + camHeight + pitch * 3;
+        const head = createBox(0.6, 0.6, 0.9, greyMat, 0, 0.9, 0.3);
+        neckHeadGroup.add(head);
         
-        camera.position.set(cx, cy, cz);
-        camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.2, playerGroup.position.z);
+        const muzzle = createBox(0.58, 0.4, 0.4, muzzleMat, 0, 0.8, 0.75);
+        neckHeadGroup.add(muzzle);
 
-        renderer.render(scene, camera);
-    }
-    animate(0);
+        const normalEyesGroup = new THREE.Group();
+        normalEyesGroup.add(createBox(0.1, 0.1, 0.1, blackMat, 0.31, 1.0, 0.3));
+        normalEyesGroup.add(createBox(0.1, 0.1, 0.1, blackMat, -0.31, 1.0, 0.3));
+        neckHeadGroup.add(normalEyesGroup);
 
-    addEventListener("resize",()=>{
-        camera.aspect = innerWidth / innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(innerWidth, innerHeight);
-    });
-}
-</script>
-</body></html>
+        const earLeft = createBox(0.15, 0.8, 0.2, greyMat, 0.25, 1.5, 0); earLeft.rotation.set(-0.2, 0, -0.2);
+        const earRight = createBox(0.15, 0.8, 0.2, greyMat, -0.25, 1.5, 0); earRight.rotation.set(-0.2, 0, 0.2);
+        neckHeadGroup.add(earLeft); neckHeadGroup.add(earRight);
+
+        donkeyGroup.add(neckHeadGroup);
+
+        // Bacaklar
+        [[0.4, 1.0, 0.7], [-0.4, 1.0, 0.7], [0.4, 1.0, -0.7], [-0.4, 1.0, -0.7]].forEach(pos => {
+            const legGroup = new THREE.Group();
+            legGroup.position.set(pos[0], pos[1], pos[2]);
+            legGroup.add(createBox(0.3, 0.8, 0.3, greyMat, 0, -0.4, 0));
+            legGroup.add(createBox(0.32, 0.2, 0.32, blackMat, 0, -0.9, 0));
+            donkeyGroup.add(legGroup);
+        });
+
+        donkeyGroup.position.set(0, 0, 0);
+        scene.add(donkeyGroup);
+
+        let gameStarted = false, isPaused = false, isDead = false;
+        let yaw = 0, pitch = 0.0, velocityY = 0;
+        let isGrounded = true;
+        let health = 18;
+
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+
+        // UI Elemanları
+        const menuEl = document.getElementById('menu');
+        const pauseMenuEl = document.getElementById('pauseMenu');
+        const deathMenuEl = document.getElementById('deathMenu');
+        const infoEl = document.getElementById('info');
+        const hudEl = document.getElementById('hud');
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            menuEl.style.display = 'none';
+            infoEl.style.display = 'block';
+            hudEl.style.display = 'block';
+            gameStarted = true;
+            document.body.requestPointerLock();
+        });
+
+        document.getElementById('resumeBtn').addEventListener('click', () => {
+            isPaused = false;
+            pauseMenuEl.style.display = 'none';
+            document.body.requestPointerLock();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === document.body && gameStarted && !isPaused && !isDead) {
+                yaw -= e.movementX * 0.003;
+                pitch -= e.movementY * 0.003;
+                pitch = Math.max(-1.0, Math.min(1.0, pitch)); // Göz hizası için dikey bakış sınırı
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape' && gameStarted && !isDead) {
+                isPaused = true;
+                pauseMenuEl.style.display = 'flex';
+                document.exitPointerLock();
+                return;
+            }
+            if (!gameStarted || isPaused || isDead) return;
+
+            const k = e.key.toLowerCase();
+            if (k === 'w') keys.w = true;
+            if (k === 'a') keys.a = true;
+            if (k === 's') keys.s = true;
+            if (k === 'd') keys.d = true;
+            if (e.code === 'Space' && isGrounded) {
+                velocityY = 0.35;
+                isGrounded = false;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'w') keys.w = false;
+            if (k === 'a') keys.a = false;
+            if (k === 's') keys.s = false;
+            if (k === 'd') keys.d = false;
+        });
+
+        // Oyun Döngüsü
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (gameStarted && !isPaused && !isDead) {
+                // Hareket Mantığı
+                const speed = 0.12;
+                let moveX = 0, moveZ = 0;
+                if (keys.w) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; }
+                if (keys.s) { moveX += Math.sin(yaw) * speed; moveZ += Math.cos(yaw) * speed; }
+                if (keys.a) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; }
+                if (keys.d) { moveX += Math.cos(yaw) * speed; moveZ -= Math.sin(yaw) * speed; }
+
+                donkeyGroup.position.x += moveX;
+                donkeyGroup.position.z += moveZ;
+                donkeyGroup.rotation.y = yaw;
+
+                // Yerçekimi ve Zıplama
+                velocityY -= 0.015;
+                donkeyGroup.position.y += velocityY;
+                if (donkeyGroup.position.y <= 0) {
+                    donkeyGroup.position.y = 0;
+                    velocityY = 0;
+                    isGrounded = true;
+                }
+
+                // --- GÖZ HİZASI (FIRST-PERSON) KAMERA KONUMLANDIRMASI ---
+                // Kamera doğrudan eşeğin kafa/göz hizasına yerleştirilir
+                const eyeHeight = 2.7; 
+                camera.position.set(
+                    donkeyGroup.position.x,
+                    donkeyGroup.position.y + eyeHeight,
+                    donkeyGroup.position.z
+                );
+
+                // Kameranın baktığı yönü yaw ve pitch değerlerine göre ayarlıyoruz
+                const lookTarget = new THREE.Vector3(
+                    donkeyGroup.position.x - Math.sin(yaw) * 10,
+                    donkeyGroup.position.y + eyeHeight + pitch * 10,
+                    donkeyGroup.position.z - Math.cos(yaw) * 10
+                );
+                camera.lookAt(lookTarget);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
