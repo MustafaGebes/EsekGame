@@ -38,8 +38,8 @@
             z-index: 25;
         }
 
-        #joystickZone { position: absolute; bottom: 40px; left: 40px; width: 130px; height: 130px; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; pointer-events: auto; touch-action: none; }
-        #joystickKnob { position: absolute; top: 40px; left: 40px; width: 50px; height: 50px; background: rgba(255, 255, 255, 0.7); border-radius: 50%; pointer-events: none; }
+        #joystickZone { position: absolute; bottom: 40px; left: 40px; width: 140px; height: 140px; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; pointer-events: auto; touch-action: none; display: flex; justify-content: center; align-items: center; }
+        #joystickKnob { width: 60px; height: 60px; background: rgba(255, 255, 255, 0.75); border-radius: 50%; pointer-events: none; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
         
         .mob-btn-group { position: absolute; bottom: 40px; right: 40px; display: flex; flex-direction: column; gap: 15px; pointer-events: auto; align-items: center; }
         .mob-btn { width: 70px; height: 70px; background: rgba(0, 0, 0, 0.5); border: 2px solid #ffffff; color: #ffffff; font-size: 16px; font-weight: bold; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
@@ -64,7 +64,6 @@
         #hud div { margin: 2px 0; }
         #hud .label { color: #ffd700; font-weight: bold; }
 
-        /* AYARLAR PANELİ */
         #settingsPanel {
             position: absolute;
             top: 50%;
@@ -130,7 +129,6 @@
     </style>
 </head>
 <body>
-
     <div id="menu">
         <h1>Eşek Game</h1>
         <h2>Cross-Platform Online Modu</h2>
@@ -157,7 +155,6 @@
         <div><span class="label">Görüş:</span> <span id="hudChunk">150</span></div>
     </div>
 
-    <!-- Ayarlar Paneli -->
     <div id="settingsPanel">
         <h3>⚙️ Ayarlar</h3>
         <label>Görüş Mesafesi (Chunk): <span class="value-display" id="chunkValue">150</span></label>
@@ -197,7 +194,6 @@
 
         const MAP_LIMIT = 200;
 
-        // AYARLAR
         let viewDistance = 150;
         let sensitivity = 1.0;
 
@@ -212,7 +208,6 @@
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // === IŞIKLAR ===
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(ambientLight);
 
@@ -245,16 +240,12 @@
         );
         scene.add(moonMesh);
 
-        // === ZEMİN ===
         const terrainGeo = new THREE.PlaneGeometry(500, 500, 50, 50);
         terrainGeo.rotateX(-Math.PI / 2);
         const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0x2d5a1e }));
         terrainMesh.receiveShadow = true;
         scene.add(terrainMesh);
 
-        // ==========================================
-        // DAĞLAR - Sadece harita sınırı (tek sıra)
-        // ==========================================
         const mountains = [];
 
         function createMountain(x, z, baseRadius, height) {
@@ -295,9 +286,6 @@
             createMountain(x, z, baseRadius, height);
         }
 
-        // ==========================================
-        // OTLAR
-        // ==========================================
         const grassMat1 = new THREE.MeshLambertMaterial({ color: 0x2d7a1e });
         const grassMat2 = new THREE.MeshLambertMaterial({ color: 0x4a9c2a });
         const grassMat3 = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
@@ -347,9 +335,6 @@
             scene.add(grassGroup);
         }
 
-        // ==========================================
-        // BULUTLAR
-        // ==========================================
         const clouds = [];
         const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
 
@@ -379,9 +364,6 @@
             createCloud(x, y, z);
         }
 
-        // ==========================================
-        // KUŞLAR
-        // ==========================================
         const birds = [];
         const birdMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
 
@@ -423,9 +405,6 @@
             birds.push(bird);
         }
 
-        // ==========================================
-        // EŞEK MODELİ
-        // ==========================================
         function createDonkeyModel() {
             const donkeyGroup = new THREE.Group();
             const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
@@ -579,7 +558,6 @@
         const hudDayEl = document.getElementById('hudDay');
         const hudChunkEl = document.getElementById('hudChunk');
 
-        // AYARLAR
         const settingsPanel = document.getElementById('settingsPanel');
         const chunkSlider = document.getElementById('chunkSlider');
         const chunkValue = document.getElementById('chunkValue');
@@ -726,8 +704,6 @@
         const mobSprintBtn = document.getElementById('mobSprintBtn');
         const mobMenuBtn = document.getElementById('mobMenuBtn');
         
-        let touchStartX = 0, touchStartY = 0;
-
         mobMenuBtn.addEventListener('click', () => {
             if (gameStarted) {
                 gameStarted = false;
@@ -741,15 +717,16 @@
             }
         });
 
-        // JOYSTICK
+        const joystickRadius = 50; // Maximum distance knob can travel from center
+
         joystickZone.addEventListener('touchstart', (e) => {
             e.preventDefault();
             if (joystickTouchId !== null) return;
             const touch = e.changedTouches[0];
             joystickTouchId = touch.identifier;
             joystickActive = true;
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
+            
+            updateJoystickPosition(touch.clientX, touch.clientY);
         }, { passive: false });
 
         joystickZone.addEventListener('touchmove', (e) => {
@@ -765,38 +742,58 @@
             }
             if (!touch) return;
             
-            let dX = touch.clientX - touchStartX;
-            let dY = touch.clientY - touchStartY;
-            let dist = Math.min(45, Math.sqrt(dX * dX + dY * dY));
-            let angle = Math.atan2(dY, dX);
-            
-            joystickKnob.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
-            
-            joystickMoveX = Math.cos(angle) * (dist / 45);
-            joystickMoveZ = Math.sin(angle) * (dist / 45);
+            updateJoystickPosition(touch.clientX, touch.clientY);
         }, { passive: false });
 
-        joystickZone.addEventListener('touchend', (e) => {
-            e.preventDefault();
+        function endJoystickTouch(e) {
+            if (joystickTouchId === null) return;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 if (e.changedTouches[i].identifier === joystickTouchId) {
-                    joystickTouchId = null;
-                    joystickActive = false;
-                    joystickKnob.style.transform = `translate(0px, 0px)`;
-                    joystickMoveX = 0; joystickMoveZ = 0;
+                    resetJoystick();
                     break;
                 }
             }
-        }, { passive: false });
+        }
 
-        joystickZone.addEventListener('touchcancel', () => {
+        joystickZone.addEventListener('touchend', endJoystickTouch, { passive: false });
+        joystickZone.addEventListener('touchcancel', resetJoystick);
+        // Also listen globally on window in case finger slides out of the joystick zone area
+        window.addEventListener('touchend', endJoystickTouch, { passive: false });
+        window.addEventListener('touchcancel', resetJoystick);
+
+        function updateJoystickPosition(clientX, clientY) {
+            const rect = joystickZone.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            let dX = clientX - centerX;
+            let dY = clientY - centerY;
+            let dist = Math.sqrt(dX * dX + dY * dY);
+            let angle = Math.atan2(dY, dX);
+
+            if (dist > joystickRadius) {
+                dist = joystickRadius;
+            }
+
+            const knobX = Math.cos(angle) * dist;
+            const knobY = Math.sin(angle) * dist;
+            
+            joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+            
+            // Normalized values between -1 and 1
+            joystickMoveX = knobX / joystickRadius;
+            joystickMoveZ = knobY / joystickRadius;
+        }
+
+        function resetJoystick() {
             joystickTouchId = null;
             joystickActive = false;
             joystickKnob.style.transform = `translate(0px, 0px)`;
-            joystickMoveX = 0; joystickMoveZ = 0;
-        });
+            joystickMoveX = 0;
+            joystickMoveZ = 0;
+        }
 
-        // KAMERA DÖNDÜRME
+        // CAMERA ROTATION FOR MOBILE
         window.addEventListener('touchstart', (e) => {
             if (!gameStarted || controlMode !== 'mobile') return;
             if (settingsPanel.style.display === 'block') return;
@@ -862,9 +859,6 @@
             cameraTouchId = null;
         });
 
-        // MOBİL BUTONLAR - touchstart/touchend ile (click yerine)
-        // Bu sayede joystick ile hareket ederken zıplama çalışır
-        
         function handleJumpStart(e) {
             e.preventDefault();
             if (gameStarted && isGrounded) { 
@@ -874,7 +868,6 @@
         }
         
         mobJumpBtn.addEventListener('touchstart', handleJumpStart, { passive: false });
-        // PC için click de kalsın (mobilde touchstart zaten çalışır)
         mobJumpBtn.addEventListener('click', () => {
             if (gameStarted && isGrounded) { velocityY = 0.35; isGrounded = false; }
         });
@@ -885,7 +878,6 @@
         mobSprintBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isSprintingMobile = true; }, { passive: false });
         mobSprintBtn.addEventListener('touchend', (e) => { e.preventDefault(); isSprintingMobile = false; }, { passive: false });
 
-        // === ÇARPIŞMA ===
         function checkMountainCollision(x, z, radius) {
             for (let m of mountains) {
                 const dx = x - m.x;
@@ -898,7 +890,6 @@
             return false;
         }
 
-        // === ANİMASYON ===
         function updateDonkeyAnimation(donkey, isMoving, isJumping, isCrouching, speedMultiplier) {
             const legs = donkey.userData.legs;
             const ud = donkey.userData;
@@ -925,13 +916,11 @@
             }
         }
 
-        // === ZAMAN ===
         let gameTime = 8.0;
         let gameDay = 1;
         const TIME_SPEED = 0.4;
         const DAY_DURATION = 24;
 
-        // === FPS ===
         let fpsFrames = 0;
         let fpsLastTime = performance.now();
         let currentFps = 60;
@@ -952,13 +941,11 @@
                 fpsLastTime = now;
             }
 
-            // BULUTLAR
             for (let c of clouds) {
                 c.position.x += 0.02;
                 if (c.position.x > 250) c.position.x = -250;
             }
 
-            // KUŞLAR
             for (let b of birds) {
                 b.userData.angle += b.userData.speed * 0.01;
                 b.position.x = b.userData.centerX + Math.cos(b.userData.angle) * b.userData.radius;
@@ -986,7 +973,6 @@
                 hudDayEl.textContent = gameDay;
                 hudChunkEl.textContent = viewDistance;
 
-                // GÜNEŞ/AY
                 const dayProgress = (gameTime - 6) / 12;
                 const sunAngle = dayProgress * Math.PI;
                 const sunRadius = 300;
@@ -1017,7 +1003,6 @@
                     sunLight.intensity = 0.0;
                 }
 
-                // Gökyüzü rengi
                 let skyR, skyG, skyB;
                 if (gameTime >= 6 && gameTime <= 18) {
                     const t = (gameTime - 6) / 12;
@@ -1038,7 +1023,6 @@
                 const isDay = gameTime >= 6 && gameTime <= 18;
                 ambientLight.intensity = isDay ? 0.5 : 0.15;
 
-                // HAREKET
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
                 
@@ -1061,11 +1045,10 @@
                         moveX = (Math.sin(yaw) * ileriGeri + Math.cos(yaw) * sagSol) * speed * 1.5;
                         moveZ = (Math.cos(yaw) * ileriGeri - Math.sin(yaw) * sagSol) * speed * 1.5;
                         
-                        isMoving = true;
+                        isMoving = (Math.abs(ileriGeri) > 0.05 || Math.abs(sagSol) > 0.05);
                     }
                 }
 
-                // ÇARPIŞMA
                 const newX = playerDonkey.position.x + moveX;
                 const newZ = playerDonkey.position.z + moveZ;
                 
@@ -1082,7 +1065,6 @@
                     playerDonkey.position.z = newZ;
                 }
                 
-                // HARİTA SINIRI
                 const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
                 if (distFromCenter > MAP_LIMIT) {
                     const scale = MAP_LIMIT / distFromCenter;
