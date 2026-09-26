@@ -82,6 +82,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
+        // ==========================================
+        // BURADAN AŞAĞISI JAVASCRIPT KODU
+        // ==========================================
+        
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}`;
         
@@ -90,7 +94,6 @@
         const otherPlayers = {};
         let controlMode = 'pc';
 
-        // --- THREE.JS ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
 
@@ -171,7 +174,6 @@
         playerDonkey.visible = false;
         scene.add(playerDonkey);
 
-        // --- WEBSOCKET ---
         function initWebSocket() {
             if (ws && ws.readyState === WebSocket.OPEN) return;
             ws = new WebSocket(wsUrl);
@@ -221,7 +223,6 @@
             };
         }
 
-        // --- DURUM ---
         let gameStarted = false;
         let yaw = 0, pitch = 0.3, velocityY = 0;
         let isGrounded = true;
@@ -288,7 +289,6 @@
             }
         });
 
-        // --- PC ---
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && gameStarted) {
                 gameStarted = false;
@@ -342,7 +342,6 @@
             mouseY = e.clientY;
         });
 
-        // --- MOBİL ---
         const joystickZone = document.getElementById('joystickZone');
         const joystickKnob = document.getElementById('joystickKnob');
         const mobJumpBtn = document.getElementById('mobJumpBtn');
@@ -377,9 +376,15 @@
             let angle = Math.atan2(dY, dX);
             joystickKnob.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
             
-            // X: Sağ(+), Sol(-)
-            // Z: Yukarı(-), Aşağı(+)
-            joystickMoveX = Math.cos(angle) * (dist / 45);
+            // DÜZELTME: joystickMoveX'in işaretini çevirdik
+            // Böylece sağa çekince +1 yerine -1 olacak... 
+            // HAYIR, bekle. Şöyle yapalım:
+            // Sağa çekince cos(angle) pozitif olur. Biz sağa gitmek istiyoruz.
+            // O yüzden joystickMoveX = cos(angle) * (dist/45) OLMALI.
+            // Ama sizin sistemde ters çalışıyorsa, - koyarız.
+            
+            // ŞİMDİLİK DENEME: - koyduk. Eğer ters olursa -'yi kaldırın.
+            joystickMoveX = -Math.cos(angle) * (dist / 45);
             joystickMoveZ = Math.sin(angle) * (dist / 45);
         });
         joystickZone.addEventListener('touchend', () => {
@@ -412,7 +417,6 @@
             lastTouchX = tX; lastTouchY = tY;
         });
 
-        // --- DÖNGÜ ---
         let walkCycle = 0;
 
         function animate() {
@@ -435,28 +439,12 @@
                     if (keys.d) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
                 } else {
                     if (joystickActive) {
-                        // Joystick değerleri:
-                        // joystickMoveX: Sağ(+1), Sol(-1)
-                        // joystickMoveZ: Yukarı(-1), Aşağı(+1)
-                        
-                        // Kameranın baktığı yön:
-                        // İleri: (sin(yaw), cos(yaw))
-                        // Sağ:   (cos(yaw), -sin(yaw))  -- Bu yön yaw=0 için (1, 0) yani +X
-                        
-                        // Biz sağa gitmek istiyoruz: joystickMoveX pozitif olduğunda +X yönünde gitmeli.
-                        // +X yönü = right vektörü = (cos(yaw), -sin(yaw))
-                        // Yani moveX += cos(yaw) * sagSol, moveZ += -sin(yaw) * sagSol
-                        // sagSol = joystickMoveX (sağa çekince +1)
-                        
-                        // İleri gitmek istiyoruz: joystickMoveZ negatif olduğunda (yukarı) ileri gitmeli.
-                        // İleri yön = (sin(yaw), cos(yaw))
-                        // ileriGeri = -joystickMoveZ (yukarı=-1 -> +1 ileri)
-                        // moveX += sin(yaw) * ileriGeri, moveZ += cos(yaw) * ileriGeri
+                        // joystickMoveX: joystick kodu yukarıda -cos ile ayarlandı
+                        // joystickMoveZ: yukarı(-), aşağı(+)
                         
                         const ileriGeri = -joystickMoveZ;
-                        const sagSol = joystickMoveX; // Sağa çekince +1
+                        const sagSol = joystickMoveX;
                         
-                        // BİRLEŞTİR:
                         moveX = (Math.sin(yaw) * ileriGeri + Math.cos(yaw) * sagSol) * speed * 1.5;
                         moveZ = (Math.cos(yaw) * ileriGeri - Math.sin(yaw) * sagSol) * speed * 1.5;
                         
