@@ -62,10 +62,7 @@
             min-width: 250px;
         }
 
-        .btn:hover {
-            transform: scale(1.05);
-        }
-
+        .btn:hover { transform: scale(1.05); }
         .btn-red { background-color: #f44336; }
         .btn-blue { background-color: #2196F3; }
 
@@ -268,47 +265,33 @@
             if (ws && ws.readyState === WebSocket.OPEN) return;
             ws = new WebSocket(`${protocol}//${window.location.host}`);
 
-            ws.onopen = () => {
-                console.log("WebSocket bağlantısı kuruldu.");
-            };
-
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.type === "players") {
+
+                    if (data.type === "init") {
+                        myId = data.id;
+                    }
+
+                    if (data.type === "players" && myId) {
                         const serverPlayers = data.players;
-                        
-                        // Kendi socket ID'mizi ilk mesajda veya adres tespitiyle yakalayabiliriz
-                        if (!myId) {
-                            // Bağlanan client listesindeki son elemanları veya kendimizi bulma mantığı
-                            // Sunucu 'me' göndermese bile nesne anahtarlarından yönetebiliriz
-                        }
 
                         for (let id in serverPlayers) {
-                            // Kendimiz haricindeki herkesi diğer oyuncu olarak ekle/güncelle
-                            if (id !== ws.id) { 
-                                // Not: İlk bağlandığımızda kendi ID'mizi tam kestiremezsek diye koordinat kontrolü yapabiliriz
-                                const pData = serverPlayers[id];
-                                
-                                // Eğer bu biz değilsek ve çok yakın değilsek diğer oyuncudur
+                            if (id !== myId) {
                                 if (!otherPlayers[id]) {
-                                    // Eğer bu bizim pozisyonumuzla tam aynı değilse oluştur
                                     const newDonkey = createDonkeyModel();
                                     scene.add(newDonkey);
                                     otherPlayers[id] = newDonkey;
                                 }
-                                
-                                if (otherPlayers[id]) {
-                                    otherPlayers[id].position.set(pData.x, pData.y, pData.z);
-                                    otherPlayers[id].rotation.y = pData.yaw || 0;
-                                    if (otherPlayers[id].userData.neckHeadGroup) {
-                                        otherPlayers[id].userData.neckHeadGroup.rotation.x = pData.pitch || 0;
-                                    }
+                                const pData = serverPlayers[id];
+                                otherPlayers[id].position.set(pData.x, pData.y, pData.z);
+                                otherPlayers[id].rotation.y = pData.yaw || 0;
+                                if (otherPlayers[id].userData.neckHeadGroup) {
+                                    otherPlayers[id].userData.neckHeadGroup.rotation.x = pData.pitch || 0;
                                 }
                             }
                         }
 
-                        // Oyundan çıkanları sil
                         for (let id in otherPlayers) {
                             if (!serverPlayers[id]) {
                                 scene.remove(otherPlayers[id]);
@@ -346,7 +329,7 @@
         function startGame(mode) {
             controlMode = mode;
             initWebSocket();
-            playerDonkey.position.set((Math.random() - 0.5) * 5, 0, (Math.random() - 0.5) * 5); // Farklı yerlerde doğsunlar
+            playerDonkey.position.set(0, 0, 0);
             gameStarted = true;
             menuEl.style.display = 'none';
             playerDonkey.visible = true;
