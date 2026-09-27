@@ -440,8 +440,8 @@
         const grassMat3 = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
 
         // Çiftlik merkezi (görsele göre sağ tarafta)
-        const FARM_CX = SPAWN_X - 70;
-        const FARM_CZ = SPAWN_Z;
+        const FARM_CX = SPAWN_X - 30;
+        const FARM_CZ = SPAWN_Z + 30;
 
         // Çimler tek tek mesh yerine instanced çizilecek: görünüm korunur, draw-call sayısı ciddi azalır.
         const grassSpots = [];
@@ -515,6 +515,8 @@
         // ORTAK MALZEMELER
         // ==========================================
         const buildings = [];
+        // Snapshot the legacy farm scene children so they can be removed cleanly after its layout runs.
+        const LEGACY_FARM_SCENE_START = scene.children.length;
         const woodDarkMat = new THREE.MeshLambertMaterial({ map: woodTexture, color: 0x8a7060 });
         const woodMat = new THREE.MeshLambertMaterial({ map: woodTexture, color: 0xc8b8a0 });
         const woodLightMat = new THREE.MeshLambertMaterial({ map: woodTexture, color: 0xd8c8a8 });
@@ -1682,6 +1684,414 @@
         createTree(FARM_CX + 85, FARM_CZ + 65, 1.2);
         createTree(FARM_CX - 30, FARM_CZ + 70, 1);
         createTree(FARM_CX + 30, FARM_CZ + 70, 1);
+
+        // Replace every old farm visual and its collision records with the user-supplied farm model.
+        for (const legacyFarmObject of scene.children.slice(LEGACY_FARM_SCENE_START)) scene.remove(legacyFarmObject);
+        farmAnimals.length = 0;
+        buildings.length = 0;
+        // Keep the existing separate roadside car park; it remains outside the new farm boundary.
+        createFarmParkingLot(PARKING_CENTER.x, PARKING_CENTER.z);
+
+        const farmModelRoot = new THREE.Group();
+        farmModelRoot.name = 'Çiftlik Atlası · sağlanan model';
+        scene.add(farmModelRoot);
+        (function installSuppliedFarmModel(farmRoot) {
+            const farmMaterialCache=new Map(),farmGeometryCache=new Map();
+            const mat=(color,roughness=.86,extra={})=>{const key=JSON.stringify([String(color),roughness,extra]);let value=farmMaterialCache.get(key);if(!value){value=new THREE.MeshStandardMaterial({color,roughness,...extra});farmMaterialCache.set(key,value)}return value};
+            function farmGeometry(Type,...args){const key=Type.name+':'+JSON.stringify(args);let geometry=farmGeometryCache.get(key);if(!geometry){geometry=new Type(...args);farmGeometryCache.set(key,geometry)}return geometry}
+            const mats={grass:mat('#85a95f'),grass2:mat('#97b96d'),earth:mat('#876744'),wood:mat('#a96a43'),red:mat('#a94332'),redLight:mat('#c65a43'),roof:mat('#414b48'),roof2:mat('#545956'),cream:mat('#efe3c8'),stone:mat('#a99a7a'),fence:mat('#ded2ae'),metal:mat('#9ba7a3',.45,{metalness:.55}),glass:mat('#9ec4c4',.25,{metalness:.12}),leaf:mat('#49784a'),leaf2:mat('#71914d'),apple:mat('#bd4f37'),water:mat('#78b8c0',.27,{metalness:.16}),flower:mat('#e6d883'),hay:mat('#d8b95e'),white:mat('#eee9db'),black:mat('#343835'),pink:mat('#d58d78'),crop:mat('#669344'),crop2:mat('#8ab452'),soil:mat('#695039')};
+            function box(parent,name,x,y,z,sx,sy,sz,material,cast=true,receive=true){const m=new THREE.Mesh(farmGeometry(THREE.BoxGeometry,sx,sy,sz),material);m.name=name;m.position.set(x,y,z);m.castShadow=cast;m.receiveShadow=receive;parent.add(m);return m}
+            function cylinder(parent,name,x,y,z,r1,r2,h,material,seg=16){const m=new THREE.Mesh(farmGeometry(THREE.CylinderGeometry,r1,r2,h,seg),material);m.name=name;m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+            function sphere(parent,name,x,y,z,r,material,scale=[1,1,1],seg=10){const m=new THREE.Mesh(farmGeometry(THREE.SphereGeometry,r,seg,Math.max(6,seg-2)),material);m.name=name;m.position.set(x,y,z);m.scale.set(...scale);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+            function line(parent,name,a,b,r,material){const v1=new THREE.Vector3(...a),v2=new THREE.Vector3(...b),d=new THREE.Vector3().subVectors(v2,v1);const m=new THREE.Mesh(farmGeometry(THREE.CylinderGeometry,r,r,d.length(),7),material);m.name=name;m.position.copy(v1).add(v2).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());m.castShadow=true;parent.add(m);return m}
+            function roofPlane(parent,name,verts,material){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts.flat(),3));g.setIndex([0,1,2,0,2,3]);g.computeVertexNormals();const m=new THREE.Mesh(g,material);m.name=name;m.material=material.clone();m.material.side=THREE.DoubleSide;m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+            // Pastel arazi; hafif dalgalı çevre tepeleri ve alan sınırları
+            const ground=new THREE.Mesh(farmGeometry(THREE.PlaneGeometry,100,100,40,40),mats.grass);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;ground.name='Arazi';ground.visible=false;farmRoot.add(ground); // The game already provides seamless terrain beneath the farm.
+            // Meyilli, düşük poligonlu ufuk sırtları
+            // The game already supplies a distant mountain ring; avoid a second artificial ridge inside this farm.
+            // Gölet
+            const pond=new THREE.Mesh(farmGeometry(THREE.CircleGeometry,5,32),mats.water);pond.rotation.x=-Math.PI/2;pond.scale.set(1.18,.72,1);pond.position.set(16,.035,-11);pond.name='Gölet';pond.receiveShadow=true;farmRoot.add(pond);
+            const shore=new THREE.Mesh(farmGeometry(THREE.RingGeometry,4.7,5.45,32),mat('#b2a275'));shore.rotation.x=-Math.PI/2;shore.scale.set(1.18,.72,1);shore.position.set(16,.03,-11);farmRoot.add(shore);
+            // Sıkıştırılmış avlu ve kare çiftlik parseli
+            const yard=new THREE.Mesh(farmGeometry(THREE.CircleGeometry,12,48),mat('#b69b72'));yard.rotation.x=-Math.PI/2;yard.scale.set(1.08,.73,1);yard.position.set(0,.025,0);yard.receiveShadow=true;yard.name='Çalışma avlusu';farmRoot.add(yard);
+            function path(points,width,material){for(let i=0;i<points.length-1;i++){const a=new THREE.Vector3(...points[i]),b=new THREE.Vector3(...points[i+1]);const d=b.clone().sub(a),mesh=new THREE.Mesh(farmGeometry(THREE.BoxGeometry,width,.055,d.length()+width*.45),material);mesh.position.copy(a.clone().add(b).multiplyScalar(.5));mesh.position.y=.045;mesh.rotation.y=Math.atan2(d.x,d.z);mesh.receiveShadow=true;farmRoot.add(mesh)}}
+            // Tüm yapıları içine alan 52 x 52 birim kare çevre çiti; batı kapısı yol ile aynı eksende.
+            const plot={left:-28,right:24,back:-24,front:28};
+            fenceRun(plot.left,plot.back,plot.right,plot.back);fenceRun(plot.right,plot.back,plot.right,plot.front);fenceRun(plot.right,plot.front,plot.left,plot.front);
+            fenceRun(plot.left,plot.front,plot.left,10.5);fenceRun(plot.left,7.5,plot.left,plot.back);
+            box(farmRoot,'Çiftlik giriş direği',plot.left,.85,7.5,.22,1.7,.22,mats.wood);box(farmRoot,'Çiftlik giriş direği',plot.left,.85,10.5,.22,1.7,.22,mats.wood);
+            // Ana toprak yol batı girişinden yatay ilerler; dallar kapılara dik açıyla bağlanır.
+            const roadMaterial=mat('#a98d64'),trackMaterial=mat('#92734f');
+            path([[-34,.02,9],[18,.02,9]],2.6,roadMaterial);
+            for(const z of [8.38,9.62])box(farmRoot,'Toprak yoldaki tekerlek izi',-8,.078,z,51,.025,.16,trackMaterial,false);
+            path([[-12,.02,9],[-12,.02,3.7]],1.35,roadMaterial); // çiftlik evi kapısı
+            path([[-1,.02,9],[-1,.02,2.28]],1.35,roadMaterial); // ahır kapısı
+            path([[6.7,.02,9],[6.7,.02,5.82]],1.25,roadMaterial); // tavuk kümesi kapısı
+            path([[3,.02,9],[3,.02,14.72]],1.25,roadMaterial); // alet deposu kapısı
+            path([[-12,.02,9],[-12,.02,14.3]],1.15,roadMaterial); // ev yolundan devam eden büyük tarla girişi
+            // Çitler: alan sınırlarını iki sıra ray ve dikey kazıklarla kurar
+            function fenceRun(x1,z1,x2,z2,step=1.5,rails=2){const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.floor(len/step),ang=Math.atan2(dz,dx);for(let i=0;i<=n;i++){const t=i/n,x=x1+dx*t,z=z1+dz*t;const post=box(farmRoot,'Çit kazığı',x,.66,z,.13,1.32,.13,mats.fence);post.rotation.y=ang}for(let r=0;r<rails;r++){const y=.36+r*.42;const rail=box(farmRoot,'Ahşap çit',x1+dx/2,y,z1+dz/2,len,.105,.11,mats.fence);rail.rotation.y=ang}}
+            // Ahır: taş temel, dikey ahşap kaplama, üçgen alınlık ve oluklu beşik çatı
+            const barn=new THREE.Group();barn.name='Ahır';barn.position.set(-1,0,-1);farmRoot.add(barn);
+            // Dört ince duvar, ön ortada kapı boşluğu bırakır; böylece iç mekân dışarıdan görünür.
+            box(barn,'Ahır sol yan duvar',-4.41,1.68,0,.18,3.36,6,mats.red);box(barn,'Ahır sağ yan duvar',4.41,1.68,0,.18,3.36,6,mats.red);
+            box(barn,'Ahır arka duvar',0,1.68,-2.91,9,3.36,.18,mats.red);
+            box(barn,'Ahır ön cephe sol',-3.85,1.68,2.91,1.3,3.36,.18,mats.red);box(barn,'Ahır ön cephe sağ',3.85,1.68,2.91,1.3,3.36,.18,mats.red);
+            box(barn,'Ahır ön lento',0,3.18,2.91,6.4,.36,.18,mats.red);
+            // Taş temel yalnız çevre duvarlarının altında; giriş eşiği açık bırakılır.
+            box(barn,'Ahır taş temeli sol',-4.43,.22,0,.3,.44,6.15,mats.stone);box(barn,'Ahır taş temeli sağ',4.43,.22,0,.3,.44,6.15,mats.stone);
+            box(barn,'Ahır taş temeli arka',0,.22,-2.94,8.9,.44,.3,mats.stone);box(barn,'Ahır taş temeli ön sol',-3.85,.22,2.94,1.3,.44,.3,mats.stone);box(barn,'Ahır taş temeli ön sağ',3.85,.22,2.94,1.3,.44,.3,mats.stone);
+            // Dikey kaplama tahtaları
+            for(let x=-4.2;x<=4.21;x+=.34){if(Math.abs(x)>3.34)box(barn,'Ahır dikey tahta',x,1.85,3.03,.055,2.9,.06,mat(x%2?'#b74e3c':'#a94132'))}
+            // Gable ends on front and rear
+            for(const z of [-3.04,3.04]){const sh=new THREE.Shape();sh.moveTo(-4.5,0);sh.lineTo(4.5,0);sh.lineTo(0,2.45);sh.closePath();const gm=new THREE.Mesh(new THREE.ShapeGeometry(sh),mats.redLight);gm.position.set(0,3.35,z);gm.name='Ahır üçgen alınlığı';gm.castShadow=true;barn.add(gm)}
+            // Çatı yüzeyleri: iki eğimli kanat
+            roofPlane(barn,'Ahır çatısı',[[0,5.88,-3.45],[0,5.88,3.45],[-5.05,3.22,3.45],[-5.05,3.22,-3.45]],mats.roof);
+            roofPlane(barn,'Ahır çatısı',[[0,5.88,3.45],[0,5.88,-3.45],[5.05,3.22,-3.45],[5.05,3.22,3.45]],mats.roof);
+            // Çatı mahyası ve metal kenar çizgileri
+            line(barn,'Çatı mahyası',[0,5.91,-3.5],[0,5.91,3.5],.12,mats.metal);
+            for(const z of [-3.5,3.5]){line(barn,'Saçak çıtası',[-5.05,3.22,z],[0,5.88,z],.08,mats.cream);line(barn,'Saçak çıtası',[0,5.88,z],[5.05,3.22,z],.08,mats.cream)}
+            // Ahır ölçeğine uygun 6.4 m x 2.95 m giriş; iki kapı menteşe kenarından döner.
+            box(barn,'Kapı sol sövesi',-3.2,1.5,3.08,.2,3,.28,mats.cream);box(barn,'Kapı sağ sövesi',3.2,1.5,3.08,.2,3,.28,mats.cream);box(barn,'Kapı üst kirişi',0,3.08,3.08,6.55,.18,.28,mats.cream);
+            const barnDoorPivots=[],doorOpenAngle=1.48;
+            function makeBarnDoor(side){
+              const pivot=new THREE.Group();pivot.name=side<0?'BarnDoor_Left_Hinge':'BarnDoor_Right_Hinge';pivot.userData.isBarnDoorPivot=true;pivot.position.set(side*3.2,0,3.14);pivot.rotation.y=side<0?-doorOpenAngle:doorOpenAngle;barn.add(pivot);
+              const centerX=-side*1.6,wood=mat('#8f5638'),plank=mat('#ad744d');
+              const panel=box(pivot,side<0?'BarnDoor_Left_Panel':'BarnDoor_Right_Panel',centerX,1.47,0,3.18,2.94,.16,wood);panel.userData.barnDoorPanel=true;
+              for(let i=0;i<9;i++)box(pivot,'Ahır kapı dikmesi',centerX-1.42+i*.355,1.47,.09,.045,2.7,.045,plank);
+              for(const y of [.2,2.74])box(pivot,'Ahır kapı kuşağı',centerX,y,.12,3.08,.16,.11,mat('#765039'));
+              line(pivot,'Ahır kapı çaprazı',[centerX-1.4,.3,.16],[centerX+1.4,2.63,.16],.075,mats.cream);
+              line(pivot,'Ahır kapı çaprazı',[centerX+1.4,.3,.16],[centerX-1.4,2.63,.16],.075,mats.cream);
+              for(const y of [.48,1.48,2.48])cylinder(pivot,'Ahır kapı menteşesi',0,y,.13,.075,.075,.34,mat('#5d635f',.42,{metalness:.5}),10);
+              sphere(pivot,'Ahır kapı kolu',centerX*.5,1.45,.19,.11,mat('#cfb477',.4,{metalness:.4}),[.75,1, .55],8);
+              barnDoorPivots.push(pivot);return pivot;
+            }
+            makeBarnDoor(-1);makeBarnDoor(1);
+            let barnDoorsOpen=true,doorAnimating=false,doorAnimationStart=0,doorFromAngles=[],doorToAngles=[];
+            const doorBtn={textContent:'',classList:{toggle(){}}};
+            function setBarnDoors(open){barnDoorsOpen=open;doorFromAngles=barnDoorPivots.map(p=>p.rotation.y);doorToAngles=open?[-doorOpenAngle,doorOpenAngle]:[0,0];doorAnimationStart=performance.now();doorAnimating=true;doorBtn.textContent=open?'🚪 Ahır kapısını kapat':'🚪 Ahır kapısını aç';doorBtn.classList.toggle('on',open)}
+            function updateBarnDoors(now){if(!doorAnimating)return;const t=Math.min(1,(now-doorAnimationStart)/850),ease=t*t*(3-2*t);barnDoorPivots.forEach((p,i)=>p.rotation.y=doorFromAngles[i]+(doorToAngles[i]-doorFromAngles[i])*ease);if(t>=1)doorAnimating=false}
+            // Ahır içi saman zemin, iki hayvan bölmesi, orta yem yolu ve yemlikler
+            box(barn,'Ahır içi saman zemin',0,.105,0,8.35,.14,5.55,mat('#b29a62'));
+            box(barn,'Ahır orta geçit',0,.19,.1,2.65,.035,5.25,mat('#c3ae7d'));
+            box(barn,'Ahır iç bölme sol',-1.62,.74,-.55,.14,1.45,3.85,mat('#76533a'));box(barn,'Ahır iç bölme sağ',1.62,.74,-.55,.14,1.45,3.85,mat('#76533a'));
+            for(const x of [-2.9,2.9]){box(barn,'Ahır bölme ön ray altı',x,.42,1.15,2.35,.11,.12,mat('#8b6544'));box(barn,'Ahır bölme ön ray üstü',x,.9,1.15,2.35,.11,.12,mat('#8b6544'));box(barn,'Ahır yemliği',x,.4,1.75,1.5,.45,.55,mat('#8f744c'))}
+            for(const z of [-2.35,-.8,.8,2.25])line(barn,'Ahır tavan kirişi',[-4.15,3.05,z],[4.15,3.05,z],.085,mat('#745238'));
+            line(barn,'Ahır samanlık merdiveni',[-3.55,.2,-2.2],[-2.05,2.9,-2.2],.09,mat('#8a6041'));
+            for(const [x,z] of [[-2.6,.35],[2.5,-1.2]]){const lamp=new THREE.PointLight('#ffd991',16,11,2);lamp.position.set(x,2.72,z);barn.add(lamp);sphere(barn,'Ahır lambası',x,2.72,z,.12,mat('#ffe9b1',.22,{emissive:'#ffcc62',emissiveIntensity:.7}),[1,1,1],8)}
+            box(barn,'Üst kapak',0,4.15,3.11,1.6,1.15,.13,mat('#603e2e'));box(barn,'Üst kapak çerçevesi',0,4.15,3.19,1.8,1.35,.09,mats.cream);
+            for(let z=-2.4;z<2.7;z+=.55)box(barn,'Yan ahır penceresi',-4.57,2.1,z,.08,.5,.42,mats.glass);
+            // Evin ana kütlesi
+            const house=new THREE.Group();house.name='Çiftlik evi';house.position.set(-12,0,1);farmRoot.add(house);
+            box(house,'Çiftlik evi',0,1.35,0,6.5,2.7,5.2,mats.cream);box(house,'Ev temel taşı',0,.22,0,6.7,.44,5.4,mats.stone);
+            // kiremitli çatı çift düzlem
+            roofPlane(house,'Ev çatısı',[[-3.5,2.8,-3],[ -3.5,2.8,3],[0,4.65,3],[0,4.65,-3]],mat('#655b4d'));
+            roofPlane(house,'Ev çatısı',[[0,4.65,3],[0,4.65,-3],[3.5,2.8,-3],[3.5,2.8,3]],mat('#655b4d'));
+            line(house,'Ev mahyası',[0,4.68,-3],[0,4.68,3],.1,mats.cream);
+            // Ev pencereleri ve kapı
+            box(house,'Ön kapı',0,1.08,2.64,.95,2.05,.16,mat('#704b35'));box(house,'Kapı camı',0,1.65,2.74,.48,.55,.04,mats.glass);
+            for(const x of [-2.15,2.15]){box(house,'Ev penceresi',x,1.55,2.66,1.05,.9,.12,mats.glass);box(house,'Pencere dikmesi',x,1.55,2.76,.07,.96,.04,mats.white);box(house,'Pencere pervazı',x,1.55,2.76,1.1,.065,.05,mats.white);box(house,'Pencere kepengi',x-.62,1.55,2.66,.22,1.02,.08,mat('#75875d'));box(house,'Pencere kepengi',x+.62,1.55,2.66,.22,1.02,.08,mat('#75875d'))}
+            box(house,'Baca',-2.2,4.1,-1.8,.65,1.6,.62,mat('#8d5846'));box(house,'Baca başlığı',-2.2,4.94,-1.8,.88,.14,.82,mats.stone);
+            // Silo: metal gövde, konik çatı, halkalar, merdiven
+            const silo=new THREE.Group();silo.name='Silo';silo.position.set(5.3,0,-1);farmRoot.add(silo);
+            cylinder(silo,'Tahıl silosu',0,2.5,0,1.55,1.55,5,mats.metal,24);cylinder(silo,'Silo tabanı',0,.12,0,1.67,1.67,.24,mats.stone,24);
+            const cap=new THREE.Mesh(farmGeometry(THREE.ConeGeometry,1.68,.95,24),mat('#687572',.45,{metalness:.5}));cap.position.y=5.45;cap.castShadow=true;cap.name='Silo çatısı';silo.add(cap);
+            for(let y=.8;y<4.6;y+=.72){const ring=new THREE.Mesh(farmGeometry(THREE.TorusGeometry,1.55,.035,5,32),mat('#7f8d88',.4,{metalness:.55}));ring.rotation.x=Math.PI/2;ring.position.y=y;silo.add(ring)}
+            line(silo,'Silo merdiveni',[1.58,.35,.75],[1.58,4.6,.75],.055,mat('#52635f'));
+            for(let y=.6;y<4.4;y+=.38)line(silo,'Silo merdiven basamağı',[1.53,y,.75],[1.85,y,.75],.035,mats.metal);
+            // Hayvan figürleri: stilize, farklı duruşlar
+            function cow(x,z,scale=1,spots=true){const g=new THREE.Group();g.name='İnek';g.position.set(x,0,z);g.scale.setScalar(scale);farmRoot.add(g);sphere(g,'İnek gövdesi',0,.82,0,.68,mats.white,[1.35,.68,.72]);if(spots){sphere(g,'İnek benek',-.27,1.18,.22,.23,mats.black,[1,.4,.75]);sphere(g,'İnek benek',.4,.8,-.25,.2,mats.black,[1,.7,.8])}sphere(g,'İnek başı',0,1.15,.72,.34,mats.white,[.82,.86,.82]);sphere(g,'İnek burun',0,1.02,1.01,.2,mats.pink,[1,.62,.55]);for(const sx of [-.23,.23]){sphere(g,'İnek boynuz',sx,1.55,.7,.11,mats.cream,[.45,1.3,.45]);for(const sz of [-.4,.4])box(g,'İnek bacağı',sx*1.7,.34,sz,.16,.7,.17,mats.white)}sphere(g,'İnek göz',-.18,1.27,.98,.045,mats.black);sphere(g,'İnek göz',.18,1.27,.98,.045,mats.black);line(g,'İnek kuyruğu',[.5,1.05,-.5],[.65,.56,-.76],.04,mats.black)}
+            function sheep(x,z,scale=1){const g=new THREE.Group();g.name='Koyun';g.position.set(x,0,z);g.scale.setScalar(scale);farmRoot.add(g);for(let i=0;i<7;i++){const a=i*Math.PI*2/7;sphere(g,'Yün',Math.cos(a)*.35,.82+Math.sin(i*4)*.04,Math.sin(a)*.3,.33,mats.white,[1,.95,1],9)}sphere(g,'Koyun başı',0,.85,.58,.25,mats.black,[.85,1,.8]);for(const x1 of [-.2,.2])box(g,'Koyun ayağı',x1,.26,0,.11,.5,.12,mats.black)}
+            function pig(x,z){const g=new THREE.Group();g.name='Domuz';g.position.set(x,0,z);farmRoot.add(g);sphere(g,'Domuz gövdesi',0,.6,0,.57,mats.pink,[1.25,.76,.82]);sphere(g,'Domuz başı',0,.72,.48,.36,mats.pink,[.95,.9,.9]);sphere(g,'Domuz burun',0,.62,.79,.18,mat('#ca7868'),[1,.72,.5]);for(const sx of [-.22,.22]){const ear=new THREE.Mesh(farmGeometry(THREE.ConeGeometry,.13,.32,6),mats.pink);ear.position.set(sx,1.08,.48);ear.rotation.z=sx<0?.26:-.26;ear.castShadow=true;g.add(ear);box(g,'Domuz bacağı',sx*1.4,.24,0,.13,.43,.13,mats.pink)}}
+            function chicken(x,z){const g=new THREE.Group();g.name='Tavuk';g.position.set(x,0,z);farmRoot.add(g);sphere(g,'Tavuk gövdesi',0,.34,0,.28,mat('#f2eee2'),[1.2,.9,.9],9);sphere(g,'Tavuk başı',0,.62,.12,.16,mat('#f2eee2'),[1,1,1],9);sphere(g,'Tavuk ibiği',0,.82,.12,.09,mats.redLight,[1,.7,.5],7);sphere(g,'Tavuk gagası',0,.59,.29,.065,mats.hay,[1,.55,.55],7);line(g,'Tavuk bacağı',[-.08,.22,0],[-.08,.04,0],.022,mats.hay);line(g,'Tavuk bacağı',[.08,.22,0],[.08,.04,0],.022,mats.hay)}
+            // Padok alanları. Çitlerde bilinçli birer açıklık bırakılarak kapı etkisi
+            fenceRun(8,-6,16,-6);fenceRun(16,-6,16,1);fenceRun(16,1,8,1);fenceRun(8,1,8,-6);
+            fenceRun(8,-6,11,-6);fenceRun(11,-6,11,1);fenceRun(11,1,8,1);
+            fenceRun(11,-6,16,-6);fenceRun(16,-6,16,1);fenceRun(16,1,11,1);
+            fenceRun(8,2,15,2);fenceRun(15,2,15,8);fenceRun(15,8,8,8);fenceRun(8,8,8,2);
+            cow(-3.1,-1.05,.58,false);cow(1.1,-1.05,.58,true); // ahır içindeki iki inek
+            for(let i=0;i<3;i++)cow(12.6+(i%2)*1.45,-3.9+Math.floor(i/2)*2.15,.75,i!==1);
+            sheep(9.2,4.1,.8);sheep(12,6,.76);pig(13.3,5.2);for(const [x,z] of [[9.2,-4.4],[10,-2.6],[14.7,5.8],[9.8,6.6],[14,3.7]])chicken(x,z);
+            // Yemlik, su teknesi, küçük tavuk kümesi
+            box(farmRoot,'Yemlik',13.1,.45,-5.15,2.15,.62,.7,mat('#94704a'));box(farmRoot,'Su teknesi',9.4,.28,-1.6,1.25,.34,.55,mats.water);
+            const coop=new THREE.Group();coop.name='Tavuk kümesi';coop.position.set(6.7,0,4.8);farmRoot.add(coop);box(coop,'Tavuk kümesi',0,.83,0,2.5,1.65,2,mats.wood);roofPlane(coop,'Kümes çatısı',[[-1.4,1.65,-1.2],[-1.4,1.65,1.2],[0,2.35,1.2],[0,2.35,-1.2]],mats.roof);roofPlane(coop,'Kümes çatısı',[[0,2.35,1.2],[0,2.35,-1.2],[1.4,1.65,-1.2],[1.4,1.65,1.2]],mats.roof);box(coop,'Kümes kapısı',0,.47,1.03,.68,.94,.08,mat('#604635'));
+            // Ahır ve ev çevresinde taşlar ve kütükler
+            for(const [x,z] of [[-7,-3],[-7,2],[3,4],[-5,-8],[7,-8]]){const rock=new THREE.Mesh(farmGeometry(THREE.DodecahedronGeometry,.42,0),mats.stone);rock.name='Çiftlik taşı';rock.position.set(x,.3,z);rock.scale.set(1.3,.7,.9);rock.castShadow=true;farmRoot.add(rock)}
+            // Meyve bahçesi, gövde-dal-yaprak hacimleri ve parıltılı elmalar
+            function tree(x,z,fruit=true){const g=new THREE.Group();g.name=fruit?'Elma ağacı':'Ağaç';g.position.set(x,0,z);farmRoot.add(g);cylinder(g,'Ağaç gövdesi',0,1.35,0,.28,.43,2.7,mat('#775238'),9);line(g,'Dal',[0,1.8,0],[-.75,2.55,.08],.16,mat('#775238'));line(g,'Dal',[0,1.9,0],[.65,2.45,-.12],.14,mat('#775238'));sphere(g,'Yaprak tacı',0,3.05,0,1.45,fruit?mats.leaf:mats.leaf2,[1.08,.82,.95],11);sphere(g,'Yaprak tacı',-.72,2.75,.1,.88,mats.leaf2,[1,.9,1],9);sphere(g,'Yaprak tacı',.66,2.72,-.16,.84,mats.leaf,[1,.9,1],9);if(fruit)for(const [ax,ay,az] of [[-.8,3,.4],[.55,3.55,.45],[.85,2.65,-.28],[-.15,2.6,-.86],[.15,3.25,-.6]])sphere(g,'Elma',ax,ay,az,.12,mats.apple,[1,1,1],8)}
+            const orchard=[[-21,-9],[-17,-9],[-13,-9],[-21,-4],[-17,-4],[-13,-4],[-21,1],[-17,1]];orchard.forEach((p,i)=>tree(p[0],p[1],i%3!==2));
+            // Bahçe çiti ve küçük kovanlar; güneydoğu köşedeki açıklık eve giden yola bağlanır.
+            fenceRun(-23,-12,-11,-12);fenceRun(-23,-12,-23,4);fenceRun(-23,4,-13,4);fenceRun(-11,4,-11,-12);
+            for(let i=0;i<2;i++){const hive=box(farmRoot,'Arı kovanı',-11.8+i*1.25,.55,-8, .78,1.1,.72,mat(i?'#d7a84c':'#e5c768'));box(farmRoot,'Kovan giriş deliği',-11.8+i*1.25,.4,-7.63,.17,.12,.04,mat('#513e2c'))}
+            // Sebze bahçesi: yükseltilmiş yataklar ve tekrarlanan yaprakçıklar
+            const garden=new THREE.Group();garden.name='Sebze bostanı';garden.position.set(-12,0,15.5);farmRoot.add(garden);
+            // Geniş 22 m x 9 m tarla; uzun ekim sıraları, araçların ulaşacağı açık kapı ve çit.
+            for(let r=0;r<7;r++){const z=r*1.35;box(garden,'Sebze yatağı',0,.2,z,22.4,.34,1.05,mats.soil);for(let c=0;c<29;c++){const x=-10.5+c*.75;const vegmat=(r%2)?mats.crop2:mats.crop;for(let k=-1;k<=1;k++)sphere(garden,'Sebze yaprağı',x,.55,z+k*.19,.19,vegmat,[.65,1.25,.65],7);if(r===2&&c%3===0)cylinder(garden,'Havuç',x,.41,z,.1,.045,.38,mat('#dd8b36'),7)}}
+            fenceRun(-23.7,14.3,-13.2,14.3);fenceRun(-10.8,14.3,-.3,14.3);fenceRun(-23.7,14.3,-23.7,24.9);fenceRun(-23.7,24.9,-.3,24.9);fenceRun(-.3,24.9,-.3,14.3);
+            box(farmRoot,'Tarla giriş direği',-13.2,.82,14.3,.2,1.55,.2,mats.wood);box(farmRoot,'Tarla giriş direği',-10.8,.82,14.3,.2,1.55,.2,mats.wood);
+            // Saman balyaları, istif ve küçük depo
+            function hayBale(x,y,z,r=.72){const b=new THREE.Mesh(farmGeometry(THREE.CylinderGeometry,r,r,r*1.2,12),mats.hay);b.rotation.z=Math.PI/2;b.position.set(x,y,z);b.name='Saman balyası';b.castShadow=true;b.receiveShadow=true;farmRoot.add(b);for(let i=0;i<5;i++){const ring=new THREE.Mesh(farmGeometry(THREE.TorusGeometry,r*.91,.025,4,14),mat('#b99845'));ring.rotation.y=Math.PI/2;ring.position.set(x-r*.6+i*r*.3,y,z);farmRoot.add(ring)}}
+            hayBale(4.3,.7,-6,.68);hayBale(5.8,.7,-6,.68);hayBale(4.3,1.55,-6,.62);
+            // Ahır içindeki yem stoğu ve çiftlik çevresine yayılmış saman istifleri.
+            hayBale(-3.7,.62,-3.0,.45);hayBale(-3.7,1.16,-3.0,.43);hayBale(1.7,.62,-3.0,.45);
+            for(const z of [17,18.25]){hayBale(-25,.62,z,.55);hayBale(20,.62,z,.55)}
+            hayBale(-25,1.25,17.62,.5);hayBale(20,1.25,17.62,.5);hayBale(20,.62,22.4,.52);
+            // Tahta kasalar ve variller: ahır, iç bölme ve alet deposu çevresinde.
+            function addCrate(x,z,size=.78){const g=new THREE.Group();g.name='Ahşap kasa';g.position.set(x,0,z);farmRoot.add(g);const plank=mat('#ad7646'),shadow=mat('#765033');box(g,'Kasa gövdesi',0,size*.48,0,size,size*.92,size,shadow);for(const y of [.12,size*.42,size*.75]){box(g,'Kasa ön tahtası',0,y,size*.51,size*.92,.09,.07,plank);box(g,'Kasa arka tahtası',0,y,-size*.51,size*.92,.09,.07,plank);box(g,'Kasa yan tahtası',size*.51,y,0,.07,.09,size*.92,plank);box(g,'Kasa yan tahtası',-size*.51,y,0,.07,.09,size*.92,plank)}for(const sx of [-1,1])for(const sz of [-1,1])box(g,'Kasa köşe dikmesi',sx*size*.43,size*.48,sz*size*.43,.09,size,.09,mat('#c08a54'));box(g,'Kasa üst kenarı',0,size*.96,0,size*1.04,.08,size*1.04,plank);return g}
+            function addBarrel(x,z,r=.38,h=.88){const wood=mat('#81573a'),iron=mat('#60645d',.45,{metalness:.4});cylinder(farmRoot,'Tahta varil',x,h/2,z,r,r,h,wood,14);cylinder(farmRoot,'Varil kapağı',x,h+.015,z,r*.87,r*.87,.05,mat('#9b714b'),14);for(const y of [h*.22,h*.76]){const hoop=new THREE.Mesh(farmGeometry(THREE.TorusGeometry,r*.98,.035,6,18),iron);hoop.rotation.x=Math.PI/2;hoop.position.set(x,y,z);hoop.name='Varil metal çemberi';farmRoot.add(hoop)}}
+            addCrate(-6.45,2.35,.82);addCrate(-5.55,2.35,.72);addCrate(-6.45,3.18,.72);addBarrel(-6.2,.6,.36,.84);
+            addCrate(-3.0,-3.05,.56);addCrate(2.55,-3.05,.56);addBarrel(3.1,-2.2,.3,.72);
+            addCrate(6.65,13.35,.68);addCrate(7.45,13.35,.68);addBarrel(5.45,14.2,.32,.78);addBarrel(19.25,15.6,.34,.82);
+            const shed=new THREE.Group();shed.name='Alet deposu';shed.position.set(3,0,13.2);farmRoot.add(shed);box(shed,'Alet deposu',0,1.25,0,4,2.5,3,mats.wood);roofPlane(shed,'Depo çatısı',[[-2.2,2.55,-1.7],[-2.2,2.55,1.7],[0,3.55,1.7],[0,3.55,-1.7]],mats.roof);roofPlane(shed,'Depo çatısı',[[0,3.55,1.7],[0,3.55,-1.7],[2.2,2.55,-1.7],[2.2,2.55,1.7]],mats.roof);box(shed,'Depo sürgülü kapı',0,1.1,1.58,1.6,2.05,.13,mat('#6b513d'));
+            // Depo kapısından araç parkına düz servis bağlantısı
+            path([[12,.02,9],[12,.02,13]],1.4,roadMaterial);
+            box(farmRoot,'Tarım makineleri park alanı',12.4,.035,19,13.5,.06,12,mat('#9d896a'),false);
+            // Alet askısı: kürek, tırmık ve çapalar
+            box(farmRoot,'Alet askılığı',5.55,.82,11.8,1.65,1.55,.16,mat('#80593e'));
+            for(const [i,x] of [4.95,5.35,5.75,6.15].entries()){
+              line(farmRoot,'Bahçe aleti sapı',[x,.35,11.68],[x+.13,1.95,11.68],.045,mat('#77553a'));
+              if(i===1)box(farmRoot,'Kürek palası',x+.13,.45,11.68,.32,.24,.09,mats.metal);
+              else if(i===2){box(farmRoot,'Tırmık başlığı',x+.13,.48,11.68,.48,.08,.08,mats.metal);for(let j=-2;j<=2;j++)line(farmRoot,'Tırmık dişi',[x+.13+j*.085,.45,11.68],[x+.13+j*.085,.28,11.68],.018,mats.metal)}
+              else box(farmRoot,'Çapa başlığı',x+.13,.48,11.68,.3,.1,.08,mats.metal);
+            }
+            // El arabası, kasa ve gübre/seed çuvalları
+            const wheelbarrow=new THREE.Group();wheelbarrow.name='El arabası';wheelbarrow.position.set(6.65,0,12.8);farmRoot.add(wheelbarrow);
+            box(wheelbarrow,'El arabası kasası',0,.78,0,1.05,.35,1.25,mat('#a96c43'));
+            line(wheelbarrow,'El arabası kolu',[-.42,.68,-.45],[-.42,.62,-1.5],.045,mat('#80593e'));line(wheelbarrow,'El arabası kolu',[.42,.68,-.45],[.42,.62,-1.5],.045,mat('#80593e'));
+            const cartWheel=cylinder(wheelbarrow,'El arabası tekerleği',0,.34,.72,.32,.32,.18,mat('#313632'),14);cartWheel.rotation.z=Math.PI/2;
+            for(const x of [-.38,.38])box(wheelbarrow,'El arabası ayağı',x,.28,-.36,.08,.48,.08,mats.metal);
+            for(let i=0;i<3;i++)box(farmRoot,'Tohum çuvalı',5.15+i*.55,.32,13.65,.48,.62,.46,mat(i===1?'#cdbb83':'#b7a16f'));
+            // Traktörler: geniş lastikler, camlı kabin, motor kaputu, farlar ve egzoz.
+            const cabGlass=mat('#a9d2d3',.22,{metalness:.12,transparent:true,opacity:.72});
+            function vehicleWheel(parent,name,x,y,z,r,width,hubColor){const tire=cylinder(parent,name,x,y,z,r,r,width,mat('#303633'),18);tire.rotation.z=Math.PI/2;for(const side of [-1,1]){const hub=cylinder(parent,'Jant',x+side*(width/2+.025),y,z,r*.46,r*.46,.06,mat(hubColor,.48,{metalness:.35}),14);hub.rotation.z=Math.PI/2}}
+            function addTractor(x,z,paint='#4e793d'){
+              const g=new THREE.Group();g.name='Traktör';g.position.set(x,0,z);farmRoot.add(g);const green=mat(paint,.55);
+              box(g,'Traktör şasisi',0,1.03,0,1.55,.42,3.1,mat('#3e4438'));
+              box(g,'Traktör motor kaputu',0,1.43,.68,1.62,.78,1.5,green);
+              box(g,'Traktör ön ızgarası',0,1.4,1.46,1.12,.52,.08,mat('#333b37'));
+              box(g,'Traktör tamponu',0,.83,1.62,1.92,.2,.3,mat('#555b4e'));
+              box(g,'Traktör kabin camı',0,2.22,-.69,1.2,1.06,1.08,cabGlass,false);
+              for(const sx of [-.68,.68]){box(g,'Kabin direği',sx,2.2,-.69,.12,1.38,.12,green);box(g,'Kabin yan camı',sx*1.02,2.22,-.69,.035,.95,.88,cabGlass,false)}
+              for(const zz of [-1.28,-.12])box(g,'Kabin dikmesi',0,2.2,zz,1.36,1.38,.11,green);
+              box(g,'Traktör kabin tavanı',0,2.94,-.69,1.64,.18,1.4,green);
+              box(g,'Koltuk',0,1.8,-.83,.55,.2,.48,mat('#4b3528'));
+              const steering=new THREE.Mesh(farmGeometry(THREE.TorusGeometry,.22,.035,7,14),mat('#292d2a'));steering.name='Direksiyon';steering.position.set(0,1.91,-.06);g.add(steering);
+              for(const sx of [-.53,.53])sphere(g,'Traktör farı',sx,1.49,1.52,.13,mat('#f3df91',.25,{emissive:'#d3a94a',emissiveIntensity:.25}),[1,1,.45],8);
+              const exhaust=cylinder(g,'Egzoz',-.57,2.02,.62,.075,.075,.95,mat('#383a36'),8);box(g,'Egzoz kapağı',-.57,2.52,.62,.22,.08,.2,mat('#383a36'));
+              vehicleWheel(g,'Arka traktör lastiği',-.94,.82,-.78,.82,.38,'#d4a33e');vehicleWheel(g,'Arka traktör lastiği',.94,.82,-.78,.82,.38,'#d4a33e');
+              vehicleWheel(g,'Ön traktör lastiği',-.91,.5,.98,.5,.31,'#d4a33e');vehicleWheel(g,'Ön traktör lastiği',.91,.5,.98,.5,.31,'#d4a33e');
+              box(g,'Traktör çeki demiri',0,.55,-1.8,.28,.16,.55,mat('#454a45'));return g;
+            }
+            function addTrailer(x,z){
+              const g=new THREE.Group();g.name='Tarım römorku';g.position.set(x,0,z);farmRoot.add(g);
+              box(g,'Römork kasası',0,1,0,2.35,1.12,3.15,mat('#bd9b55'));
+              box(g,'Römork tabanı',0,.65,0,2.55,.22,3.35,mat('#73563a'));
+              for(const sx of [-1,1]){box(g,'Römork yan korkuluğu',sx*1.18,1.35,0,.12,.78,3.25,mat('#a88045'));vehicleWheel(g,'Römork lastiği',sx*1.15,.46,-.45,.46,.28,'#746346')}
+              line(g,'Römork çeki oku',[0,.68,1.62],[0,.62,2.35],.07,mat('#4c5048'));
+              for(let i=0;i<3;i++)box(g,'Römorkta ürün kasası',-.62+i*.62,1.7,.15,.55,.42,1.1,mat(i===1?'#b94f37':'#d2aa58'));
+              return g;
+            }
+            function addCombine(x,z){
+              const g=new THREE.Group();g.name='Biçerdöver';g.position.set(x,0,z);farmRoot.add(g);const yellow=mat('#d0a33d',.55),green=mat('#75824b',.58);
+              box(g,'Biçerdöver şasisi',0,1.2,0,3.35,.85,3.5,green);
+              box(g,'Biçerdöver tahıl deposu',0,2.05,-.58,2.55,.95,1.9,yellow);
+              box(g,'Biçerdöver kabini',-.92,2.42,.22,1.12,1.45,1.38,cabGlass,false);
+              for(const sx of [-1.52,1.52])vehicleWheel(g,'Biçerdöver ön lastiği',sx,.83,1.0,.82,.42,'#56574b');
+              for(const sx of [-1.27,1.27])vehicleWheel(g,'Biçerdöver arka lastiği',sx,.49,-1.25,.48,.32,'#56574b');
+              box(g,'Biçerdöver biçme tablası',0,.72,2.28,5.8,.34,.76,yellow);
+              for(let i=-6;i<=6;i++)box(g,'Biçme tablası parmağı',i*.42,.48,2.72,.1,.08,.62,mat('#4b5040'));
+              box(g,'Biçerdöver tahliye borusu',1.2,2.52,-.72,.12,.12,2.6,mat('#555b48')).rotation.x=-.25;
+              line(g,'Tahliye borusu desteği',[1.2,2.55,-.4],[2.2,3.0,-1.3],.055,mat('#68704d'));
+              return g;
+            }
+            addTractor(8.5,16.6,'#4c803e');addTractor(13,16.6,'#b74b36');addTrailer(8.5,21.35);addCombine(15.5,21.05);
+            // Yel değirmeni ve kuyu
+            const wind=new THREE.Group();wind.name='Su değirmeni';wind.position.set(-5,0,-11);farmRoot.add(wind);cylinder(wind,'Değirmen kulesi',0,2.2,0,1.2,.75,4.4,mats.white,12);const top=new THREE.Mesh(farmGeometry(THREE.ConeGeometry,.9,.8,12),mats.red);top.position.y=4.8;top.castShadow=true;wind.add(top);const hub=new THREE.Group();hub.position.set(0,4.1,1.18);wind.add(hub);sphere(hub,'Değirmen göbeği',0,0,0,.22,mats.wood,[1,1,.6],8);for(let i=0;i<4;i++){const a=i*Math.PI/2;const sail=box(hub,'Değirmen kanadı',Math.sin(a)*1.55,Math.cos(a)*1.55,0,.3,2.6,.08,mats.cream);sail.rotation.z=-a;box(hub,'Kanat çıtası',Math.sin(a)*1.55,Math.cos(a)*1.55,0,.12,2.8,.12,mat('#9b6844')).rotation.z=-a}
+            cylinder(farmRoot,'Kuyu',-7.8,.52,-4.5,.72,.72,1.04,mats.stone,12);const wellroof=roofPlane(farmRoot,'Kuyu saçağı',[[-8.9,2,-5.4],[-8.9,2,-3.6],[-7.8,2.75,-3.6],[-7.8,2.75,-5.4]],mats.roof);roofPlane(farmRoot,'Kuyu saçağı',[[-7.8,2.75,-3.6],[-7.8,2.75,-5.4],[-6.7,2,-5.4],[-6.7,2,-3.6]],mats.roof);line(farmRoot,'Kuyu direği',[-8.6,.9,-5.25],[-8.6,2.2,-5.25],.08,mats.wood);line(farmRoot,'Kuyu direği',[-7,.9,-5.25],[-7,2.2,-5.25],.08,mats.wood);
+            // Çayır çiçekleri ve küçük çalılar
+            for(let i=0;i<150;i++){const x=(Math.random()-.5)*54,z=(Math.random()-.5)*48;if(Math.hypot(x,z)<13||x<-11&&x>-24&&z>-13&&z<5||x>-1&&x<7&&z>-5&&z<3)continue;const stem=box(farmRoot,'Çayır çiçeği',x,.17,z,.035,.32,.035,mats.crop,false);const blossom=sphere(farmRoot,'Çiçek',x,.36,z,.1,i%4===0?mats.flower:mat('#dfd6a2'),[1,.55,1],6);stem.castShadow=false;blossom.castShadow=false}
+            // Procedural surface detail: small, deterministic seamless-ish canvas textures.
+            function farmTextureCanvas(kind,heightMap=false){
+              const c=document.createElement('canvas');c.width=c.height=256;const ctx=c.getContext('2d');
+              ctx.fillStyle=heightMap?'#808080':'#f4f2ed';ctx.fillRect(0,0,256,256);
+              let seed=Array.from(kind).reduce((a,ch)=>a+ch.charCodeAt(0),271);const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+              const lineColor=(dark=true)=>heightMap?(dark?'rgba(25,25,25,.34)':'rgba(240,240,240,.32)'):(dark?'rgba(76,66,56,.11)':'rgba(255,255,255,.19)');
+              // A fine, shared grain keeps large surfaces from looking like flat plastic.
+              for(let i=0;i<1800;i++){const x=rnd()*256,y=rnd()*256,r=.35+rnd()*1.35;ctx.fillStyle=heightMap?`rgba(${Math.floor(80+rnd()*95)},${Math.floor(80+rnd()*95)},${Math.floor(80+rnd()*95)},.35)`:`rgba(${Math.floor(105+rnd()*120)},${Math.floor(100+rnd()*120)},${Math.floor(95+rnd()*120)},.075)`;ctx.fillRect(x,y,r,r)}
+              if(kind==='wood'||kind==='leather'||kind==='straw'){
+                const step=kind==='straw'?5:8;for(let y=0;y<256;y+=step){ctx.strokeStyle=lineColor(y%3===0);ctx.lineWidth=kind==='straw'?1.1:.8;ctx.beginPath();ctx.moveTo(0,y+rnd()*3);ctx.bezierCurveTo(70,y-2,170,y+2,256,y+rnd()*3);ctx.stroke()}
+                if(kind==='wood')for(const [x,y] of [[55,80],[190,174]]){ctx.strokeStyle=lineColor(true);ctx.beginPath();ctx.ellipse(x,y,11,4,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.ellipse(x,y,5,2,0,0,Math.PI*2);ctx.stroke()}
+                if(kind==='straw')for(let y=3;y<256;y+=13){ctx.strokeStyle=lineColor(y%2===0);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(256,y+6);ctx.stroke()}
+              }else if(kind==='fabric'||kind==='denim'){
+                ctx.lineWidth=1;const spacing=kind==='denim'?6:5;for(let i=-256;i<512;i+=spacing){ctx.strokeStyle=lineColor(i%3===0);ctx.beginPath();if(kind==='denim'){ctx.moveTo(i,0);ctx.lineTo(i+256,256)}else{ctx.moveTo(i,0);ctx.lineTo(i,256)}ctx.stroke()}
+                for(let y=0;y<256;y+=spacing){ctx.strokeStyle=lineColor(y%2===0);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(256,y);ctx.stroke()}
+                if(kind==='fabric'){ctx.lineWidth=3;for(let p=24;p<256;p+=48){ctx.strokeStyle=heightMap?'rgba(20,20,20,.13)':'rgba(80,70,65,.07)';ctx.beginPath();ctx.moveTo(p,0);ctx.lineTo(p,256);ctx.stroke();ctx.beginPath();ctx.moveTo(0,p);ctx.lineTo(256,p);ctx.stroke()}}
+              }else if(kind==='tile'){
+                for(let row=0;row<8;row++)for(let col=-1;col<8;col++){const x=col*36+(row%2)*18,y=row*32;ctx.strokeStyle=lineColor(true);ctx.lineWidth=1.5;ctx.strokeRect(x+1,y+1,34,30);ctx.strokeStyle=lineColor(false);ctx.beginPath();ctx.moveTo(x+4,y+4);ctx.lineTo(x+31,y+4);ctx.stroke()}
+              }else if(kind==='metal'){
+                for(let x=0;x<256;x+=9){ctx.strokeStyle=lineColor(x%3===0);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+1,256);ctx.stroke()}
+                for(let y=20;y<256;y+=64){ctx.fillStyle=lineColor(y%2===0);ctx.beginPath();ctx.arc(18,y,2,0,Math.PI*2);ctx.fill()}
+              }else if(kind==='stone'){
+                for(let y=-12;y<270;y+=34)for(let x=-12;x<270;x+=46){const ox=x+(rnd()-.5)*12,oy=y+(rnd()-.5)*9;ctx.strokeStyle=lineColor(true);ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ox+34,oy+2);ctx.lineTo(ox+42,oy+15);ctx.lineTo(ox+31,oy+29);ctx.lineTo(ox+3,oy+27);ctx.closePath();ctx.stroke()}
+              }else if(kind==='grass'||kind==='soil'||kind==='hay'||kind==='leaf'||kind==='micro'){
+                const n=kind==='micro'?900:1500;for(let i=0;i<n;i++){const x=rnd()*256,y=rnd()*256;ctx.strokeStyle=lineColor(i%3===0);ctx.lineWidth=kind==='hay'?1.4:.8;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(rnd()-.5)*(kind==='hay'?9:4),y+(rnd()-.5)*4);ctx.stroke()}
+                if(kind==='soil'||kind==='hay')for(let y=16;y<256;y+=32){ctx.strokeStyle=lineColor(true);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(256,y+2);ctx.stroke()}
+              }
+              const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=heightMap?THREE.NoColorSpace:THREE.SRGBColorSpace;t.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),4);t.needsUpdate=true;return t;
+            }
+            const farmSurfaces={};for(const kind of ['micro','wood','leather','straw','fabric','denim','tile','metal','stone','grass','soil','hay','leaf'])farmSurfaces[kind]={map:farmTextureCanvas(kind),bump:farmTextureCanvas(kind,true)};
+            function applyFarmSurface(material,kind='micro',bump=.012){if(!material||!material.isMeshStandardMaterial)return material;const t=farmSurfaces[kind]||farmSurfaces.micro;material.map=t.map;material.bumpMap=t.bump;material.bumpScale=bump;material.needsUpdate=true;return material}
+            for(const [m,k,b] of [[mats.grass,'grass',.035],[mats.grass2,'grass',.025],[mats.earth,'soil',.032],[mats.soil,'soil',.04],[mats.wood,'wood',.025],[mats.fence,'wood',.022],[mats.red,'leather',.012],[mats.redLight,'leather',.012],[mats.roof,'tile',.024],[mats.roof2,'tile',.024],[mats.stone,'stone',.027],[mats.metal,'metal',.016],[mats.hay,'hay',.022],[mats.leaf,'leaf',.018],[mats.leaf2,'leaf',.018]])applyFarmSurface(m,k,b);
+
+            // Twenty adult farm workers. Workwear: plaid shirts, denim bibs,
+            // practical boots, hats, stitching, pockets, buttons and hand-held farm tools.
+            function farmCloth(color,kind='fabric',bump=.022){return applyFarmSurface(mat(color,.9),kind,bump)}
+            const farmWorkers=[];
+            function addFarmWorker(cfg){
+              const g=new THREE.Group();g.name=`Çiftçi ${cfg.name}`;g.userData.isFarmWorker=true;g.position.set(cfg.x,0,cfg.z);g.rotation.y=cfg.yaw||0;g.scale.setScalar(cfg.scale||1);farmRoot.add(g);
+              const skin=farmCloth(cfg.skin||'#c98960','micro',.008),hair=farmCloth(cfg.hair||'#4a3026','leather',.018),shirt=farmCloth(cfg.shirt,'fabric',.023),denim=farmCloth(cfg.denim,'denim',.026),pants=farmCloth(cfg.pants||cfg.denim,'denim',.024),boot=farmCloth(cfg.boot||'#49352b','leather',.025),sole=farmCloth('#2a2925','leather',.018),straw=farmCloth(cfg.hatColor||'#c7a04b','straw',.02),metal=farmCloth('#b9a56d','metal',.012),trim=farmCloth(cfg.trim||'#d5b879','fabric',.012);
+              // Work boots, trouser cuffs and sturdy, slightly tapered legs.
+              const gaitLegs=[];for(const sx of [-1,1]){
+                const leg=new THREE.Group();leg.name='Çiftçi yürüyüş bacağı';leg.position.set(sx*.135,.82,0);g.add(leg);gaitLegs.push(leg);
+                box(leg,'Çiftçi iş pantolonu',0,-.23,0,.19,.62,.23,pants);
+                box(leg,'Pantolon paçası',0,-.51,.025,.205,.19,.245,denim);
+                box(leg,'Çiftçi deri iş botu',0,-.675,.095,.235,.27,.37,boot);
+                box(leg,'Kalın bot tabanı',0,-.785,.105,.25,.07,.39,sole);
+                for(let i=0;i<3;i++)box(leg,'Bot bağcığı',0,-.66+i*.045,.285,.12,.018,.018,trim);
+              }
+              box(g,'İş gömleği',0,1.245,0,.52,.64,.34,shirt);
+              box(g,'Yaka sol',-.105,1.56,.12,.13,.105,.12,trim).rotation.z=-.22;box(g,'Yaka sağ',.105,1.56,.12,.13,.105,.12,trim).rotation.z=.22;
+              // Bib overalls with two shoulder straps and reinforced stitching.
+              if(cfg.overalls!==false){box(g,'Denim tulum göğüs parçası',0,1.20,.198,.34,.38,.07,denim);for(const sx of [-1,1]){const strap=box(g,'Denim tulum askısı',sx*.115,1.46,.198,.075,.27,.055,denim);strap.rotation.z=sx*.16;sphere(g,'Tulum metal düğmesi',sx*.14,1.34,.245,.032,metal,[1,1,.38],7)}box(g,'Ön tulum cebi',0,1.14,.245,.18,.14,.025,farmCloth(cfg.pocket||'#34506b','denim',.018));line(g,'Tulum cep dikişi',[-.09,1.22,.263],[.09,1.22,.263],.009,trim)}
+              // Chest pocket, seam lines, small buttons and belt buckle.
+              box(g,'Gömlek cebi',.16,1.37,.178,.12,.13,.025,shirt);line(g,'Cep üst dikişi',[.10,1.43,.195],[.22,1.43,.195],.008,trim);
+              for(const y of [1.49,1.39,1.29])sphere(g,'Gömlek düğmesi',.015,y,.184,.018,metal,[1,1,.45],6);
+              box(g,'Çalışma kemeri',0,.91,.01,.43,.065,.28,boot);box(g,'Pirinç kemer tokası',.025,.91,.16,.10,.085,.025,metal);
+              if(cfg.apron){const apron=farmCloth(cfg.apron,'fabric',.02);box(g,'Çiftçi önlüğü',0,1.04,.225,.43,.49,.045,apron);box(g,'Önlük cebi',0,.99,.258,.23,.16,.02,trim);line(g,'Önlük dikişi',[-.2,.79,.25],[.2,.79,.25],.008,trim)}
+              // Sleeves are segmented at elbow and cuff; hands are posed around a tool.
+              for(const sx of [-1,1]){const active=sx===(cfg.toolSide||1),endY=active?.86:.79,endX=sx*.47;line(g,'Ekose gömlek kolu',[sx*.25,1.48,.005],[sx*.38,1.16,.075],.095,shirt);sphere(g,'Kol dirseği',sx*.38,1.16,.075,.094,shirt,[1,1,1],8);line(g,'Gömlek kol altı',[sx*.38,1.16,.075],[endX,endY,.14],.078,shirt);box(g,'Kol manşeti',endX,endY+.055,.14,.145,.105,.15,trim);sphere(g,'Çiftçi eli',endX,endY-.02,.15,.09,skin,[.92,1,.8],9)}
+              cylinder(g,'Gömlek yakası',0,1.61,0,.105,.105,.13,trim,10);
+              sphere(g,'Çiftçi yüzü',0,1.84,.015,.195,skin,[.87,1.08,.91],12);
+              for(const sx of [-1,1]){sphere(g,'Kulak',sx*.178,1.84,.01,.048,skin,[.75,1,.8],8);sphere(g,'Göz akı',sx*.071,1.875,.179,.033,mat('#f7f1e5'),[1,1,.45],8);sphere(g,'Göz bebeği',sx*.071,1.873,.208,.016,mat('#302621'),[1,1,.5],7);line(g,'Kaş',[sx*.12,1.93,.18],[sx*.035,1.94,.19],.012,hair)}
+              sphere(g,'Burun',0,1.81,.205,.047,skin,[.75,1,.72],8);line(g,'Ağız',[-.055,1.745,.19],[.055,1.745,.19],.009,hair);
+              sphere(g,'Saç',0,1.985,-.055,.17,hair,[1,.6,.9],9);for(const sx of [-1,1])sphere(g,'Favori saç',sx*.15,1.86,.015,.075,hair,[.7,1,.8],7);
+              if(cfg.beard){sphere(g,'Kısa sakal',0,1.72,.105,.12,hair,[1,.66,.72],9);sphere(g,'Bıyık',0,1.775,.205,.052,hair,[1,.45,.55],8)}
+              if(cfg.hairStyle==='braid'){sphere(g,'Saç topuzu',-.13,1.99,-.09,.09,hair,[1,1,.9],8);line(g,'Saç örgüsü',[-.15,1.94,-.1],[-.22,1.58,-.04],.045,hair)}else if(cfg.hairStyle==='long'){sphere(g,'Saç arkası',0,1.82,-.105,.13,hair,[1,1,1.35],8);line(g,'Saç örgüsü',[.13,1.88,-.08],[.2,1.55,-.06],.04,hair)}
+              // Hat: woven straw brim/crown or a shaped cloth cap, both with a band and seam.
+              if(cfg.hat==='cap'){sphere(g,'Kumaş işçi şapkası',0,2.055,-.015,.20,farmCloth(cfg.hatColor||'#52614a','fabric',.018),[1,.52,.9],10);box(g,'Şapka siperliği',0,2.01,.14,.34,.055,.27,straw)}
+              else{cylinder(g,'Hasır şapka kenarı',0,2.035,0,.34,.34,.065,straw,16);cylinder(g,'Hasır şapka tepesi',0,2.13,-.015,.19,.165,.17,straw,14);const band=new THREE.Mesh(farmGeometry(THREE.TorusGeometry,.173,.018,6,18),trim);band.name='Şapka kumaş bandı';band.rotation.x=Math.PI/2;band.position.set(0,2.105,.0);band.castShadow=true;g.add(band);for(let y=2.02;y<2.17;y+=.035)line(g,'Şapka hasır örgüsü',[-.16,y,.03],[.16,y,.03],.006,trim)}
+              // Practical hand props for a little farm activity around the people.
+              if(cfg.tool==='fork'){
+                const x=(cfg.toolSide||1)*.51;line(g,'Tahta dirgen sapı',[x,.72,.16],[x,1.93,.16],.035,farmCloth('#765137','wood',.02));line(g,'Dirgen başı',[x-.19,1.87,.16],[x+.19,1.87,.16],.026,metal);for(let i=-2;i<=2;i++)line(g,'Dirgen dişi',[x+i*.075,1.87,.16],[x+i*.075,2.05,.16],.018,metal)
+              }else if(cfg.tool==='basket'){
+                const x=(cfg.toolSide||1)*.55;const basket=cylinder(g,'Hasır el sepeti',x,.61,.17,.22,.16,.27,farmCloth('#ad8149','straw',.028),12);for(let i=-1;i<=1;i++)sphere(g,'Sepette elma',x+i*.105,.79,.17,.075,mat(i===1?'#c4553b':'#bd6a35'),[1,1,.85],8);const handle=new THREE.Mesh(farmGeometry(THREE.TorusGeometry,.15,.018,6,14,Math.PI),farmCloth('#9a7040','straw',.02));handle.name='Sepet sapı';handle.rotation.z=Math.PI;handle.position.set(x,.74,.17);g.add(handle)
+              }else if(cfg.tool==='clipboard'){
+                const x=(cfg.toolSide||1)*.53;box(g,'Ahşap not tahtası',x,.98,.22,.32,.42,.06,farmCloth('#8c6240','wood',.018));box(g,'Tarla kontrol kâğıdı',x,1.0,.257,.26,.32,.012,farmCloth('#e7dfc9','fabric',.005));for(let i=0;i<4;i++)line(g,'Kontrol listesi satırı',[x-.09,1.1-i*.065,.266],[x+.09,1.1-i*.065,.266],.006,mat('#7d826a'))
+              }else if(cfg.tool==='wateringcan'){
+                const x=(cfg.toolSide||1)*.54;const can=groupCan(g,x,.73,.18);can.name='Metal sulama kabı'
+              }
+              g.userData.gaitLegs=gaitLegs;farmWorkers.push(g);return g;
+            }
+            function groupCan(parent,x,y,z){const c=new THREE.Group();c.position.set(x,y,z);parent.add(c);cylinder(c,'Sulama kabı gövdesi',0,0,0,.18,.14,.28,farmCloth('#718276','metal',.018),12);cylinder(c,'Sulama kabı ağzı',0,.16,.05,.07,.055,.08,farmCloth('#718276','metal',.012),10);line(c,'Sulama kabı uzun emzik',[.08,.05,.04],[.23,.2,.04],.028,farmCloth('#718276','metal',.012));line(c,'Sulama kabı sapı',[-.12,.12,0],[.12,.22,0],.018,farmCloth('#718276','metal',.012));return c}
+            addFarmWorker({name:'Hasan',x:-14,z:5.45,shirt:'#704c43',denim:'#38536b',pocket:'#405b70',skin:'#b97955',hair:'#39271f',beard:true,hat:'straw',hatColor:'#c9a34e',tool:'fork',toolSide:1,yaw:-.12});
+            addFarmWorker({name:'Ayla',x:-10,z:5.55,shirt:'#d4b08b',denim:'#506148',pants:'#454b3f',skin:'#d39a76',hair:'#4a3024',hairStyle:'braid',hat:'straw',hatColor:'#d1ae59',trim:'#8f5c42',apron:'#8b6249',tool:'basket',toolSide:-1,yaw:.1});
+            addFarmWorker({name:'Kemal',x:4.2,z:17.0,shirt:'#536f84',denim:'#344d63',pants:'#67513e',skin:'#b77751',hair:'#35261e',beard:true,hat:'cap',hatColor:'#505a47',tool:'clipboard',toolSide:1,yaw:-.2});
+            addFarmWorker({name:'Zeynep',x:5.6,z:18.2,shirt:'#657251',denim:'#40536b',pants:'#495449',skin:'#cf9472',hair:'#39271f',hairStyle:'long',hat:'straw',hatColor:'#d3ad55',trim:'#a9593e',tool:'wateringcan',toolSide:-1,yaw:.18});
+
+            // 52 x 52 m plot navigation: A* grid, expanded collision boxes and a hard fence boundary.
+            const navGroupBlockers=new Set(['Ahır','Çiftlik evi','Silo','Tavuk kümesi','Alet deposu','Su değirmeni','Elma ağacı','Ağaç','Sebze bostanı','İnek','Koyun','Domuz','Tavuk','Traktör','Tarım römorku','Biçerdöver','El arabası','Ahşap kasa']);
+            const navMeshBlockers=new Set(['Çit kazığı','Ahşap çit','Çiftlik giriş direği','Tarla giriş direği','Saman balyası','Tahta varil','Varil metal çemberi','Kasa gövdesi','Kasa ön tahtası','Kasa arka tahtası','Kasa yan tahtası','Kasa köşe dikmesi','Kasa üst kenarı','Yemlik','Su teknesi','Arı kovanı','Kuyu','Gölet','Alet askılığı','Bahçe aleti sapı','Kürek palası','Tırmık başlığı','Çapa başlığı','Tohum çuvalı','Çiftlik taşı','Kuyu saçağı','Kuyu direği']);
+            const farmNav={minX:-27.2,maxX:23.2,minZ:-23.2,maxZ:27.2,cell:.65};farmNav.cols=Math.floor((farmNav.maxX-farmNav.minX)/farmNav.cell)+1;farmNav.rows=Math.floor((farmNav.maxZ-farmNav.minZ)/farmNav.cell)+1;farmNav.blocked=new Uint8Array(farmNav.cols*farmNav.rows);
+            function navCell(ix,iz){return iz*farmNav.cols+ix}
+            function navWorldCell(x,z){return {ix:Math.max(0,Math.min(farmNav.cols-1,Math.round((x-farmNav.minX)/farmNav.cell))),iz:Math.max(0,Math.min(farmNav.rows-1,Math.round((z-farmNav.minZ)/farmNav.cell)))}}
+            function navPoint(id){const ix=id%farmNav.cols,iz=Math.floor(id/farmNav.cols);return {x:farmNav.minX+ix*farmNav.cell,z:farmNav.minZ+iz*farmNav.cell}}
+            function navBlockBox(box,pad=.55){if(box.isEmpty())return;const a=navWorldCell(box.min.x-pad,box.min.z-pad),b=navWorldCell(box.max.x+pad,box.max.z+pad);for(let iz=a.iz;iz<=b.iz;iz++)for(let ix=a.ix;ix<=b.ix;ix++){const p=navPoint(navCell(ix,iz));if(p.x>=box.min.x-pad&&p.x<=box.max.x+pad&&p.z>=box.min.z-pad&&p.z<=box.max.z+pad)farmNav.blocked[navCell(ix,iz)]=1}}
+            function navHasBlockerAncestor(o){let p=o.parent;while(p&&p!==farmRoot){if(navGroupBlockers.has(p.name))return true;p=p.parent}return false}
+            farmRoot.updateMatrixWorld(true);farmRoot.traverse(o=>{if(o.isGroup&&navGroupBlockers.has(o.name))navBlockBox(new THREE.Box3().setFromObject(o),.72)});farmRoot.traverse(o=>{if(o.isMesh&&navMeshBlockers.has(o.name)&&!navHasBlockerAncestor(o))navBlockBox(new THREE.Box3().setFromObject(o),.42)});
+            const navFree=[];for(let i=0;i<farmNav.blocked.length;i++)if(!farmNav.blocked[i])navFree.push(i);
+            let navRandomSeed=0x6d2b79f5;function navRandom(){navRandomSeed^=navRandomSeed<<13;navRandomSeed^=navRandomSeed>>>17;navRandomSeed^=navRandomSeed<<5;return (navRandomSeed>>>0)/4294967296}
+            function navNearestFree(x,z,radius=8){const c=navWorldCell(x,z);if(!farmNav.blocked[navCell(c.ix,c.iz)])return navCell(c.ix,c.iz);for(let r=1;r<=radius;r++)for(let dz=-r;dz<=r;dz++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dz))!==r)continue;const ix=c.ix+dx,iz=c.iz+dz;if(ix<0||iz<0||ix>=farmNav.cols||iz>=farmNav.rows)continue;const id=navCell(ix,iz);if(!farmNav.blocked[id])return id}return -1}
+            const navRegions=new Int32Array(farmNav.blocked.length);navRegions.fill(-1);const navDirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];let navRegionCount=0;for(let start=0;start<navRegions.length;start++){if(farmNav.blocked[start]||navRegions[start]>=0)continue;const stack=[start];navRegions[start]=navRegionCount;while(stack.length){const cur=stack.pop(),ix=cur%farmNav.cols,iz=Math.floor(cur/farmNav.cols);for(const [dx,dz] of navDirs){const nx=ix+dx,nz=iz+dz;if(nx<0||nz<0||nx>=farmNav.cols||nz>=farmNav.rows)continue;const id=navCell(nx,nz);if(farmNav.blocked[id]||navRegions[id]>=0)continue;if(dx&&dz&&(farmNav.blocked[navCell(ix+dx,iz)]||farmNav.blocked[navCell(ix,iz+dz)]))continue;navRegions[id]=navRegionCount;stack.push(id)}}navRegionCount++}const firstNavCell=navNearestFree(farmWorkers[0].position.x,farmWorkers[0].position.z);const mainNavRegion=firstNavCell>=0?navRegions[firstNavCell]:-1;const navMainFree=navFree.filter(id=>navRegions[id]===mainNavRegion);
+            function navFindSpawn(minSpacing=1.55){for(let pass=0;pass<2;pass++)for(let k=0;k<1800;k++){let x,z;if(navRandom()<.68){x=-21+navRandom()*42;z=-7+navRandom()*29}else{x=farmNav.minX+2+navRandom()*(farmNav.maxX-farmNav.minX-4);z=farmNav.minZ+2+navRandom()*(farmNav.maxZ-farmNav.minZ-4)}const c=navWorldCell(x,z),id=navCell(c.ix,c.iz);if(farmNav.blocked[id]||navRegions[id]!==mainNavRegion)continue;const p=navPoint(id);if(farmWorkers.some(w=>Math.hypot(w.position.x-p.x,w.position.z-p.z)<(pass?1.12:minSpacing)))continue;return p}return null}
+            const navNames=['Murat','Elif','Cem','Nermin','Ali','Derya','Baran','Ece','Emre','Selin','Onur','Melek','Arda','Leyla','Can','Gül'];
+            const navShirts=['#855341','#687a67','#a77b4e','#526b82','#795b70','#8b674d','#63764c','#9a5848'];
+            const navDenim=['#354d64','#485c72','#40596d','#55624d','#394f60','#625342'];
+            const navSkins=['#c68761','#d29a75','#af7454','#e0aa84','#bb8060','#cb8e6a'];
+            const navHair=['#39271f','#503a2d','#302923','#694532','#3a302b'];
+            const navHats=['#c9a34e','#d2ae5e','#a77c40','#58654a'];
+            const navTools=['fork','basket','wateringcan','clipboard'];
+            for(let i=0;i<navNames.length;i++){const p=navFindSpawn();if(!p)break;const woman=i%2===1;addFarmWorker({name:navNames[i],x:p.x,z:p.z,shirt:navShirts[i%navShirts.length],denim:navDenim[(i*3)%navDenim.length],pants:navDenim[(i+2)%navDenim.length],pocket:navDenim[(i+1)%navDenim.length],skin:navSkins[(i*5)%navSkins.length],hair:navHair[(i*2)%navHair.length],hairStyle:woman?(i%4===1?'braid':'long'):undefined,beard:!woman&&i%3===0,hat:i%4===2?'cap':'straw',hatColor:navHats[(i*3)%navHats.length],trim:navShirts[(i+2)%navShirts.length],apron:woman&&i%3===1?'#87654d':undefined,tool:navTools[i%navTools.length],toolSide:i%2?1:-1,yaw:(navRandom()-.5)*Math.PI,scale:.94+(i%4)*.025,overalls:i%7!==0})}
+            // Find a path to any reachable open tile with an 8-way A* search; diagonal corner cutting is blocked.
+            function navPath(x0,z0,x1,z1){const start=navNearestFree(x0,z0),goal=navNearestFree(x1,z1);if(start<0||goal<0||start===goal)return [];const total=farmNav.blocked.length,g=new Float32Array(total);g.fill(Infinity);const came=new Int32Array(total);came.fill(-1);const closed=new Uint8Array(total);const heap=[];const goalP=navPoint(goal);const heuristic=id=>{const p=navPoint(id),dx=Math.abs(p.x-goalP.x)/farmNav.cell,dz=Math.abs(p.z-goalP.z)/farmNav.cell;return Math.max(dx,dz)+(Math.SQRT2-1)*Math.min(dx,dz)};function push(id,f){let k=heap.length;heap.push({id,f});while(k){const parent=(k-1)>>1;if(heap[parent].f<=f)break;heap[k]=heap[parent];k=parent}heap[k]={id,f}}function pop(){const root=heap[0],last=heap.pop();if(heap.length){let k=0;while(true){let c=k*2+1;if(c>=heap.length)break;if(c+1<heap.length&&heap[c+1].f<heap[c].f)c++;if(heap[c].f>=last.f)break;heap[k]=heap[c];k=c}heap[k]=last}return root}g[start]=0;push(start,heuristic(start));let found=false;const dirs=[[-1,0,1],[1,0,1],[0,-1,1],[0,1,1],[-1,-1,Math.SQRT2],[1,-1,Math.SQRT2],[-1,1,Math.SQRT2],[1,1,Math.SQRT2]];while(heap.length){const cur=pop().id;if(closed[cur])continue;if(cur===goal){found=true;break}closed[cur]=1;const ix=cur%farmNav.cols,iz=Math.floor(cur/farmNav.cols);for(const [dx,dz,cost] of dirs){const nx=ix+dx,nz=iz+dz;if(nx<0||nz<0||nx>=farmNav.cols||nz>=farmNav.rows)continue;const ni=navCell(nx,nz);if(farmNav.blocked[ni]||closed[ni])continue;if(dx&&dz&&(farmNav.blocked[navCell(ix+dx,iz)]||farmNav.blocked[navCell(ix,iz+dz)]))continue;const ng=g[cur]+cost;if(ng<g[ni]){g[ni]=ng;came[ni]=cur;push(ni,ng+heuristic(ni))}}}if(!found)return [];const ids=[];for(let cur=goal;cur!==start&&cur>=0;cur=came[cur])ids.push(cur);ids.reverse();return ids.map(navPoint)}
+            function navChooseGoal(worker){for(let k=0;k<100;k++){const p=navPoint(navMainFree[Math.floor(navRandom()*navMainFree.length)]);if(Math.hypot(p.x-worker.position.x,p.z-worker.position.z)<4.2)continue;if(farmWorkers.some(w=>w!==worker&&Math.hypot(w.position.x-p.x,w.position.z-p.z)<1.0))continue;return p}return null}
+            const navStartTime=performance.now();farmWorkers.forEach(w=>{let ci=navNearestFree(w.position.x,w.position.z);if(ci<0||navRegions[ci]!==mainNavRegion){const rescue=navFindSpawn(1.15);if(rescue)w.position.set(rescue.x,0,rescue.z);ci=navNearestFree(w.position.x,w.position.z)}if(ci>=0){const p=navPoint(ci);if(Math.hypot(p.x-w.position.x,p.z-w.position.z)>.45)w.position.set(p.x,0,p.z)}w.userData.walkAgent={path:[],step:0,waitUntil:navStartTime+navRandom()*7500,blockedTime:0,phase:navRandom()*Math.PI*2,speed:.52+navRandom()*.28}});
+            let navLastFrame=performance.now();function updateFarmWalkers(now){const dt=Math.min(.05,Math.max(0,(now-navLastFrame)/1000));navLastFrame=now;if(!dt)return;for(const w of farmWorkers){const a=w.userData.walkAgent;if(!a)continue;if(!a.path.length||a.step>=a.path.length){if(now<a.waitUntil){w.position.y=0;for(const [i,l] of (w.userData.gaitLegs||[]).entries())l.rotation.x=0;continue}const goal=navChooseGoal(w);if(goal){a.path=navPath(w.position.x,w.position.z,goal.x,goal.z);a.step=0}if(!a.path.length){a.waitUntil=now+700+navRandom()*1300;w.position.y=0;continue}}
+                const p=a.path[a.step],dx=p.x-w.position.x,dz=p.z-w.position.z,d=Math.hypot(dx,dz);if(d<.12){a.step++;continue}const advance=Math.min(d,a.speed*dt),nx=w.position.x+dx/d*advance,nz=w.position.z+dz/d*advance,ci=navWorldCell(nx,nz),id=navCell(ci.ix,ci.iz);let crowd=false;for(const other of farmWorkers){if(other===w)continue;if(Math.hypot(nx-other.position.x,nz-other.position.z)<.67){crowd=true;break}}if(farmNav.blocked[id]||crowd){a.blockedTime+=dt;if(a.blockedTime>1.1){a.path=[];a.step=0;a.waitUntil=now+450+navRandom()*450;a.blockedTime=0}continue}a.blockedTime=0;w.position.x=nx;w.position.z=nz;w.rotation.y=Math.atan2(dx,dz);a.phase+=dt*9;w.position.y=Math.abs(Math.sin(a.phase))*.025;for(const [i,l] of (w.userData.gaitLegs||[]).entries())l.rotation.x=Math.sin(a.phase+(i?Math.PI:0))*.25;if(d<=advance+.01){a.step++;if(a.step>=a.path.length)a.waitUntil=now+900+navRandom()*2600}}
+            }
+
+
+            // Richer shared material response across the whole farm; glass stays clear.
+            function chooseFarmSurface(name){const n=name.toLocaleLowerCase('tr-TR');if(/çatı|kiremit|saçak/.test(n))return ['tile',.025];if(/saman|balya|yem/.test(n))return ['hay',.023];if(/silo|metal|jant|egzoz|çember|dirgen dişi|sulama kabı|alet|tırmık/.test(n))return ['metal',.015];if(/taş|kaya|stone|temel/.test(n))return ['stone',.025];if(/yol|avlu|toprak|tarla|bostan|sebze yatağı/.test(n))return ['soil',.025];if(/yaprak|çiçek|çayır|ot /.test(n))return ['grass',.018];if(/ahşap|tahta|kasa|varil|çit|kapı|çerçeve|kiriş|dal|ağaç gövdesi|pencere kepengi|sapı/.test(n))return ['wood',.022];return ['micro',.009]};const texturedMaterialSet=new WeakSet();farmRoot.traverse(obj=>{if(!obj.isMesh)return;const list=Array.isArray(obj.material)?obj.material:[obj.material];for(const material of list){if(!material?.isMeshStandardMaterial||material.transparent||material.opacity<.98||texturedMaterialSet.has(material))continue;texturedMaterialSet.add(material);if(!material.map){const [surface,bump]=chooseFarmSurface(obj.name||'');applyFarmSurface(material,surface,bump)}}});
+            // The workers use the author's local A* navigation. Mirror their blocker geometry
+            // into the game collision list so the donkey cannot pass through the new structures.
+            farmRoot.updateMatrixWorld(true);
+            const suppliedFarmColliders=[];
+            const recordModelCollider=(object)=>{
+                const bounds=new THREE.Box3().setFromObject(object);
+                if(bounds.isEmpty())return;
+                const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+                if(size.x<.08||size.z<.08)return;
+                suppliedFarmColliders.push({x:center.x,z:center.z,halfW:size.x*.5,halfD:size.z*.5});
+            };
+            farmRoot.traverse(object=>{
+                if(object.isGroup&&navGroupBlockers.has(object.name))recordModelCollider(object);
+                else if(object.isMesh&&navMeshBlockers.has(object.name)&&!navHasBlockerAncestor(object))recordModelCollider(object);
+            });
+            const axisY=new THREE.Vector3(0,1,0);
+            for(const box of suppliedFarmColliders){
+                const center=new THREE.Vector3(box.x,0,box.z).applyAxisAngle(axisY,Math.PI);
+                buildings.push({x:FARM_CX+center.x,z:FARM_CZ+center.z,halfW:box.halfW,halfD:box.halfD});
+            }
+            const isDynamicFarmMesh=(mesh)=>{let p=mesh.parent;while(p&&p!==farmRoot){if(p.userData?.isFarmWorker||p.userData?.walkAgent||p.userData?.isBarnDoorPivot)return true;p=p.parent}return false};
+            const staticBatches=new Map();
+            farmRoot.traverse(object=>{
+                if(!object.isMesh||!object.geometry||!object.material||Array.isArray(object.material)||isDynamicFarmMesh(object))return;
+                const key=[object.geometry.uuid,object.material.uuid,object.castShadow?1:0,object.receiveShadow?1:0].join('|');
+                if(!staticBatches.has(key))staticBatches.set(key,{geometry:object.geometry,material:object.material,castShadow:object.castShadow,receiveShadow:object.receiveShadow,meshes:[]});
+                staticBatches.get(key).meshes.push(object);
+            });
+            for(const batch of staticBatches.values()){
+                if(batch.meshes.length<3)continue;
+                const instances=new THREE.InstancedMesh(batch.geometry,batch.material,batch.meshes.length);
+                instances.name='Çiftlik detayları · optimize edilmiş instans';
+                instances.castShadow=batch.castShadow;instances.receiveShadow=batch.receiveShadow;
+                batch.meshes.forEach((mesh,index)=>instances.setMatrixAt(index,mesh.matrixWorld));
+                instances.instanceMatrix.needsUpdate=true;farmRoot.add(instances);
+                for(const mesh of batch.meshes)mesh.parent.remove(mesh);
+            }
+            // Rotate the farm entrance toward the straight north-south city road. The new
+            // scene remains more than 100 m inside the inner mountain ring.
+            const modelMountainSafe=mountains.every(m=>Math.hypot(FARM_CX-m.x,FARM_CZ-m.z)>m.radius+74);
+            if(!modelMountainSafe)console.warn('Farm model placement is too close to a mountain ring.');
+            farmRoot.position.set(FARM_CX,.025,FARM_CZ);
+            farmRoot.rotation.y=Math.PI;
+            farmRoot.updateMatrixWorld(true);
+            farmRoot.userData.updateWalkers=updateFarmWalkers;
+            window.__farmReplacement={root:farmRoot,workers:farmWorkers,animals:farmWorkers.length,mountainSafe:modelMountainSafe,center:{x:FARM_CX,z:FARM_CZ}};
+        })(farmModelRoot);
+
+        // Straight 6 m access road: it continues the supplied farm lane through its gate
+        // to the existing city road at x=210. The roadside parking stays clear to the east.
+        const farmAccessRoad=new THREE.Mesh(new THREE.PlaneGeometry(26,7),connectorRoadMat);
+        farmAccessRoad.rotation.x=-Math.PI/2;
+        farmAccessRoad.position.set(197,.095,FARM_CZ-9);
+        farmAccessRoad.name='Yeni çiftlik giriş bağlantısı';
+        scene.add(farmAccessRoad);
+        const farmAccessMark=new THREE.MeshBasicMaterial({color:0xf4f0d9});
+        for(let x=186;x<=208;x+=6){
+            const dash=new THREE.Mesh(new THREE.PlaneGeometry(2.4,.22),farmAccessMark);
+            dash.rotation.x=-Math.PI/2;dash.position.set(x,.105,FARM_CZ-9);scene.add(dash);
+        }
 
         // ==========================================
         // EŞEK SPAWN (Çiftlik girişinde)
@@ -3155,6 +3565,7 @@
                 stars.rotation.y = yaw * 0.5;
 
                 updateFarmAnimals(deltaSec, now * 0.001);
+                if (farmModelRoot && farmModelRoot.userData.updateWalkers) farmModelRoot.userData.updateWalkers(now);
 
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
