@@ -47,13 +47,52 @@
         #settingsPanel .value-display { float: right; color: #ffd700; font-weight: bold; }
         #settingsPanel .close-btn { width: 100%; margin-top: 20px; padding: 12px; background: #4CAF50; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
         #settingsPanel .close-btn:hover { background: #45a049; }
+        #onlineBadge { position: fixed; top: 18px; right: 18px; z-index: 35; padding: 10px 14px; border: 1px solid rgba(255,255,255,.25); border-radius: 22px; background: rgba(15,20,27,.9); color: #fff; font-weight: 700; box-shadow: 0 4px 16px #0008; }
+        #onlineBadge .online-dot { display: inline-block; width: 9px; height: 9px; margin-right: 7px; border-radius: 50%; background: #36d478; box-shadow: 0 0 8px #36d478; }
+        #nameCard { margin: 8px 0 10px; padding: 12px 16px; width: 300px; max-width: 82vw; border: 1px solid #ffffff30; border-radius: 10px; background: rgba(15,20,27,.8); color: #eee; }
+        #nameCard label { display: block; font-size: 14px; color: #ddd; text-align: left; }
+        #nameInput { display: block; box-sizing: border-box; width: 100%; margin-top: 7px; padding: 10px 12px; border: 1px solid #52606c; border-radius: 7px; outline: none; background: #171d23; color: #fff; font-size: 16px; user-select: text; -webkit-user-select: text; touch-action: auto; }
+        #nameInput:focus, #chatInput:focus { border-color: #54a9f7; box-shadow: 0 0 0 2px #2196f340; }
+        #chatPanel { position: fixed; top: 18px; left: 18px; z-index: 30; display: none; width: 350px; max-width: min(92vw, 390px); height: 300px; max-height: 45vh; min-height: 210px; flex-direction: column; overflow: hidden; border: 1px solid rgba(255,255,255,.2); border-radius: 9px; background: rgba(18,22,28,.86); color: #f3f5f7; box-shadow: 0 7px 24px #0008; font-family: Arial,sans-serif; pointer-events: auto; }
+        #chatHeader { display: flex; align-items: center; justify-content: space-between; min-height: 38px; padding: 0 10px 0 13px; border-bottom: 1px solid #ffffff20; background: rgba(35,42,50,.96); font-weight: 700; }
+        #chatHeader small { margin-left: 6px; color: #aeb8c2; font-size: 10px; font-weight: 400; }
+        .chat-icon-btn { width: 30px; height: 28px; border: 0; border-radius: 5px; background: #ffffff18; color: #fff; font-size: 18px; cursor: pointer; }
+        #chatMessages { flex: 1; overflow-y: auto; padding: 8px 11px; font-size: 13px; line-height: 1.4; user-select: text; -webkit-user-select: text; }
+        .chat-line { margin: 3px 0; overflow-wrap: anywhere; }
+        .chat-time { margin-right: 5px; color: #9ba6b1; font-size: 10px; }
+        .chat-name { color: #8cc8ff; font-weight: 700; }
+        .chat-system { margin: 4px 0; color: #c4cbd1; font-style: italic; }
+        #chatForm { display: flex; gap: 6px; padding: 8px; border-top: 1px solid #ffffff20; }
+        #chatInput { flex: 1; min-width: 0; padding: 9px 10px; border: 1px solid #4a535d; border-radius: 6px; outline: none; background: #10151b; color: #fff; font-size: 14px; user-select: text; -webkit-user-select: text; touch-action: auto; }
+        #chatSendBtn { padding: 0 13px; border: 0; border-radius: 6px; background: #2784d8; color: white; font-weight: 700; cursor: pointer; }
+        #chatReopenBtn { position: fixed; top: 18px; left: 18px; z-index: 31; display: none; padding: 10px 13px; border: 1px solid #ffffff38; border-radius: 18px; background: rgba(18,22,28,.88); color: white; font-weight: 700; pointer-events: auto; cursor: pointer; }
+        #playerListPanel { position: fixed; top: 50%; left: 50%; z-index: 50; display: none; width: 430px; max-width: 92vw; max-height: 70vh; transform: translate(-50%,-50%); overflow: hidden; border: 1px solid #ffffff35; border-radius: 12px; background: rgba(17,21,27,.96); color: #f7f8f9; box-shadow: 0 12px 40px #000b; pointer-events: auto; }
+        #playerListHeader { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #ffffff22; background: #252d36; }
+        #playerListHeader strong { font-size: 18px; }
+        #playerListHeader small { margin-left: 8px; color: #b5c0ca; }
+        .player-list-columns, .player-row { display: grid; grid-template-columns: minmax(130px,1fr) 78px 78px; gap: 8px; align-items: center; padding: 9px 14px; }
+        .player-list-columns { color: #9eabb7; font-size: 12px; text-transform: uppercase; }
+        #playerListRows { max-height: calc(70vh - 95px); overflow-y: auto; }
+        .player-row { border-top: 1px solid #ffffff12; font-size: 14px; }
+        .player-row .ping-good { color: #61dc91; } .player-row .ping-mid { color: #ffcf67; } .player-row .ping-high { color: #ff7777; }
+        #mobPlayersBtn { position: absolute; top: 80px; left: 20px; width: 50px; height: 50px; border: 2px solid #fff; border-radius: 50%; background: rgba(0,0,0,.65); color: white; font-size: 21px; pointer-events: auto; cursor: pointer; z-index: 25; }
+        @media (max-width: 600px) {
+            #chatPanel { top: 142px; left: 12px; width: min(88vw, 350px); height: 220px; max-height: 32vh; min-height: 180px; }
+            #chatReopenBtn { top: 142px; left: 12px; }
+            #onlineBadge { top: 12px; right: 12px; padding: 8px 10px; font-size: 12px; }
+            #playerListPanel { width: 94vw; }
+            .player-list-columns, .player-row { grid-template-columns: minmax(100px,1fr) 64px 64px; padding-left: 10px; padding-right: 10px; }
+            #mobPlayersBtn { top: 80px; left: 20px; }
+        }
     </style>
 </head>
 <body>
 
+    <div id="onlineBadge"><span class="online-dot"></span><span id="onlineCount">0</span> oyuncu çevrimiçi</div>
     <div id="menu">
         <h1>Eşek Game</h1>
         <h2>Cross-Platform Online Modu</h2>
+        <div id="nameCard"><label for="nameInput">Oyuncu adı</label><input id="nameInput" maxlength="20" autocomplete="nickname" placeholder="Player" value="Player"></div>
         <div id="mainButtons">
             <div class="section-title">Kontrol Yönteminizi Seçin</div>
             <button id="pcSelectBtn" class="btn btn-blue">💻 PC KONTROLÜ</button><br>
@@ -66,7 +105,7 @@
         </div>
     </div>
 
-    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık + Sürükle: Etrafa Bak | Space: Zıpla | C: Eğil | T: Kamera | E: Kapı | ESC: Menü</div>
+    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık + Sürükle: Etrafa Bak | Space: Zıpla | C: Eğil | T: Kamera | E: Kapı | Tab: Oyuncular | ESC: Menü</div>
 
     <div id="hud">
         <div><span class="label">Saat:</span> <span id="hudTime">00:00</span></div>
@@ -78,6 +117,18 @@
 
     <div id="interactPrompt">E - Kapıyı Aç</div>
     <div id="crosshair"><div class="dot"></div></div>
+
+    <div id="chatPanel" aria-label="Sohbet">
+        <div id="chatHeader"><span>🌐 Sohbet <small>Mesajlar 10 dakikada temizlenir</small></span><button class="chat-icon-btn" id="chatHideBtn" title="Sohbeti gizle">×</button></div>
+        <div id="chatMessages" aria-live="polite"><div class="chat-system">Oyuncularla sohbet et. Lütfen saygılı ol.</div></div>
+        <form id="chatForm"><input id="chatInput" maxlength="220" autocomplete="off" placeholder="Mesaj yaz…"><button id="chatSendBtn" type="submit">Gönder</button></form>
+    </div>
+    <button id="chatReopenBtn" type="button">💬 Sohbet</button>
+    <div id="playerListPanel" aria-label="Oyuncu listesi">
+        <div id="playerListHeader"><div><strong>Oyuncular</strong><small id="playerCountText">0 kişi</small></div><button class="chat-icon-btn" id="playerListClose" title="Kapat">×</button></div>
+        <div class="player-list-columns"><span>Oyuncu</span><span>Platform</span><span>Ping</span></div>
+        <div id="playerListRows"></div>
+    </div>
 
     <div id="settingsPanel">
         <h3>⚙️ Ayarlar</h3>
@@ -97,6 +148,7 @@
 
     <div id="mobileControls">
         <div id="mobMenuBtn">☰</div>
+        <button id="mobPlayersBtn" type="button" title="Oyuncular">👥</button>
         <div id="mobViewBtn">📷</div>
         <div id="mobOpenBtn">🔓 AÇ</div>
         <div id="joystickZone"><div id="joystickKnob"></div></div>
@@ -1504,7 +1556,7 @@
         createDirtRoad(FARM_CX + 45, FARM_CZ, 10, 80);  // Sağ dikey
         createDirtRoad(FARM_CX, FARM_CZ + 25, 180, 8);  // Ana yatay alt
         createDirtRoad(FARM_CX, FARM_CZ - 35, 180, 8);  // Ana yatay üst
-        createDirtRoad(FARM_CX, FARM_CZ + 40, 10, 40);   // Giriş kapısından çiftlik içi yola bağlantı
+        // Yalnızca çiftliğin kendi iç yolları; şehir yolu dış çevreden dolaşır.
 
         function createFarmParkingLot(x, z) {
             const lot = new THREE.Group();
@@ -1548,12 +1600,11 @@
                 lot.add(car);
                 buildings.push({ x: x + localX, z: z - 1.5, halfW: 1.7, halfD: 2.5 });
             }
-            lot.position.set(x, 0, z); // Çiftlik çevresi düz tutulur.
+            lot.position.set(x, 0, z); // Çiftlik çitinin dışında, doğu tarafında.
             scene.add(lot);
-            // Kısa giriş şeridi, çiftlik servis yolu ile otoparkı birleştirir.
-            createDirtRoad(x, z + 17, 7, 14);
         }
-        createFarmParkingLot(FARM_CX + 32, FARM_CZ + 31);
+        const PARKING_CENTER = { x: 238, z: 175 };
+        createFarmParkingLot(PARKING_CENTER.x, PARKING_CENTER.z);
 
         // ==========================================
         // ÇİFTLİK İÇİ AĞAÇLAR
@@ -1598,31 +1649,46 @@
         const gridCount = 5;
         const cityWidth = gridCount * BLOCK_TOTAL + (gridCount + 1) * ROAD_WIDTH;
         const CITY_RADIUS = cityWidth / 2 + 30;
-        const CITY_EDGE_X = CITY_CENTER_X + cityWidth / 2;
-        const ROAD_START_X = CITY_EDGE_X;
-        const ROAD_START_Z = CITY_CENTER_Z;
-        const ROAD_END_X = FARM_CX;
-        const ROAD_END_Z = FARM_CZ + 55;
+        // Dik açılı güzergâh: çiftliğin kuzeyinden ve doğusundan dolaşır, çit sınırını geçmez.
+        const ROAD_PATH = [
+            { x: -47, z: CITY_CENTER_Z }, // mevcut şehrin doğu-kuzey-güney caddesine bağlanır
+            { x: -30, z: CITY_CENTER_Z },
+            { x: -30, z: 70 },             // çiftliğin kuzey sınırı z=95'in dışında
+            { x: 210, z: 70 },
+            { x: 210, z: 220 }             // doğu çitinin (x=200) dışında
+        ];
 
         function smoothStep(edge0, edge1, value) {
             const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
             return t * t * (3 - 2 * t);
         }
         function distanceToRoadAxis(x, z) {
-            const dx = ROAD_END_X - ROAD_START_X, dz = ROAD_END_Z - ROAD_START_Z;
-            const lengthSq = dx * dx + dz * dz;
-            const t = Math.max(0, Math.min(1, ((x - ROAD_START_X) * dx + (z - ROAD_START_Z) * dz) / lengthSq));
-            return Math.hypot(x - (ROAD_START_X + t * dx), z - (ROAD_START_Z + t * dz));
+            let nearest = Infinity;
+            for (let i = 0; i < ROAD_PATH.length - 1; i++) {
+                const a = ROAD_PATH[i], b = ROAD_PATH[i + 1];
+                const dx = b.x - a.x, dz = b.z - a.z;
+                const lengthSq = dx * dx + dz * dz;
+                const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / lengthSq));
+                nearest = Math.min(nearest, Math.hypot(x - (a.x + t * dx), z - (a.z + t * dz)));
+            }
+            const a = { x: 210, z: 175 }, b = { x: PARKING_CENTER.x - 17, z: 175 };
+            const dx = b.x - a.x, dz = b.z - a.z;
+            const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / Math.max(1, dx * dx + dz * dz)));
+            nearest = Math.min(nearest, Math.hypot(x - (a.x + t * dx), z - (a.z + t * dz)));
+            return nearest;
         }
         function terrainHeightAt(x, z) {
             const radial = Math.hypot(x, z);
             const farmFlat = smoothStep(120, 172, Math.hypot(x - FARM_CX, z - FARM_CZ));
             const cityFlat = smoothStep(CITY_RADIUS + 5, CITY_RADIUS + 48, Math.hypot(x - CITY_CENTER_X, z - CITY_CENTER_Z));
             const roadFlat = smoothStep(13, 31, distanceToRoadAxis(x, z));
+            const parkingDx = Math.max(0, Math.abs(x - PARKING_CENTER.x) - 17);
+            const parkingDz = Math.max(0, Math.abs(z - PARKING_CENTER.z) - 12);
+            const parkingFlat = smoothStep(2, 16, Math.hypot(parkingDx, parkingDz));
             const edgeFade = 1 - smoothStep(310, 350, radial);
             const broadHills = (Math.sin(x * 0.027) * 1.15 + Math.cos(z * 0.023) * 1.05 + Math.sin((x + z) * 0.041) * 0.65);
             const smallUndulation = Math.sin(x * 0.11 + z * 0.07) * 0.22;
-            return (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * edgeFade;
+            return (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * parkingFlat * edgeFade;
         }
         const terrainPositions = terrainGeo.attributes.position;
         for (let i = 0; i < terrainPositions.count; i++) {
@@ -1667,6 +1733,7 @@
             if (Math.hypot(x - FARM_CX, z - FARM_CZ) < 178) continue;
             if (Math.hypot(x - CITY_CENTER_X, z - CITY_CENTER_Z) < CITY_RADIUS + 20) continue;
             if (distanceToRoadAxis(x, z) < 18) continue;
+            if (Math.abs(x - PARKING_CENTER.x) < 27 && Math.abs(z - PARKING_CENTER.z) < 17) continue;
             let nearMountain = false;
             for (const m of mountains) if (Math.hypot(x - m.x, z - m.z) < m.radius + 5) { nearMountain = true; break; }
             if (nearMountain) continue;
@@ -1770,8 +1837,13 @@
             }
         }
         const connectorShoulderMat = new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0x97876c });
-        createSegmentRoad(ROAD_START_X, ROAD_START_Z, ROAD_END_X, ROAD_END_Z, 13, connectorShoulderMat, 0.065);
-        createSegmentRoad(ROAD_START_X, ROAD_START_Z, ROAD_END_X, ROAD_END_Z, 8.5, connectorRoadMat, 0.085);
+        for (let i = 0; i < ROAD_PATH.length - 1; i++) {
+            const a = ROAD_PATH[i], b = ROAD_PATH[i + 1];
+            createSegmentRoad(a.x, a.z, b.x, b.z, 13, connectorShoulderMat, 0.065);
+            createSegmentRoad(a.x, a.z, b.x, b.z, 8.5, connectorRoadMat, 0.085);
+        }
+        // Doğu tarafındaki dış otoparka kısa ve düz giriş bağlantısı.
+        createSegmentRoad(210, 175, 221, 175, 8, connectorRoadMat, 0.085);
 
         const windowMat = new THREE.MeshBasicMaterial({ color: 0xffff99 });
 
@@ -1883,6 +1955,7 @@
             if (distToCity < CITY_RADIUS) continue;
             const distToFarm = Math.sqrt((x - FARM_CX) ** 2 + (z - FARM_CZ) ** 2);
             if (distToFarm < 150 || distanceToRoadAxis(x, z) < 20) continue;
+            if (Math.abs(x - PARKING_CENTER.x) < 27 && Math.abs(z - PARKING_CENTER.z) < 17) continue;
             let tooCloseToMountain = false;
             for (let m of mountains) {
                 const dx = x - m.x;
@@ -1996,47 +2069,104 @@
             return donkeyGroup;
         }
 
+        function setDonkeyNameTag(donkey, name) {
+            const safeName = String(name || 'Player').trim().slice(0, 20) || 'Player';
+            if (donkey.userData.displayName === safeName) return;
+            let sprite = donkey.userData.nameTag;
+            if (!sprite) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 384; canvas.height = 96;
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+                sprite = new THREE.Sprite(material);
+                sprite.position.set(0, 4.7, 0);
+                sprite.scale.set(4.6, 1.15, 1);
+                donkey.add(sprite);
+                donkey.userData.nameTag = sprite;
+            }
+            const canvas = sprite.material.map.image;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(12,16,22,0.82)';
+            ctx.beginPath(); ctx.roundRect(8, 12, 368, 72, 20); ctx.fill();
+            ctx.font = 'bold 38px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#ffffff'; ctx.fillText(safeName, 192, 49, 340);
+            sprite.material.map.needsUpdate = true;
+            donkey.userData.displayName = safeName;
+        }
+
         const playerDonkey = createDonkeyModel();
         playerDonkey.visible = false;
         scene.add(playerDonkey);
 
+        let pingInterval = null;
+        let playerPingMs = null;
+        let latestServerPlayers = {};
         function initWebSocket() {
-            if (ws && ws.readyState === WebSocket.OPEN) return;
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
             ws = new WebSocket(wsUrl);
+            ws.addEventListener('open', () => {
+                sendSocketMessage('profile', { name: getPlayerName(), platform: controlMode });
+                sendSocketMessage('presence', { active: gameStarted, name: getPlayerName(), platform: controlMode });
+                if (pingInterval) clearInterval(pingInterval);
+                pingInterval = setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) sendSocketMessage('ping', { timestamp: performance.now() });
+                }, 4000);
+            });
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.type === "init") myId = data.id;
-                    if (data.type === "players" && myId) {
-                        const serverPlayers = data.players;
-                        for (let id in serverPlayers) {
-                            if (id !== myId) {
-                                if (!otherPlayers[id]) {
-                                    const newDonkey = createDonkeyModel();
-                                    scene.add(newDonkey);
-                                    otherPlayers[id] = newDonkey;
-                                }
-                                const pData = serverPlayers[id];
-                                const other = otherPlayers[id];
-                                other.position.set(pData.x, pData.y, pData.z);
-                                other.rotation.y = pData.yaw || 0;
-                                if (other.userData.neckHeadGroup) other.userData.neckHeadGroup.rotation.x = pData.pitch || 0;
-                                const targetScale = pData.isCrouching ? 0.6 : 1.0;
-                                other.scale.y += (targetScale - other.scale.y) * 0.5;
-                                other.userData.isMoving = pData.isMoving || false;
-                                other.userData.isJumping = pData.isJumping || false;
-                                other.userData.isCrouching = pData.isCrouching || false;
+                    if (data.type === 'init') {
+                        myId = data.id;
+                        sendSocketMessage('profile', { name: getPlayerName(), platform: controlMode });
+                        sendSocketMessage('presence', { active: gameStarted, name: getPlayerName(), platform: controlMode });
+                    } else if (data.type === 'pong') {
+                        playerPingMs = Math.max(0, Math.round(performance.now() - Number(data.timestamp)));
+                        sendSocketMessage('ping_result', { pingMs: playerPingMs });
+                        refreshPlayerList(latestServerPlayers);
+                    } else if (data.type === 'chat_history') {
+                        chatMessagesEl.replaceChildren();
+                        for (const message of (data.messages || [])) appendChatMessage(message);
+                        if (!data.messages || data.messages.length === 0) appendChatSystem('Sohbet hazır. Mesajlar 10 dakikada bir temizlenir.');
+                    } else if (data.type === 'chat_message') {
+                        appendChatMessage(data.message);
+                    } else if (data.type === 'chat_reset') {
+                        chatMessagesEl.replaceChildren();
+                        appendChatSystem('Sohbet 10 dakikalık yenileme nedeniyle temizlendi.');
+                    } else if (data.type === 'players') {
+                        latestServerPlayers = data.players || {};
+                        const activeCount = Number.isFinite(data.count) ? data.count : Object.values(latestServerPlayers).filter(p => p.inGame).length;
+                        onlineCountEl.textContent = String(activeCount);
+                        refreshPlayerList(latestServerPlayers);
+                        for (const [id, pData] of Object.entries(latestServerPlayers)) {
+                            if (id === myId || !pData.inGame) continue;
+                            if (!otherPlayers[id]) {
+                                const newDonkey = createDonkeyModel();
+                                scene.add(newDonkey);
+                                otherPlayers[id] = newDonkey;
                             }
+                            const other = otherPlayers[id];
+                            other.visible = gameStarted;
+                            other.position.set(pData.x || 0, pData.y || 0, pData.z || 0);
+                            other.rotation.y = pData.yaw || 0;
+                            if (other.userData.neckHeadGroup) other.userData.neckHeadGroup.rotation.x = pData.pitch || 0;
+                            const targetScale = pData.isCrouching ? 0.6 : 1.0;
+                            other.scale.y += (targetScale - other.scale.y) * 0.5;
+                            other.userData.isMoving = !!pData.isMoving;
+                            other.userData.isJumping = !!pData.isJumping;
+                            other.userData.isCrouching = !!pData.isCrouching;
+                            setDonkeyNameTag(other, pData.name || 'Player');
                         }
-                        for (let id in otherPlayers) {
-                            if (!serverPlayers[id]) {
+                        for (const id of Object.keys(otherPlayers)) {
+                            if (!latestServerPlayers[id] || !latestServerPlayers[id].inGame) {
                                 scene.remove(otherPlayers[id]);
                                 delete otherPlayers[id];
                             }
                         }
                     }
-                } catch (e) { console.error("Veri hatası:", e); }
+                } catch (e) { console.error('WebSocket veri hatası:', e); }
             };
+            ws.addEventListener('close', () => { if (pingInterval) clearInterval(pingInterval); });
         }
 
         let gameStarted = false;
@@ -2082,6 +2212,16 @@
         const renderScaleValue = document.getElementById('renderScaleValue');
         const autoFpsToggle = document.getElementById('autoFpsToggle');
         const closeSettings = document.getElementById('closeSettings');
+        const onlineCountEl = document.getElementById('onlineCount');
+        const nameInputEl = document.getElementById('nameInput');
+        const chatPanelEl = document.getElementById('chatPanel');
+        const chatMessagesEl = document.getElementById('chatMessages');
+        const chatInputEl = document.getElementById('chatInput');
+        const chatFormEl = document.getElementById('chatForm');
+        const chatReopenBtn = document.getElementById('chatReopenBtn');
+        const playerListPanel = document.getElementById('playerListPanel');
+        const playerListRows = document.getElementById('playerListRows');
+        const playerCountText = document.getElementById('playerCountText');
         let renderScaleTarget = 0.9;
         let renderScale = 0.9;
         let autoFpsEnabled = true;
@@ -2100,6 +2240,86 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5) * renderScale);
             renderer.setSize(window.innerWidth, window.innerHeight, false);
         }
+        applyRenderScale();
+        try { nameInputEl.value = localStorage.getItem('esekGamePlayerName') || 'Player'; } catch (e) { nameInputEl.value = 'Player'; }
+        function getPlayerName() {
+            const normalized = (nameInputEl.value || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 20);
+            return normalized || 'Player';
+        }
+        function sendSocketMessage(type, payload = {}) {
+            if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type, ...payload }));
+        }
+        function sendPresence(active) {
+            sendSocketMessage('profile', { name: getPlayerName(), platform: controlMode });
+            sendSocketMessage('presence', { active: !!active, name: getPlayerName(), platform: controlMode });
+        }
+        function appendChatSystem(text) {
+            const row = document.createElement('div'); row.className = 'chat-system'; row.textContent = text;
+            chatMessagesEl.appendChild(row); chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+        function appendChatMessage(message) {
+            if (!message) return;
+            const row = document.createElement('div'); row.className = 'chat-line';
+            const stamp = document.createElement('span'); stamp.className = 'chat-time';
+            const date = new Date(message.time || Date.now());
+            stamp.textContent = Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const name = document.createElement('span'); name.className = 'chat-name'; name.textContent = String(message.name || 'Player') + ': ';
+            const body = document.createElement('span'); body.textContent = String(message.text || '');
+            row.append(stamp, name, body); chatMessagesEl.appendChild(row);
+            while (chatMessagesEl.children.length > 100) chatMessagesEl.removeChild(chatMessagesEl.firstChild);
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }
+        function refreshPlayerList(players = {}) {
+            if (!playerListRows) return;
+            playerListRows.replaceChildren();
+            const active = Object.entries(players).filter(([, p]) => p && p.inGame);
+            playerCountText.textContent = `${active.length} kişi`;
+            if (!active.length) {
+                const empty = document.createElement('div'); empty.className = 'player-row';
+                empty.textContent = gameStarted ? 'Oyuncu listesi yükleniyor…' : 'Şu an oyunda kimse yok';
+                playerListRows.appendChild(empty); return;
+            }
+            active.sort(([a], [b]) => a === myId ? -1 : b === myId ? 1 : String(players[a].name || '').localeCompare(String(players[b].name || '')));
+            for (const [id, player] of active) {
+                const row = document.createElement('div'); row.className = 'player-row';
+                const name = document.createElement('span'); name.textContent = String(player.name || (id === myId ? getPlayerName() : 'Player')) + (id === myId ? ' (Sen)' : '');
+                const platform = document.createElement('span'); platform.textContent = player.platform === 'mobile' ? 'Mobil' : 'PC';
+                const ping = document.createElement('span');
+                const pingValue = id === myId ? playerPingMs : player.pingMs;
+                if (Number.isFinite(pingValue)) {
+                    ping.textContent = `${Math.round(pingValue)} ms`;
+                    ping.className = pingValue < 100 ? 'ping-good' : pingValue < 220 ? 'ping-mid' : 'ping-high';
+                } else ping.textContent = '…';
+                row.append(name, platform, ping); playerListRows.appendChild(row);
+            }
+        }
+        function togglePlayerList(force) {
+            const show = typeof force === 'boolean' ? force : playerListPanel.style.display !== 'block';
+            playerListPanel.style.display = show ? 'block' : 'none';
+            if (show) refreshPlayerList(latestServerPlayers);
+        }
+        let chatUserHidden = false;
+        function hideChat() { chatUserHidden = true; chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = gameStarted ? 'block' : 'none'; }
+        function showChat() { chatUserHidden = false; chatPanelEl.style.display = 'flex'; chatReopenBtn.style.display = 'none'; }
+        nameInputEl.addEventListener('input', () => {
+            try { localStorage.setItem('esekGamePlayerName', getPlayerName()); } catch (e) {}
+            setDonkeyNameTag(playerDonkey, getPlayerName());
+            sendSocketMessage('profile', { name: getPlayerName(), platform: controlMode });
+        });
+        chatFormEl.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const text = chatInputEl.value.trim();
+            if (!text || text.length > 220) return;
+            sendSocketMessage('chat', { text });
+            chatInputEl.value = '';
+            chatInputEl.focus();
+        });
+        document.getElementById('chatHideBtn').addEventListener('click', hideChat);
+        chatReopenBtn.addEventListener('click', showChat);
+        document.getElementById('playerListClose').addEventListener('click', () => togglePlayerList(false));
+        document.getElementById('mobPlayersBtn').addEventListener('click', () => togglePlayerList());
+        document.getElementById('onlineBadge').style.display = 'block';
+        setDonkeyNameTag(playerDonkey, getPlayerName());
         applyRenderScale();
         renderScaleSlider.addEventListener('input', () => {
             renderScaleTarget = Number(renderScaleSlider.value) / 100;
@@ -2162,6 +2382,12 @@
             menuEl.style.display = 'none';
             playerDonkey.visible = true;
             hudEl.style.display = 'block';
+            setDonkeyNameTag(playerDonkey, getPlayerName());
+            sendPresence(true);
+            for (const other of Object.values(otherPlayers)) other.visible = true;
+            chatPanelEl.style.display = chatUserHidden ? 'none' : 'flex';
+            chatReopenBtn.style.display = chatUserHidden ? 'block' : 'none';
+            document.getElementById('onlineBadge').style.display = 'none';
             if (controlMode === 'pc') {
                 infoEl.style.display = 'block';
                 mobileControlsEl.style.display = 'none';
@@ -2171,6 +2397,7 @@
             }
         }
 
+        initWebSocket();
         pcSelectBtn.addEventListener('click', () => startGame('pc'));
         mobileSelectBtn.addEventListener('click', () => startGame('mobile'));
 
@@ -2179,6 +2406,12 @@
             gameStarted = true;
             menuEl.style.display = 'none';
             playerDonkey.visible = true;
+            setDonkeyNameTag(playerDonkey, getPlayerName());
+            sendPresence(true);
+            for (const other of Object.values(otherPlayers)) other.visible = true;
+            chatPanelEl.style.display = chatUserHidden ? 'none' : 'flex';
+            chatReopenBtn.style.display = chatUserHidden ? 'block' : 'none';
+            document.getElementById('onlineBadge').style.display = 'none';
             hudEl.style.display = 'block';
             infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
             mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
@@ -2193,8 +2426,12 @@
 
         returnMenuBtn.addEventListener('click', () => {
             gameStarted = false;
+            sendPresence(false);
             menuEl.style.display = 'flex';
             mainButtons.style.display = 'block';
+            document.getElementById('onlineBadge').style.display = 'block';
+            chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
+            togglePlayerList(false);
             pauseButtons.style.display = 'none';
             infoEl.style.display = 'none';
             mobileControlsEl.style.display = 'none';
@@ -2205,17 +2442,19 @@
             mobOpenBtn.style.display = 'none';
             document.body.style.cursor = 'default';
             playerDonkey.visible = false;
-            if (ws) { ws.close(); ws = null; }
             for (let id in otherPlayers) {
-                scene.remove(otherPlayers[id]);
-                delete otherPlayers[id];
+                otherPlayers[id].visible = false;
             }
         });
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && gameStarted) {
                 if (settingsPanel.style.display === 'block') { closeSettingsPanel(); return; }
+                if (playerListPanel.style.display === 'block') { togglePlayerList(false); return; }
                 gameStarted = false;
+                sendPresence(false);
+                document.getElementById('onlineBadge').style.display = 'block';
+                chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
                 menuEl.style.display = 'flex';
                 mainButtons.style.display = 'none';
                 pauseButtons.style.display = 'flex';
@@ -2229,7 +2468,12 @@
                 playerDonkey.visible = false;
                 return;
             }
-            if (!gameStarted || controlMode !== 'pc') return;
+            if (!gameStarted) return;
+            if (e.key === 'Tab' && controlMode === 'pc' && !e.target.closest('input,textarea,button')) {
+                e.preventDefault(); togglePlayerList(); return;
+            }
+            if (e.target.closest('input,textarea,[contenteditable="true"]')) return;
+            if (controlMode !== 'pc') return;
             const k = e.key.toLowerCase();
             if (k === 'w') keys.w = true;
             if (k === 'a') keys.a = true;
@@ -2254,7 +2498,7 @@
 
         document.addEventListener('mousedown', (e) => {
             if (!gameStarted || controlMode !== 'pc' || e.button !== 0) return;
-            if (e.target.closest('#settingsPanel')) return;
+            if (e.target.closest('#settingsPanel,#chatPanel,#playerListPanel,#nameCard,#onlineBadge')) return;
             isMouseDown = true;
             mouseX = e.clientX;
             mouseY = e.clientY;
@@ -2289,6 +2533,10 @@
         mobMenuBtn.addEventListener('click', () => {
             if (gameStarted) {
                 gameStarted = false;
+                sendPresence(false);
+                document.getElementById('onlineBadge').style.display = 'block';
+                chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
+                togglePlayerList(false);
                 menuEl.style.display = 'flex';
                 mainButtons.style.display = 'none';
                 pauseButtons.style.display = 'flex';
@@ -2688,7 +2936,10 @@
                         yaw: yaw, pitch: pitch,
                         isCrouching: isCrouching,
                         isMoving: isMoving,
-                        isJumping: isJumping
+                        isJumping: isJumping,
+                        name: getPlayerName(),
+                        platform: controlMode,
+                        pingMs: playerPingMs
                     }));
                 }
 
