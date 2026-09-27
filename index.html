@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Eşek Game - Online</title>
+    <title>Eşek Game - Geliştirilmiş</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: Arial, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
         #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.5); z-index: 20; }
@@ -35,7 +35,10 @@
         #crosshair::before { top: 50%; left: 0; width: 100%; height: 2px; transform: translateY(-50%); }
         #crosshair::after { top: 0; left: 50%; width: 2px; height: 100%; transform: translateX(-50%); }
         #crosshair .dot { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: rgba(255, 255, 255, 0.9); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 3px rgba(0,0,0,0.8); }
-        #settingsPanel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 320px; max-width: 90%; background: rgba(20, 20, 30, 0.95); border: 2px solid #4CAF50; border-radius: 12px; padding: 25px; z-index: 100; display: none; color: #ffffff; font-family: Arial, sans-serif; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        #settingsPanel { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 360px; max-width: 90%; max-height: 88vh; overflow-y: auto; background: rgba(20, 20, 30, 0.96); border: 2px solid #4CAF50; border-radius: 12px; padding: 25px; z-index: 100; display: none; color: #ffffff; font-family: Arial, sans-serif; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        #settingsPanel select { width: 100%; padding: 9px; border: 1px solid #666; border-radius: 6px; background: #252832; color: #fff; font-size: 14px; }
+        #settingsPanel input[type="checkbox"] { accent-color: #4CAF50; transform: scale(1.15); margin-right: 8px; }
+        #settingsPanel .hint { font-size: 12px; color: #999; margin: 5px 0 12px; line-height: 1.4; }
         #settingsPanel h3 { margin: 0 0 20px 0; color: #ffd700; text-align: center; font-size: 22px; }
         #settingsPanel label { display: block; margin: 15px 0 5px 0; color: #cccccc; font-size: 14px; }
         #settingsPanel input[type="range"] { width: 100%; height: 8px; background: #333; border-radius: 4px; outline: none; -webkit-appearance: none; }
@@ -84,6 +87,11 @@
         <label>Hassasiyet (Sensitivity): <span class="value-display" id="sensValue">1.0</span></label>
         <input type="range" id="sensSlider" min="0.3" max="3.0" value="1.0" step="0.1">
         <p style="font-size:12px; color:#888; margin-top:5px;">Kamera dönüş hızı</p>
+        <label>Render çözünürlüğü: <span class="value-display" id="renderScaleValue">90%</span></label>
+        <input type="range" id="renderScaleSlider" min="60" max="125" value="90" step="5">
+        <p class="hint">Daha düşük ölçek çizim yükünü azaltır ve FPS'i yükseltebilir.</p>
+        <label style="margin-top:12px;"><input type="checkbox" id="autoFpsToggle" checked>Akıllı FPS optimizasyonu</label>
+        <p class="hint">FPS düşünce çözünürlüğü otomatik azaltır; FPS yükselince seçtiğin düzeye geri çıkar.</p>
         <button class="close-btn" id="closeSettings">KAPAT</button>
     </div>
 
@@ -125,8 +133,8 @@
         scene.fog = new THREE.Fog(0x87ceeb, viewDistance * 0.7, viewDistance);
 
         const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, viewDistance);
-        const renderer = new THREE.WebGLRenderer({ antialias: false });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5) * 0.9);
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = false;
         document.body.appendChild(renderer.domElement);
@@ -274,7 +282,7 @@
         }, 3, 2);
 
         // Zemin
-        const terrainGeo = new THREE.PlaneGeometry(1000, 1000, 20, 20);
+        const terrainGeo = new THREE.PlaneGeometry(1000, 1000, 80, 80);
         terrainGeo.rotateX(-Math.PI / 2);
         const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ map: grassTexture, color: 0xa8c8a0 }));
         scene.add(terrainMesh);
@@ -330,39 +338,21 @@
         const FARM_CX = SPAWN_X - 70;
         const FARM_CZ = SPAWN_Z;
 
+        // Çimler tek tek mesh yerine instanced çizilecek: görünüm korunur, draw-call sayısı ciddi azalır.
+        const grassSpots = [];
         const grassAreaRadius = MAP_LIMIT - 80;
-        for (let i = 0; i < 1500; i++) {
+        for (let i = 0; i < 2100; i++) {
             const angle = Math.random() * Math.PI * 2;
             const radius = Math.sqrt(Math.random()) * grassAreaRadius;
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
-            
-            // Çiftlik alanına ot koyma (geniş bir alan)
-            const distToFarm = Math.sqrt((x - FARM_CX) ** 2 + (z - FARM_CZ) ** 2);
+            const distToFarm = Math.hypot(x - FARM_CX, z - FARM_CZ);
             if (distToFarm < 150) continue;
-            
             let inMountain = false;
-            for (let m of mountains) {
-                const dx = x - m.x;
-                const dz = z - m.z;
-                if (Math.sqrt(dx * dx + dz * dz) < m.radius + 1) { inMountain = true; break; }
+            for (const m of mountains) {
+                if (Math.hypot(x - m.x, z - m.z) < m.radius + 1) { inMountain = true; break; }
             }
-            if (inMountain) continue;
-            
-            const grassGroup = new THREE.Group();
-            for (let j = 0; j < 3; j++) {
-                const h = 0.3 + Math.random() * 0.4;
-                const bladeGeo = new THREE.BoxGeometry(0.06, h, 0.06);
-                const mat = Math.random() > 0.66 ? grassMat2 : (Math.random() > 0.5 ? grassMat1 : grassMat3);
-                const blade = new THREE.Mesh(bladeGeo, mat);
-                blade.position.set((Math.random() - 0.5) * 0.5, h / 2, (Math.random() - 0.5) * 0.5);
-                blade.rotation.z = (Math.random() - 0.5) * 0.4;
-                blade.rotation.x = (Math.random() - 0.5) * 0.4;
-                grassGroup.add(blade);
-            }
-            grassGroup.position.set(x, 0, z);
-            grassGroup.rotation.y = Math.random() * Math.PI * 2;
-            scene.add(grassGroup);
+            if (!inMountain) grassSpots.push({ x, z });
         }
 
 
@@ -1139,6 +1129,16 @@
             const waterTank = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 5, 16), new THREE.MeshLambertMaterial({ color: 0x4a8ac8 }));
             waterTank.position.set(-5, 2.5, 0);
             areaGroup.add(waterTank);
+            const tankBandMat = new THREE.MeshLambertMaterial({ color: 0xb8d5e8 });
+            for (const y of [1.1, 2.5, 3.9]) {
+                const band = new THREE.Mesh(new THREE.TorusGeometry(3.03, 0.08, 6, 20), tankBandMat);
+                band.rotation.x = Math.PI / 2;
+                band.position.set(-5, y, 0);
+                areaGroup.add(band);
+            }
+            const tankCap = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, 0.25, 12), metalMat);
+            tankCap.position.set(-5, 5.12, 0);
+            areaGroup.add(tankCap);
             
             // Su borusu
             const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 5, 8), metalMat);
@@ -1169,7 +1169,8 @@
             buildings.push({ x, z: z - 3, halfW: 0.3, halfD: 0.3 });
         }
 
-        createTechnicalArea(FARM_CX + 60, FARM_CZ + 80);
+        // Mavi su deposu, teknik/depolama binasının hemen yanına alındı.
+        createTechnicalArea(FARM_CX + 76, FARM_CZ + 65);
 
         // ==========================================
         // SERVİS YOLU + GİRİŞ KAPISI (Alt Merkez)
@@ -1488,6 +1489,7 @@
         // ==========================================
         // ÇİFTLİK İÇİ TOPRAK YOLLAR
         // ==========================================
+        const connectorRoadMat = new THREE.MeshLambertMaterial({ color: 0x3d4143 });
         function createDirtRoad(x, z, w, d) {
             const roadGeo = new THREE.PlaneGeometry(w, d);
             roadGeo.rotateX(-Math.PI / 2);
@@ -1502,6 +1504,56 @@
         createDirtRoad(FARM_CX + 45, FARM_CZ, 10, 80);  // Sağ dikey
         createDirtRoad(FARM_CX, FARM_CZ + 25, 180, 8);  // Ana yatay alt
         createDirtRoad(FARM_CX, FARM_CZ - 35, 180, 8);  // Ana yatay üst
+        createDirtRoad(FARM_CX, FARM_CZ + 40, 10, 40);   // Giriş kapısından çiftlik içi yola bağlantı
+
+        function createFarmParkingLot(x, z) {
+            const lot = new THREE.Group();
+            const asphalt = new THREE.Mesh(new THREE.PlaneGeometry(34, 24), connectorRoadMat);
+            asphalt.rotation.x = -Math.PI / 2;
+            asphalt.position.y = 0.09;
+            lot.add(asphalt);
+            const paint = new THREE.MeshBasicMaterial({ color: 0xf4f0d9 });
+            // Park yeri çizgileri ve giriş/çıkış şeridi.
+            for (let i = -15; i <= 15; i += 5) {
+                const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 10), paint);
+                stripe.rotation.x = -Math.PI / 2;
+                stripe.position.set(i, 0.105, -1.5);
+                lot.add(stripe);
+            }
+            for (const zz of [-7, 4]) {
+                const boundary = new THREE.Mesh(new THREE.PlaneGeometry(30, 0.22), paint);
+                boundary.rotation.x = -Math.PI / 2;
+                boundary.position.set(0, 0.105, zz);
+                lot.add(boundary);
+            }
+            // Kısa araçlar park yerinin varlığını görünür kılar; tüm şekiller çarpışmalıdır.
+            const carColors = [0xb64136, 0x3d78a8];
+            for (let i = 0; i < 2; i++) {
+                const car = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.85, 4.2), new THREE.MeshLambertMaterial({ color: carColors[i] }));
+                body.position.y = 0.72;
+                car.add(body);
+                const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.72, 2.1), new THREE.MeshLambertMaterial({ color: 0x263542 }));
+                cabin.position.set(0, 1.42, -0.15);
+                car.add(cabin);
+                const tireMat = new THREE.MeshLambertMaterial({ color: 0x171717 });
+                for (const px of [-1.1, 1.1]) for (const pz of [-1.25, 1.25]) {
+                    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.25, 10), tireMat);
+                    tire.rotation.z = Math.PI / 2;
+                    tire.position.set(px, 0.43, pz);
+                    car.add(tire);
+                }
+                const localX = i === 0 ? -7 : 3;
+                car.position.set(localX, 0, -1.5);
+                lot.add(car);
+                buildings.push({ x: x + localX, z: z - 1.5, halfW: 1.7, halfD: 2.5 });
+            }
+            lot.position.set(x, 0, z); // Çiftlik çevresi düz tutulur.
+            scene.add(lot);
+            // Kısa giriş şeridi, çiftlik servis yolu ile otoparkı birleştirir.
+            createDirtRoad(x, z + 17, 7, 14);
+        }
+        createFarmParkingLot(FARM_CX + 32, FARM_CZ + 31);
 
         // ==========================================
         // ÇİFTLİK İÇİ AĞAÇLAR
@@ -1545,6 +1597,96 @@
         const GRID_STEP = BLOCK_TOTAL + ROAD_WIDTH;
         const gridCount = 5;
         const cityWidth = gridCount * BLOCK_TOTAL + (gridCount + 1) * ROAD_WIDTH;
+        const CITY_RADIUS = cityWidth / 2 + 30;
+        const CITY_EDGE_X = CITY_CENTER_X + cityWidth / 2;
+        const ROAD_START_X = CITY_EDGE_X;
+        const ROAD_START_Z = CITY_CENTER_Z;
+        const ROAD_END_X = FARM_CX;
+        const ROAD_END_Z = FARM_CZ + 55;
+
+        function smoothStep(edge0, edge1, value) {
+            const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
+            return t * t * (3 - 2 * t);
+        }
+        function distanceToRoadAxis(x, z) {
+            const dx = ROAD_END_X - ROAD_START_X, dz = ROAD_END_Z - ROAD_START_Z;
+            const lengthSq = dx * dx + dz * dz;
+            const t = Math.max(0, Math.min(1, ((x - ROAD_START_X) * dx + (z - ROAD_START_Z) * dz) / lengthSq));
+            return Math.hypot(x - (ROAD_START_X + t * dx), z - (ROAD_START_Z + t * dz));
+        }
+        function terrainHeightAt(x, z) {
+            const radial = Math.hypot(x, z);
+            const farmFlat = smoothStep(120, 172, Math.hypot(x - FARM_CX, z - FARM_CZ));
+            const cityFlat = smoothStep(CITY_RADIUS + 5, CITY_RADIUS + 48, Math.hypot(x - CITY_CENTER_X, z - CITY_CENTER_Z));
+            const roadFlat = smoothStep(13, 31, distanceToRoadAxis(x, z));
+            const edgeFade = 1 - smoothStep(310, 350, radial);
+            const broadHills = (Math.sin(x * 0.027) * 1.15 + Math.cos(z * 0.023) * 1.05 + Math.sin((x + z) * 0.041) * 0.65);
+            const smallUndulation = Math.sin(x * 0.11 + z * 0.07) * 0.22;
+            return (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * edgeFade;
+        }
+        const terrainPositions = terrainGeo.attributes.position;
+        for (let i = 0; i < terrainPositions.count; i++) {
+            terrainPositions.setY(i, terrainHeightAt(terrainPositions.getX(i), terrainPositions.getZ(i)));
+        }
+        terrainPositions.needsUpdate = true;
+        terrainGeo.computeVertexNormals();
+
+        // 3 çim türü, binlerce sap: yalnızca üç InstancedMesh/draw call.
+        const grassMaterials = [grassMat1, grassMat2, grassMat3];
+        const grassBatches = grassMaterials.map(mat => new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, 1, 0.06), mat, grassSpots.length * 3));
+        const grassCounts = [0, 0, 0];
+        const grassDummy = new THREE.Object3D();
+        for (const spot of grassSpots) {
+            const groundY = terrainHeightAt(spot.x, spot.z);
+            for (let j = 0; j < 3; j++) {
+                const h = 0.3 + Math.random() * 0.55;
+                const batchIndex = Math.random() > 0.66 ? 1 : (Math.random() > 0.5 ? 0 : 2);
+                grassDummy.position.set(spot.x + (Math.random() - 0.5) * 0.5, groundY + h / 2, spot.z + (Math.random() - 0.5) * 0.5);
+                grassDummy.rotation.set((Math.random() - 0.5) * 0.35, Math.random() * Math.PI, (Math.random() - 0.5) * 0.4);
+                grassDummy.scale.set(1, h, 1);
+                grassDummy.updateMatrix();
+                grassBatches[batchIndex].setMatrixAt(grassCounts[batchIndex]++, grassDummy.matrix);
+            }
+        }
+        grassBatches.forEach((batch, i) => {
+            batch.count = grassCounts[i];
+            batch.instanceMatrix.needsUpdate = true;
+            scene.add(batch);
+        });
+
+        // Engebeli kırlara yayılmış kayalar; çiftlik, şehir, yol ve dağ tabanlarından uzak tutulur.
+        const rockCapacity = 210;
+        const rockMesh = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ vertexColors: true }), rockCapacity);
+        const rockDummy = new THREE.Object3D();
+        const rockColor = new THREE.Color();
+        let rockCount = 0;
+        for (let tries = 0; tries < 3000 && rockCount < rockCapacity; tries++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 95 + Math.random() * 235;
+            const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
+            if (Math.hypot(x - FARM_CX, z - FARM_CZ) < 178) continue;
+            if (Math.hypot(x - CITY_CENTER_X, z - CITY_CENTER_Z) < CITY_RADIUS + 20) continue;
+            if (distanceToRoadAxis(x, z) < 18) continue;
+            let nearMountain = false;
+            for (const m of mountains) if (Math.hypot(x - m.x, z - m.z) < m.radius + 5) { nearMountain = true; break; }
+            if (nearMountain) continue;
+            const sx = 0.55 + Math.random() * 1.25, sy = 0.35 + Math.random() * 0.9, sz = 0.5 + Math.random() * 1.1;
+            rockDummy.position.set(x, terrainHeightAt(x, z) + sy * 0.45, z);
+            rockDummy.rotation.set(Math.random() * 0.25, Math.random() * Math.PI, Math.random() * 0.2);
+            rockDummy.scale.set(sx, sy, sz);
+            rockDummy.updateMatrix();
+            rockMesh.setMatrixAt(rockCount, rockDummy.matrix);
+            const tint = 0.72 + Math.random() * 0.4;
+            rockColor.setRGB(tint, tint * (0.98 + Math.random() * 0.04), tint * (0.92 + Math.random() * 0.12));
+            rockMesh.setColorAt(rockCount, rockColor);
+            buildings.push({ x, z, halfW: Math.max(sx, sz) * 0.72, halfD: Math.max(sx, sz) * 0.72 });
+            rockCount++;
+        }
+        rockMesh.count = rockCount;
+        rockMesh.instanceMatrix.needsUpdate = true;
+        if (rockMesh.instanceColor) rockMesh.instanceColor.needsUpdate = true;
+        scene.add(rockMesh);
+
         const firstBlockCenterX = CITY_CENTER_X - cityWidth / 2 + ROAD_WIDTH + BLOCK_TOTAL / 2;
         const firstBlockCenterZ = CITY_CENTER_Z - cityWidth / 2 + ROAD_WIDTH + BLOCK_TOTAL / 2;
 
@@ -1606,6 +1748,30 @@
                 scene.add(sideE);
             }
         }
+
+        function createSegmentRoad(x1, z1, x2, z2, width, material, y = 0.085) {
+            const dx = x2 - x1, dz = z2 - z1;
+            const length = Math.hypot(dx, dz);
+            const rotation = Math.atan2(dx, dz);
+            const roadGeo = new THREE.PlaneGeometry(width, length);
+            roadGeo.rotateX(-Math.PI / 2);
+            const road = new THREE.Mesh(roadGeo, material);
+            road.position.set((x1 + x2) / 2, y, (z1 + z2) / 2);
+            road.rotation.y = rotation;
+            scene.add(road);
+            const stripeMat = new THREE.MeshBasicMaterial({ color: 0xe5dfbf });
+            for (let t = 0.08; t < 0.96; t += 0.065) {
+                const dashGeo = new THREE.PlaneGeometry(3.3, 0.28);
+                dashGeo.rotateX(-Math.PI / 2);
+                const dash = new THREE.Mesh(dashGeo, stripeMat);
+                dash.position.set(x1 + dx * t, y + 0.012, z1 + dz * t);
+                dash.rotation.y = rotation;
+                scene.add(dash);
+            }
+        }
+        const connectorShoulderMat = new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0x97876c });
+        createSegmentRoad(ROAD_START_X, ROAD_START_Z, ROAD_END_X, ROAD_END_Z, 13, connectorShoulderMat, 0.065);
+        createSegmentRoad(ROAD_START_X, ROAD_START_Z, ROAD_END_X, ROAD_END_Z, 8.5, connectorRoadMat, 0.085);
 
         const windowMat = new THREE.MeshBasicMaterial({ color: 0xffff99 });
 
@@ -1693,18 +1859,22 @@
         // Ağaçlar (çiftlik ve şehir dışı)
         function createTreeOutside(x, z) {
             const treeGroup = new THREE.Group();
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 5, 5), new THREE.MeshLambertMaterial({ color: 0x4a2f1a }));
-            trunk.position.y = 2.5;
+            const scale = 0.8 + Math.random() * 0.65;
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * scale, 0.55 * scale, 5 * scale, 6), new THREE.MeshLambertMaterial({ color: 0x4a2f1a }));
+            trunk.position.y = 2.5 * scale;
             treeGroup.add(trunk);
-            const leaf = new THREE.Mesh(new THREE.SphereGeometry(2.5, 6, 6), new THREE.MeshLambertMaterial({ color: 0x1f5c14 }));
-            leaf.position.y = 6;
-            treeGroup.add(leaf);
-            treeGroup.position.set(x, 0, z);
+            const leafMat = new THREE.MeshLambertMaterial({ color: Math.random() > 0.5 ? 0x286b24 : 0x397a31 });
+            for (const [ox, oy, oz, radius] of [[0, 6, 0, 2.5], [-1.25, 5.5, 0.15, 1.7], [1.15, 5.7, -0.2, 1.8]]) {
+                const leaf = new THREE.Mesh(new THREE.SphereGeometry(radius * scale, 7, 6), leafMat);
+                leaf.position.set(ox * scale, oy * scale, oz * scale);
+                treeGroup.add(leaf);
+            }
+            treeGroup.position.set(x, terrainHeightAt(x, z), z);
             scene.add(treeGroup);
+            buildings.push({ x, z, halfW: 0.85 * scale, halfD: 0.85 * scale });
         }
 
-        const CITY_RADIUS = cityWidth / 2 + 30;
-        for (let i = 0; i < 60; i++) {
+        for (let i = 0; i < 82; i++) {
             const angle = Math.random() * Math.PI * 2;
             const radius = CITY_RADIUS + Math.random() * 100;
             const x = Math.cos(angle) * radius;
@@ -1712,7 +1882,7 @@
             const distToCity = Math.sqrt((x - CITY_CENTER_X) ** 2 + (z - CITY_CENTER_Z) ** 2);
             if (distToCity < CITY_RADIUS) continue;
             const distToFarm = Math.sqrt((x - FARM_CX) ** 2 + (z - FARM_CZ) ** 2);
-            if (distToFarm < 130) continue;
+            if (distToFarm < 150 || distanceToRoadAxis(x, z) < 20) continue;
             let tooCloseToMountain = false;
             for (let m of mountains) {
                 const dx = x - m.x;
@@ -1908,7 +2078,41 @@
         const chunkValue = document.getElementById('chunkValue');
         const sensSlider = document.getElementById('sensSlider');
         const sensValue = document.getElementById('sensValue');
+        const renderScaleSlider = document.getElementById('renderScaleSlider');
+        const renderScaleValue = document.getElementById('renderScaleValue');
+        const autoFpsToggle = document.getElementById('autoFpsToggle');
         const closeSettings = document.getElementById('closeSettings');
+        let renderScaleTarget = 0.9;
+        let renderScale = 0.9;
+        let autoFpsEnabled = true;
+        let lastAutoScaleTime = performance.now();
+        try {
+            const savedScale = Number(localStorage.getItem('esekGameRenderScale'));
+            if (savedScale >= 0.6 && savedScale <= 1.25) renderScaleTarget = savedScale;
+            const savedAutoFps = localStorage.getItem('esekGameAutoFps');
+            if (savedAutoFps !== null) autoFpsEnabled = savedAutoFps === 'true';
+        } catch (e) { /* private browsing may disable localStorage */ }
+        renderScale = renderScaleTarget;
+        renderScaleSlider.value = Math.round(renderScaleTarget * 100);
+        renderScaleValue.textContent = `${renderScaleSlider.value}%`;
+        autoFpsToggle.checked = autoFpsEnabled;
+        function applyRenderScale() {
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5) * renderScale);
+            renderer.setSize(window.innerWidth, window.innerHeight, false);
+        }
+        applyRenderScale();
+        renderScaleSlider.addEventListener('input', () => {
+            renderScaleTarget = Number(renderScaleSlider.value) / 100;
+            renderScale = renderScaleTarget;
+            renderScaleValue.textContent = `${renderScaleSlider.value}%`;
+            try { localStorage.setItem('esekGameRenderScale', String(renderScaleTarget)); } catch (e) {}
+            applyRenderScale();
+        });
+        autoFpsToggle.addEventListener('change', () => {
+            autoFpsEnabled = autoFpsToggle.checked;
+            try { localStorage.setItem('esekGameAutoFps', String(autoFpsEnabled)); } catch (e) {}
+            if (!autoFpsEnabled) { renderScale = renderScaleTarget; applyRenderScale(); }
+        });
 
         function openSettings() { settingsPanel.style.display = 'block'; }
         function closeSettingsPanel() { settingsPanel.style.display = 'none'; }
@@ -1949,7 +2153,7 @@
             controlMode = mode;
             initWebSocket();
             // Eşek çiftlik girişinin uzağında spawn olsun
-            playerDonkey.position.set(SPAWN_X, 0, SPAWN_Z + 30);
+            playerDonkey.position.set(SPAWN_X, terrainHeightAt(SPAWN_X, SPAWN_Z + 30), SPAWN_Z + 30);
             gameStarted = true;
             cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
@@ -2216,7 +2420,8 @@
                 const dx = x - m.x;
                 const dz = z - m.z;
                 const dist = Math.sqrt(dx * dx + dz * dz);
-                if (dist < m.radius + radius) return true;
+                // Dağ tabanına küçük bir tampon ekle; oyuncu koninin içine sızamasın.
+                if (dist < m.radius + radius + 1.25) return true;
             }
             for (let b of buildings) {
                 if (x + radius > b.x - b.halfW && x - radius < b.x + b.halfW &&
@@ -2284,6 +2489,17 @@
                 const flap = Math.sin(b.userData.flapPhase) * 0.5;
                 b.userData.wingLeft.rotation.z = flap;
                 b.userData.wingRight.rotation.z = -flap;
+            }
+
+            if (gameStarted && autoFpsEnabled && now - lastAutoScaleTime >= 2200) {
+                if (currentFps < 48 && renderScale > 0.6) {
+                    renderScale = Math.max(0.6, renderScale - 0.05);
+                    applyRenderScale();
+                } else if (currentFps > 58 && renderScale < renderScaleTarget) {
+                    renderScale = Math.min(renderScaleTarget, renderScale + 0.025);
+                    applyRenderScale();
+                }
+                lastAutoScaleTime = now;
             }
 
             if (!gameStarted) {
@@ -2441,9 +2657,14 @@
                 playerDonkey.rotation.y = yaw;
                 playerDonkey.scale.y += ((isCrouching ? 0.6 : 1.0) - playerDonkey.scale.y) * 0.5;
 
+                const groundY = terrainHeightAt(playerDonkey.position.x, playerDonkey.position.z);
                 velocityY -= 0.015;
                 playerDonkey.position.y += velocityY;
-                if (playerDonkey.position.y <= 0) { playerDonkey.position.y = 0; velocityY = 0; isGrounded = true; }
+                if (playerDonkey.position.y <= groundY) {
+                    playerDonkey.position.y = groundY;
+                    velocityY = 0;
+                    isGrounded = true;
+                }
 
                 const isJumping = !isGrounded;
                 updateDonkeyAnimation(playerDonkey, isMoving, isJumping, isCrouching, isSprinting ? 1.5 : 1);
@@ -2510,7 +2731,7 @@
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            applyRenderScale();
         });
     </script>
 </body>
