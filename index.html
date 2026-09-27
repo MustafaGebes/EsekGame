@@ -211,20 +211,13 @@
             const angle = (i / mountainCount) * Math.PI * 2;
             const x = Math.cos(angle) * mountainRingRadius;
             const z = Math.sin(angle) * mountainRingRadius;
-            const baseRadius = 22 + Math.random() * 6;
-            const height = 70 + Math.random() * 30;
-            createMountain(x, z, baseRadius, height);
+            createMountain(x, z, 22 + Math.random() * 6, 70 + Math.random() * 30);
         }
-
-        const mountainRingRadius2 = MAP_LIMIT + 35;
-        const mountainCount2 = 100;
-        for (let i = 0; i < mountainCount2; i++) {
-            const angle = (i / mountainCount2) * Math.PI * 2;
-            const x = Math.cos(angle) * mountainRingRadius2;
-            const z = Math.sin(angle) * mountainRingRadius2;
-            const baseRadius = 28 + Math.random() * 10;
-            const height = 90 + Math.random() * 40;
-            createMountain(x, z, baseRadius, height);
+        for (let i = 0; i < 100; i++) {
+            const angle = (i / 100) * Math.PI * 2;
+            const x = Math.cos(angle) * (MAP_LIMIT + 35);
+            const z = Math.sin(angle) * (MAP_LIMIT + 35);
+            createMountain(x, z, 28 + Math.random() * 10, 90 + Math.random() * 40);
         }
 
         // ==========================================
@@ -235,8 +228,7 @@
         const grassMat3 = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
 
         const grassAreaRadius = MAP_LIMIT - 60;
-        const grassCount = 1500;
-        for (let i = 0; i < grassCount; i++) {
+        for (let i = 0; i < 1500; i++) {
             const angle = Math.random() * Math.PI * 2;
             const radius = Math.sqrt(Math.random()) * grassAreaRadius;
             const x = Math.cos(angle) * radius;
@@ -250,9 +242,8 @@
             if (inMountain) continue;
             const distToBarn = Math.sqrt((x - SPAWN_X) ** 2 + (z - SPAWN_Z) ** 2);
             if (distToBarn < 100) continue;
-            const bladeCount = 3;
             const grassGroup = new THREE.Group();
-            for (let j = 0; j < bladeCount; j++) {
+            for (let j = 0; j < 3; j++) {
                 const h = 0.3 + Math.random() * 0.4;
                 const bladeGeo = new THREE.BoxGeometry(0.06, h, 0.06);
                 const mat = Math.random() > 0.66 ? grassMat2 : (Math.random() > 0.5 ? grassMat1 : grassMat3);
@@ -268,12 +259,35 @@
         }
 
         // ==========================================
-        // AHIR
+        // ORTAK MALZEMELER
         // ==========================================
         const buildings = [];
+        const woodDarkMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
+        const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+        const woodLightMat = new THREE.MeshLambertMaterial({ color: 0xa87848 });
+        const hayMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
+        const hayDarkMat = new THREE.MeshLambertMaterial({ color: 0xb8860b });
+        const dirtMat = new THREE.MeshLambertMaterial({ color: 0x6b4423 });
+        const dirtDarkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f15 });
+        const cropMat = new THREE.MeshLambertMaterial({ color: 0x7cbf3f });
+        const cropMat2 = new THREE.MeshLambertMaterial({ color: 0xa8d840 });
+        const stoneMat = new THREE.MeshLambertMaterial({ color: 0x888878 });
+        const metalMat = new THREE.MeshLambertMaterial({ color: 0x777777 });
+        const brickMat = new THREE.MeshLambertMaterial({ color: 0xa0402a });
+        const plasterMat = new THREE.MeshLambertMaterial({ color: 0xf0e6d0 });
+        const roofTileMat = new THREE.MeshLambertMaterial({ color: 0x8b3a3a });
+        const roofTileDarkMat = new THREE.MeshLambertMaterial({ color: 0x6a2828 });
+
+        // ==========================================
+        // AHIR (KIRMIZI - KROKİDE SOL ÜST)
+        // ==========================================
         let doorLeftGroup = null;
         let doorRightGroup = null;
         let doorCollision = null;
+
+        // Ahır konumu - krokiye göre sol üstte olacak
+        const BARN_X = SPAWN_X;
+        const BARN_Z = SPAWN_Z;
 
         function createBarn(x, z) {
             const barnGroup = new THREE.Group();
@@ -283,13 +297,9 @@
             const doorWidth = 6;
             const sideWallWidth = (width - doorWidth) / 2;
             
-            const woodDarkMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
-            const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
-            const woodLightMat = new THREE.MeshLambertMaterial({ color: 0xa87848 });
             const wallMat = new THREE.MeshLambertMaterial({ color: 0xa8271c });
             const roofMat = new THREE.MeshLambertMaterial({ color: 0xf2efe6 });
             const trimMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-            const hayMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
             const waterMat = new THREE.MeshLambertMaterial({ color: 0x3399dd });
             
             const floorMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
@@ -337,8 +347,7 @@
             barnGroup.add(doorTop);
 
             const trimBandH = 0.35;
-            const trimYPositions = [0.3, wallHeight - 0.35];
-            for (const ty of trimYPositions) {
+            for (const ty of [0.3, wallHeight - 0.35]) {
                 const trimLeft = new THREE.Mesh(new THREE.BoxGeometry(0.56, trimBandH, depth), trimMat);
                 trimLeft.position.set(-width / 2, ty, 0);
                 barnGroup.add(trimLeft);
@@ -431,10 +440,8 @@
                 mesh.position.set(0, wallHeight, baseZ);
                 return mesh;
             }
-            const gableFront = createGableTriangle(depth / 2 - 0.35);
-            barnGroup.add(gableFront);
-            const gableBack = createGableTriangle(-depth / 2 - 0.15);
-            barnGroup.add(gableBack);
+            barnGroup.add(createGableTriangle(depth / 2 - 0.35));
+            barnGroup.add(createGableTriangle(-depth / 2 - 0.15));
             
             for (let i = 0; i < 5; i++) {
                 const beamZ = -depth / 2 + 3 + i * ((depth - 6) / 4);
@@ -445,42 +452,20 @@
             }
             
             const colGeo = new THREE.BoxGeometry(0.4, wallHeight, 0.4);
-            const colPositions = [
-                [-width / 2 + 0.5, -depth / 2 + 1],
-                [-width / 2 + 0.5, depth / 2 - 1],
-                [width / 2 - 0.5, -depth / 2 + 1],
-                [width / 2 - 0.5, depth / 2 - 1]
-            ];
-            for (let p of colPositions) {
+            for (let p of [[-width/2+0.5, -depth/2+1], [-width/2+0.5, depth/2-1], [width/2-0.5, -depth/2+1], [width/2-0.5, depth/2-1]]) {
                 const col = new THREE.Mesh(colGeo, trimMat);
                 col.position.set(p[0], wallHeight / 2, p[1]);
                 barnGroup.add(col);
             }
             
             const windowLightMat = new THREE.MeshBasicMaterial({ color: 0xfff5c0 });
-            const winW = 1.4;
-            const winH = 1.4;
-            const winLGeo = new THREE.PlaneGeometry(winW, winH);
-            
-            const winL1 = new THREE.Mesh(winLGeo, windowLightMat);
-            winL1.position.set(-width / 2 + 0.26, 4.5, -4);
-            winL1.rotation.y = Math.PI / 2;
-            barnGroup.add(winL1);
-            
-            const winL2 = new THREE.Mesh(winLGeo, windowLightMat);
-            winL2.position.set(-width / 2 + 0.26, 4.5, 4);
-            winL2.rotation.y = Math.PI / 2;
-            barnGroup.add(winL2);
-            
-            const winR1 = new THREE.Mesh(winLGeo, windowLightMat);
-            winR1.position.set(width / 2 - 0.26, 4.5, -4);
-            winR1.rotation.y = -Math.PI / 2;
-            barnGroup.add(winR1);
-            
-            const winR2 = new THREE.Mesh(winLGeo, windowLightMat);
-            winR2.position.set(width / 2 - 0.26, 4.5, 4);
-            winR2.rotation.y = -Math.PI / 2;
-            barnGroup.add(winR2);
+            const winLGeo = new THREE.PlaneGeometry(1.4, 1.4);
+            for (const [px, pz, ry] of [[-width/2+0.26, -4, Math.PI/2], [-width/2+0.26, 4, Math.PI/2], [width/2-0.26, -4, -Math.PI/2], [width/2-0.26, 4, -Math.PI/2]]) {
+                const win = new THREE.Mesh(winLGeo, windowLightMat);
+                win.position.set(px, 4.5, pz);
+                win.rotation.y = ry;
+                barnGroup.add(win);
+            }
             
             const shelfGeo = new THREE.BoxGeometry(width - 4, 0.3, 1.5);
             const shelf = new THREE.Mesh(shelfGeo, woodDarkMat);
@@ -488,28 +473,21 @@
             barnGroup.add(shelf);
             
             const hayStartX = -width / 2 + 4;
-            const hayCount = 6;
-            const haySpacing = (width - 8) / (hayCount - 1);
-            for (let i = 0; i < hayCount; i++) {
+            const haySpacing = (width - 8) / 5;
+            for (let i = 0; i < 6; i++) {
                 const hayGeo = new THREE.BoxGeometry(1.8, 1.2, 1.2);
                 const hay = new THREE.Mesh(hayGeo, hayMat);
                 hay.position.set(hayStartX + i * haySpacing, wallHeight - 0.8, -depth / 2 + 1);
                 barnGroup.add(hay);
             }
-            for (let i = 0; i < hayCount - 1; i++) {
+            for (let i = 0; i < 5; i++) {
                 const hayGeo = new THREE.BoxGeometry(1.8, 1.2, 1.2);
                 const hay = new THREE.Mesh(hayGeo, hayMat);
                 hay.position.set(hayStartX + 0.9 + i * haySpacing, wallHeight - 2.0, -depth / 2 + 1);
                 barnGroup.add(hay);
             }
             
-            const floorHayCorners = [
-                [-width / 2 + 3, -depth / 2 + 3],
-                [width / 2 - 3, -depth / 2 + 3],
-                [-width / 2 + 3, depth / 2 - 3],
-                [width / 2 - 3, depth / 2 - 3]
-            ];
-            for (const [cx, cz] of floorHayCorners) {
+            for (const [cx, cz] of [[-width/2+3, -depth/2+3], [width/2-3, -depth/2+3], [-width/2+3, depth/2-3], [width/2-3, depth/2-3]]) {
                 const dir = cz < 0 ? 1 : -1;
                 for (let i = 0; i < 3; i++) {
                     const hayGeo = new THREE.BoxGeometry(2, 1, 1.2);
@@ -517,36 +495,23 @@
                     hay.position.set(cx, 0.5, cz + i * 1.4 * dir);
                     barnGroup.add(hay);
                 }
-                const hayGeo2 = new THREE.BoxGeometry(1.6, 1, 1.2);
-                const hayTop = new THREE.Mesh(hayGeo2, hayMat);
+                const hayTop = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1, 1.2), hayMat);
                 hayTop.position.set(cx, 1.5, cz + 1.4 * dir);
                 barnGroup.add(hayTop);
             }
 
             function createTrough(px, pz) {
-                const troughGroup = new THREE.Group();
-                const troughMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
-                const troughBottom = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 1.8), troughMat);
-                troughBottom.position.y = 0.1;
-                troughGroup.add(troughBottom);
-                const troughWall1 = new THREE.Mesh(new THREE.BoxGeometry(3, 0.7, 0.15), troughMat);
-                troughWall1.position.set(0, 0.45, 0.9);
-                troughGroup.add(troughWall1);
-                const troughWall2 = new THREE.Mesh(new THREE.BoxGeometry(3, 0.7, 0.15), troughMat);
-                troughWall2.position.set(0, 0.45, -0.9);
-                troughGroup.add(troughWall2);
-                const troughWall3 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 1.8), troughMat);
-                troughWall3.position.set(-1.5, 0.45, 0);
-                troughGroup.add(troughWall3);
-                const troughWall4 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 1.8), troughMat);
-                troughWall4.position.set(1.5, 0.45, 0);
-                troughGroup.add(troughWall4);
-                const waterGeo = new THREE.BoxGeometry(2.7, 0.35, 1.5);
-                const water = new THREE.Mesh(waterGeo, waterMat);
+                const tg = new THREE.Group();
+                tg.add(new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 1.8), woodDarkMat)).position.y = 0.1;
+                const w1 = new THREE.Mesh(new THREE.BoxGeometry(3, 0.7, 0.15), woodDarkMat); w1.position.set(0, 0.45, 0.9); tg.add(w1);
+                const w2 = new THREE.Mesh(new THREE.BoxGeometry(3, 0.7, 0.15), woodDarkMat); w2.position.set(0, 0.45, -0.9); tg.add(w2);
+                const w3 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 1.8), woodDarkMat); w3.position.set(-1.5, 0.45, 0); tg.add(w3);
+                const w4 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 1.8), woodDarkMat); w4.position.set(1.5, 0.45, 0); tg.add(w4);
+                const water = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.35, 1.5), waterMat);
                 water.position.y = 0.45;
-                troughGroup.add(water);
-                troughGroup.position.set(px, 0, pz);
-                barnGroup.add(troughGroup);
+                tg.add(water);
+                tg.position.set(px, 0, pz);
+                barnGroup.add(tg);
                 buildings.push({ x: x + px, z: z + pz, halfW: 1.65, halfD: 1.05 });
             }
             createTrough(-width / 2 + 3.5, depth / 2 - 5);
@@ -557,24 +522,16 @@
             createEmptyStall(barnGroup, width / 2 - 4, -depth / 2 + 5, woodMat);
             createEmptyStall(barnGroup, width / 2 - 4, -depth / 2 + 12, woodMat);
 
-            const stallCollisionPositions = [
-                [-width / 2 + 4, -depth / 2 + 5],
-                [-width / 2 + 4, -depth / 2 + 12],
-                [width / 2 - 4, -depth / 2 + 5],
-                [width / 2 - 4, -depth / 2 + 12]
-            ];
-            for (const [sx, sz] of stallCollisionPositions) {
+            for (const [sx, sz] of [[-width/2+4, -depth/2+5], [-width/2+4, -depth/2+12], [width/2-4, -depth/2+5], [width/2-4, -depth/2+12]]) {
                 buildings.push({ x: x + sx, z: z + sz, halfW: 1.75, halfD: 2.5 });
             }
 
             const postGeo = new THREE.CylinderGeometry(0.32, 0.38, wallHeight, 10);
-            const postPositions = [[-5, -3], [5, -3], [-5, 5], [5, 5]];
-            for (const [px, pz] of postPositions) {
+            for (const [px, pz] of [[-5, -3], [5, -3], [-5, 5], [5, 5]]) {
                 const post = new THREE.Mesh(postGeo, woodDarkMat);
                 post.position.set(px, wallHeight / 2, pz);
                 barnGroup.add(post);
-                const postCapGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.15, 10);
-                const postCap = new THREE.Mesh(postCapGeo, trimMat);
+                const postCap = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.15, 10), trimMat);
                 postCap.position.set(px, wallHeight, pz);
                 barnGroup.add(postCap);
                 buildings.push({ x: x + px, z: z + pz, halfW: 0.42, halfD: 0.42 });
@@ -595,72 +552,52 @@
         
         function createEmptyStall(parent, x, z, woodMat) {
             const stallGroup = new THREE.Group();
-            const stallW = 3.5;
-            const stallD = 5;
-            const stallH = 3;
-            
-            const backGeo = new THREE.BoxGeometry(stallW, stallH, 0.15);
-            const backWall = new THREE.Mesh(backGeo, woodMat);
+            const stallW = 3.5, stallD = 5, stallH = 3;
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(stallW, stallH, 0.15), woodMat);
             backWall.position.set(0, stallH / 2, -stallD / 2);
             stallGroup.add(backWall);
-            
-            const sideGeo = new THREE.BoxGeometry(0.15, stallH, stallD);
-            const leftWall = new THREE.Mesh(sideGeo, woodMat);
+            const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, stallH, stallD), woodMat);
             leftWall.position.set(-stallW / 2, stallH / 2, 0);
             stallGroup.add(leftWall);
-            
-            const rightWall = new THREE.Mesh(sideGeo, woodMat);
+            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, stallH, stallD), woodMat);
             rightWall.position.set(stallW / 2, stallH / 2, 0);
             stallGroup.add(rightWall);
-            
-            const topGeo = new THREE.BoxGeometry(stallW, 0.15, stallD);
-            const top = new THREE.Mesh(topGeo, woodMat);
+            const top = new THREE.Mesh(new THREE.BoxGeometry(stallW, 0.15, stallD), woodMat);
             top.position.set(0, stallH, 0);
             stallGroup.add(top);
-            
             for (let i = 0; i < 3; i++) {
-                const railGeo = new THREE.BoxGeometry(stallW, 0.15, 0.15);
-                const rail = new THREE.Mesh(railGeo, woodMat);
+                const rail = new THREE.Mesh(new THREE.BoxGeometry(stallW, 0.15, 0.15), woodMat);
                 rail.position.set(0, 0.5 + i * 0.9, stallD / 2);
                 stallGroup.add(rail);
             }
-            
-            const beddingMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
             const beddingGeo = new THREE.PlaneGeometry(stallW - 0.5, stallD - 1);
             beddingGeo.rotateX(-Math.PI / 2);
-            const bedding = new THREE.Mesh(beddingGeo, beddingMat);
+            const bedding = new THREE.Mesh(beddingGeo, hayMat);
             bedding.position.set(0, 0.05, 0);
             stallGroup.add(bedding);
-            
             stallGroup.position.set(x, 0, z);
             parent.add(stallGroup);
         }
 
-        createBarn(SPAWN_X, SPAWN_Z);
+        createBarn(BARN_X, BARN_Z);
 
         // ==========================================
-        // DETAYLI ÇİFTLİK (DÜZENLİ YERLEŞİM)
+        // ÇİFTLİK (KROKİYE UYGUN)
         // ==========================================
-        const farmX = SPAWN_X + 75;   // Daha uzakta (çit büyük olduğu için)
-        const farmZ = SPAWN_Z;
+        // KROKİ ANALİZİ:
+        // - Ahır: sol üst köşe (BARN_X, BARN_Z)
+        // - Çiftlik evi: üst-orta (turuncu)
+        // - Tarla: sağ taraf (sarı) - büyük dikdörtgen
+        // - Kuyu: 2 adet (mavi) - merkez ve alt
+        // - Kümes: 3 adet (lila) - merkez dağınık
+        // - Depo: 6 adet (gri bloklar) - dağınık
+        // - Yollar: dallanan toprak yol ağı
+        // - Çit: oval, giriş altta (krokide boşluk)
 
-        const woodDarkMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
-        const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
-        const woodLightMat = new THREE.MeshLambertMaterial({ color: 0xa87848 });
-        const hayMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
-        const hayDarkMat = new THREE.MeshLambertMaterial({ color: 0xb8860b });
-        const dirtMat = new THREE.MeshLambertMaterial({ color: 0x6b4423 });
-        const dirtDarkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f15 });
-        const cropMat = new THREE.MeshLambertMaterial({ color: 0x7cbf3f });
-        const cropMat2 = new THREE.MeshLambertMaterial({ color: 0xa8d840 });
-        const stoneMat = new THREE.MeshLambertMaterial({ color: 0x888878 });
-        const metalMat = new THREE.MeshLambertMaterial({ color: 0x777777 });
-        const brickMat = new THREE.MeshLambertMaterial({ color: 0xa0402a });
-        const plasterMat = new THREE.MeshLambertMaterial({ color: 0xf0e6d0 });
-        const roofTileMat = new THREE.MeshLambertMaterial({ color: 0x8b3a3a });
-        const roofTileDarkMat = new THREE.MeshLambertMaterial({ color: 0x6a2828 });
+        const FARM_CX = SPAWN_X + 60;   // Çiftliğin merkezi (ahırın sağı)
+        const FARM_CZ = SPAWN_Z;
 
-        // --- TOPRAK YOLLAR ---
+        // --- TOPRAK YOLLAR (KROKİYE GÖRE DALLANAN AĞ) ---
         function createDirtPath(x, z, w, d, rotation = 0) {
             const edgeGeo = new THREE.PlaneGeometry(w + 0.6, d + 0.6);
             edgeGeo.rotateX(-Math.PI / 2);
@@ -686,27 +623,31 @@
             }
         }
 
-        // Ahır -> Çiftlik ana yolu
-        createDirtPath((SPAWN_X + farmX) / 2, SPAWN_Z, 7, 65);
-        // Çiftlik içi merkez yol
-        createDirtPath(farmX, farmZ, 7, 70);
-        // Tarla yolu
-        createDirtPath(farmX + 30, farmZ + 5, 5, 25);
+        // Ahır -> Çiftlik merkez yolu (ana yol)
+        createDirtPath((BARN_X + FARM_CX) / 2, SPAWN_Z, 6, 35);
+
+        // Ana dikey yol (krokiye göre merkezden aşağı)
+        createDirtPath(FARM_CX, FARM_CZ + 25, 6, 50);
+
+        // Ana dikey yol (yukarı - çiftlik evine)
+        createDirtPath(FARM_CX, FARM_CZ - 30, 6, 30);
+
+        // Sol dal (kuyuya)
+        createDirtPath(FARM_CX - 15, FARM_CZ + 5, 4, 18);
+
+        // Sağ dal (tarlaya)
+        createDirtPath(FARM_CX + 20, FARM_CZ + 8, 4, 25);
+
+        // Alt çapraz yol
+        createDirtPath(FARM_CX - 5, FARM_CZ + 45, 4, 22);
 
         // ==========================================
-        // ÇİFTLİK YERLEŞİM PLANI (DÜZENLİ):
-        // - Kuzey (Z-): Çiftçi evi + bahçe
-        // - Doğu (X+): Tarla + korkuluk
-        // - Güney (Z+): Kümes + saman balyaları
-        // - Batı (X-): Su kuyusu + çeşme
-        // - Merkez: Traktör + römork + yem arabası
+        // ÇİFTÇİ EVİ (TURUNCU - ÜST-ORTA)
         // ==========================================
-
-        // --- ÇİFTÇİ EVİ (KUZEY) ---
-        function createDetailedFarmHouse(x, z) {
+        function createFarmHouse(x, z) {
             const houseGroup = new THREE.Group();
-            const houseW = 16;
-            const houseD = 12;
+            const houseW = 20;
+            const houseD = 14;
             const houseH = 6;
 
             const foundation = new THREE.Mesh(new THREE.BoxGeometry(houseW + 0.6, 0.6, houseD + 0.6), stoneMat);
@@ -833,7 +774,6 @@
                 post.position.set(px, 2.1, houseD / 2 + 2.8);
                 houseGroup.add(post);
             }
-
             const verandaRoof = new THREE.Mesh(new THREE.BoxGeometry(houseW - 1.5, 0.15, 3.5), roofTileMat);
             verandaRoof.position.set(0, 3.7, houseD / 2 + 1.8);
             verandaRoof.rotation.x = -0.05;
@@ -866,74 +806,15 @@
             buildings.push({ x, z, halfW: houseW / 2 + 1, halfD: houseD / 2 + 2 });
         }
 
-        // Ev KUZEY-BATI'da
-        createDetailedFarmHouse(farmX - 28, farmZ - 45);
+        // Çiftçi evi üst-orta
+        createFarmHouse(FARM_CX, FARM_CZ - 55);
 
-        // --- BAHÇE ÇİTİ ---
-        function createGardenFence(cx, cz, w, d) {
-            const gardenGroup = new THREE.Group();
-            const postCount = Math.floor(w / 1.5);
-            const postHeight = 0.9;
-
-            for (let i = 0; i <= postCount; i++) {
-                const px = -w / 2 + i * (w / postCount);
-                if (Math.abs(px) < 0.8) continue;
-                const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, postHeight, 0.15), woodDarkMat);
-                post.position.set(px, postHeight / 2, d / 2);
-                gardenGroup.add(post);
-            }
-            const sidePostCount = Math.floor(d / 1.5);
-            for (let i = 0; i <= sidePostCount; i++) {
-                const pz = -d / 2 + i * (d / sidePostCount);
-                for (const px of [-w / 2, w / 2]) {
-                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, postHeight, 0.15), woodDarkMat);
-                    post.position.set(px, postHeight / 2, pz);
-                    gardenGroup.add(post);
-                }
-            }
-            for (let i = 0; i <= postCount; i++) {
-                const px = -w / 2 + i * (w / postCount);
-                const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, postHeight, 0.15), woodDarkMat);
-                post.position.set(px, postHeight / 2, -d / 2);
-                gardenGroup.add(post);
-            }
-            for (const h of [0.3, 0.7]) {
-                const railF1 = new THREE.Mesh(new THREE.BoxGeometry(w / 2 - 0.8, 0.1, 0.1), woodMat);
-                railF1.position.set(-w / 4 - 0.4, h, d / 2);
-                gardenGroup.add(railF1);
-                const railF2 = new THREE.Mesh(new THREE.BoxGeometry(w / 2 - 0.8, 0.1, 0.1), woodMat);
-                railF2.position.set(w / 4 + 0.4, h, d / 2);
-                gardenGroup.add(railF2);
-                const railB = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, 0.1), woodMat);
-                railB.position.set(0, h, -d / 2);
-                gardenGroup.add(railB);
-                for (const px of [-w / 2, w / 2]) {
-                    const railS = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, d), woodMat);
-                    railS.position.set(px, h, 0);
-                    gardenGroup.add(railS);
-                }
-            }
-            const flowerColors = [0xff4444, 0xffaa00, 0xff88cc, 0xffff44, 0xaa44ff];
-            for (let i = 0; i < 20; i++) {
-                const fx = (Math.random() - 0.5) * (w - 2);
-                const fz = (Math.random() - 0.5) * (d - 2);
-                const stem = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.4, 0.05), new THREE.MeshLambertMaterial({ color: 0x2d7a1e }));
-                stem.position.set(fx, 0.2, fz);
-                gardenGroup.add(stem);
-                const flower = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), new THREE.MeshLambertMaterial({ color: flowerColors[Math.floor(Math.random() * flowerColors.length)] }));
-                flower.position.set(fx, 0.45, fz);
-                gardenGroup.add(flower);
-            }
-            gardenGroup.position.set(cx, 0, cz);
-            scene.add(gardenGroup);
-        }
-
-        createGardenFence(farmX - 28, farmZ - 37, 14, 5);
-
-        // --- TARLA (DOĞU) ---
-        function createDetailedField(fx, fz) {
-            const fieldW = 38;
-            const fieldD = 30;
+        // ==========================================
+        // TARLA (SARI - SAĞ TARAF)
+        // ==========================================
+        function createField(fx, fz) {
+            const fieldW = 35;
+            const fieldD = 55;
 
             const fieldGround = new THREE.Mesh(new THREE.PlaneGeometry(fieldW, fieldD), dirtMat);
             fieldGround.rotation.x = -Math.PI / 2;
@@ -955,11 +836,11 @@
             borderE.position.set(fx + fieldW / 2 + 0.2, 0.15, fz);
             scene.add(borderE);
 
-            const rowsCount = 12;
+            const rowsCount = 15;
             const rowSpacing = fieldD / rowsCount;
             for (let r = 0; r < rowsCount; r++) {
                 const rowZ = fz - fieldD / 2 + rowSpacing / 2 + r * rowSpacing;
-                const rowGeo = new THREE.BoxGeometry(fieldW - 1, 0.2, 1);
+                const rowGeo = new THREE.BoxGeometry(fieldW - 1, 0.2, 1.2);
                 const row = new THREE.Mesh(rowGeo, dirtDarkMat);
                 row.position.set(fx, 0.13, rowZ);
                 scene.add(row);
@@ -994,15 +875,13 @@
             crossbar.rotation.z = Math.PI / 2;
             crossbar.position.y = 3;
             scarecrowGroup.add(crossbar);
-            const shirtMat = new THREE.MeshLambertMaterial({ color: 0xcc4444 });
-            const shirt = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.5, 0.5), shirtMat);
+            const shirt = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.5, 0.5), new THREE.MeshLambertMaterial({ color: 0xcc4444 }));
             shirt.position.y = 3;
             scarecrowGroup.add(shirt);
             const patch = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.52), new THREE.MeshLambertMaterial({ color: 0x4444cc }));
             patch.position.set(-0.4, 3.2, 0.01);
             scarecrowGroup.add(patch);
-            const headMat = new THREE.MeshLambertMaterial({ color: 0xffddaa });
-            const scarecrowHead = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), headMat);
+            const scarecrowHead = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), new THREE.MeshLambertMaterial({ color: 0xffddaa }));
             scarecrowHead.position.y = 4.2;
             scarecrowGroup.add(scarecrowHead);
             const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
@@ -1039,463 +918,153 @@
             buildings.push({ x: fx, z: fz, halfW: 0.3, halfD: 0.3 });
         }
 
-        // Tarla DOĞU'da
-        createDetailedField(farmX + 35, farmZ + 5);
+        // Tarla sağda
+        createField(FARM_CX + 35, FARM_CZ + 8);
 
-        // --- TRAKTÖR (MERKEZ) ---
-        function createTractor(x, z, rotation) {
-            const tractorGroup = new THREE.Group();
-            const tractorRedMat = new THREE.MeshLambertMaterial({ color: 0xcc2200 });
-            const tractorDarkRedMat = new THREE.MeshLambertMaterial({ color: 0x881100 });
-            const tractorBlackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-            const tractorYellowMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
-            const tractorGlassMat = new THREE.MeshLambertMaterial({ color: 0x88ccff, transparent: true, opacity: 0.6 });
+        // ==========================================
+        // DEPO BİNALARI (GRİ BLOKLAR - KROKİYE GÖRE)
+        // Hayvanlar, otlar, samanlar için
+        // ==========================================
+        function createStorageBarn(x, z, w, d, rotation = 0, isOpen = false) {
+            const storageGroup = new THREE.Group();
 
-            const tractorBody = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.8, 5), tractorRedMat);
-            tractorBody.position.y = 1.6;
-            tractorGroup.add(tractorBody);
-            const hood = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.2, 2), tractorDarkRedMat);
-            hood.position.set(0, 1.8, 1.8);
-            tractorGroup.add(hood);
-            for (let i = 0; i < 3; i++) {
-                const line = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, 1.8), tractorBlackMat);
-                line.position.set(-0.6 + i * 0.6, 2.1, 1.8);
-                tractorGroup.add(line);
-            }
-            const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 2.5), tractorRedMat);
-            cabin.position.set(0, 3.7, -0.8);
-            tractorGroup.add(cabin);
-            const cabinRoof = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.15, 2.7), tractorDarkRedMat);
-            cabinRoof.position.set(0, 4.85, -0.8);
-            tractorGroup.add(cabinRoof);
-            const glassF = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.8, 0.05), tractorGlassMat);
-            glassF.position.set(0, 3.7, 0.46);
-            tractorGroup.add(glassF);
-            const glassL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.8, 2.3), tractorGlassMat);
-            glassL.position.set(-1.21, 3.7, -0.8);
-            tractorGroup.add(glassL);
-            const glassR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.8, 2.3), tractorGlassMat);
-            glassR.position.set(1.21, 3.7, -0.8);
-            tractorGroup.add(glassR);
-            for (const px of [-1.2, 1.2]) {
-                for (const pz of [0.4, -2]) {
-                    const col = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.2, 0.15), tractorBlackMat);
-                    col.position.set(px, 3.7, pz);
-                    tractorGroup.add(col);
+            // Taş temel
+            const foundation = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.4, d + 0.4), stoneMat);
+            foundation.position.y = 0.2;
+            storageGroup.add(foundation);
+
+            // Ana gövde (gri)
+            const bodyMat = new THREE.MeshLambertMaterial({ color: 0x8a8a8a });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(w, 4.5, d), bodyMat);
+            body.position.y = 2.65;
+            storageGroup.add(body);
+
+            // Ahşap dikey payandalar (simetrik 4 köşe)
+            for (const px of [-w / 2 + 0.2, w / 2 - 0.2]) {
+                for (const pz of [-d / 2 + 0.2, d / 2 - 0.2]) {
+                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4.5, 0.3), woodDarkMat);
+                    post.position.set(px, 2.65, pz);
+                    storageGroup.add(post);
                 }
             }
-            const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3.5, 8), tractorBlackMat);
-            exhaust.position.set(0.9, 4.2, 1.5);
-            tractorGroup.add(exhaust);
-            const exhaustCap = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.2, 8), tractorBlackMat);
-            exhaustCap.position.set(0.9, 6, 1.5);
-            tractorGroup.add(exhaustCap);
-            const grill = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1, 0.15), tractorBlackMat);
-            grill.position.set(0, 1.6, 2.81);
-            tractorGroup.add(grill);
-            for (let i = 0; i < 5; i++) {
-                const grillLine = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.08, 0.2), tractorRedMat);
-                grillLine.position.set(0, 1.25 + i * 0.2, 2.82);
-                tractorGroup.add(grillLine);
-            }
-            const headlightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
-            for (const px of [-0.7, 0.7]) {
-                const headlight = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), headlightMat);
-                headlight.position.set(px, 2.2, 2.85);
-                tractorGroup.add(headlight);
-            }
-            for (const px of [-0.8, 0.8]) {
-                const taillight = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
-                taillight.position.set(px, 2.2, -2.55);
-                tractorGroup.add(taillight);
-            }
-            const steering = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.05, 6, 12), tractorBlackMat);
-            steering.position.set(0, 3.7, 0.2);
-            steering.rotation.x = Math.PI / 2.5;
-            tractorGroup.add(steering);
-            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.7), tractorBlackMat);
-            seat.position.set(0, 3.3, -0.6);
-            tractorGroup.add(seat);
-            const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.15), tractorBlackMat);
-            seatBack.position.set(0, 3.75, -0.95);
-            tractorGroup.add(seatBack);
-            const bigWheelGeo = new THREE.CylinderGeometry(1.4, 1.4, 0.9, 16);
-            bigWheelGeo.rotateZ(Math.PI / 2);
-            const bigWheel1 = new THREE.Mesh(bigWheelGeo, tractorBlackMat);
-            bigWheel1.position.set(-1.5, 1.4, -1.4);
-            tractorGroup.add(bigWheel1);
-            const bigWheel2 = new THREE.Mesh(bigWheelGeo, tractorBlackMat);
-            bigWheel2.position.set(1.5, 1.4, -1.4);
-            tractorGroup.add(bigWheel2);
-            const hubGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.95, 10);
-            hubGeo.rotateZ(Math.PI / 2);
-            const hub1 = new THREE.Mesh(hubGeo, tractorYellowMat);
-            hub1.position.set(-1.5, 1.4, -1.4);
-            tractorGroup.add(hub1);
-            const hub2 = new THREE.Mesh(hubGeo, tractorYellowMat);
-            hub2.position.set(1.5, 1.4, -1.4);
-            tractorGroup.add(hub2);
-            const hubCenterGeo = new THREE.CylinderGeometry(0.2, 0.2, 1, 8);
-            hubCenterGeo.rotateZ(Math.PI / 2);
-            const hubC1 = new THREE.Mesh(hubCenterGeo, tractorBlackMat);
-            hubC1.position.set(-1.5, 1.4, -1.4);
-            tractorGroup.add(hubC1);
-            const hubC2 = new THREE.Mesh(hubCenterGeo, tractorBlackMat);
-            hubC2.position.set(1.5, 1.4, -1.4);
-            tractorGroup.add(hubC2);
-            const smallWheelGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.6, 12);
-            smallWheelGeo.rotateZ(Math.PI / 2);
-            const smallWheel1 = new THREE.Mesh(smallWheelGeo, tractorBlackMat);
-            smallWheel1.position.set(-1.2, 0.8, 2);
-            tractorGroup.add(smallWheel1);
-            const smallWheel2 = new THREE.Mesh(smallWheelGeo, tractorBlackMat);
-            smallWheel2.position.set(1.2, 0.8, 2);
-            tractorGroup.add(smallWheel2);
-            const smallHubGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.65, 10);
-            smallHubGeo.rotateZ(Math.PI / 2);
-            const smallHub1 = new THREE.Mesh(smallHubGeo, tractorYellowMat);
-            smallHub1.position.set(-1.2, 0.8, 2);
-            tractorGroup.add(smallHub1);
-            const smallHub2 = new THREE.Mesh(smallHubGeo, tractorYellowMat);
-            smallHub2.position.set(1.2, 0.8, 2);
-            tractorGroup.add(smallHub2);
-            const fender1 = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.15, 2.5), tractorDarkRedMat);
-            fender1.position.set(-1.5, 2.9, -1.4);
-            tractorGroup.add(fender1);
-            const fender2 = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.15, 2.5), tractorDarkRedMat);
-            fender2.position.set(1.5, 2.9, -1.4);
-            tractorGroup.add(fender2);
 
-            tractorGroup.position.set(x, 0, z);
-            tractorGroup.rotation.y = rotation;
-            scene.add(tractorGroup);
-            buildings.push({ x, z, halfW: 2.2, halfD: 3 });
-        }
+            // Çatı
+            const roofGroup = new THREE.Group();
+            const roof1 = new THREE.Mesh(new THREE.BoxGeometry(w / 2 + 0.6, 0.35, d + 1), roofTileMat);
+            roof1.position.set(-w / 4, 5.4, 0);
+            roof1.rotation.z = 0.45;
+            roofGroup.add(roof1);
+            const roof2 = new THREE.Mesh(new THREE.BoxGeometry(w / 2 + 0.6, 0.35, d + 1), roofTileMat);
+            roof2.position.set(w / 4, 5.4, 0);
+            roof2.rotation.z = -0.45;
+            roofGroup.add(roof2);
+            const roofPeak = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, d + 1), roofTileDarkMat);
+            roofPeak.position.set(0, 6.6, 0);
+            roofGroup.add(roofPeak);
+            storageGroup.add(roofGroup);
 
-        // Traktör MERKEZ
-        createTractor(farmX - 8, farmZ + 5, -0.6);
+            // Ön kapı / açıklık
+            if (isOpen) {
+                // Açık cephe - içi görünür
+                const openingMat = new THREE.MeshLambertMaterial({ color: 0x2a1a0a });
+                const opening = new THREE.Mesh(new THREE.PlaneGeometry(w - 1, 3.5), openingMat);
+                opening.position.set(0, 2.05, d / 2 + 0.01);
+                storageGroup.add(opening);
 
-        // --- RÖMORK ---
-        function createTrailer(x, z, rotation) {
-            const trailerGroup = new THREE.Group();
-            const tractorBlackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-            const trailerBody = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.4, 5.5), woodDarkMat);
-            trailerBody.position.y = 1.5;
-            trailerGroup.add(trailerBody);
-            const wallMat = woodMat;
-            const wallGeo = new THREE.BoxGeometry(3.4, 1.5, 0.2);
-            const wallN = new THREE.Mesh(wallGeo, wallMat);
-            wallN.position.set(0, 2.2, -2.75);
-            trailerGroup.add(wallN);
-            const wallS = new THREE.Mesh(wallGeo, wallMat);
-            wallS.position.set(0, 2.2, 2.75);
-            trailerGroup.add(wallS);
-            const sideWallGeo = new THREE.BoxGeometry(0.2, 1.5, 5.5);
-            const wallW = new THREE.Mesh(sideWallGeo, wallMat);
-            wallW.position.set(-1.6, 2.2, 0);
-            trailerGroup.add(wallW);
-            const wallE = new THREE.Mesh(sideWallGeo, wallMat);
-            wallE.position.set(1.6, 2.2, 0);
-            trailerGroup.add(wallE);
-            for (let i = -2; i <= 2; i++) {
-                for (const px of [-1.6, 1.6]) {
-                    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 0.1), woodDarkMat);
-                    strip.position.set(px, 2.2, i);
-                    trailerGroup.add(strip);
-                }
-            }
-            for (let i = 0; i < 3; i++) {
-                for (let j = 0; j < 2; j++) {
-                    const hayBale = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.7, 1.5), hayMat);
-                    hayBale.position.set(0, 2 + j * 0.7, -1.8 + i * 1.8);
-                    trailerGroup.add(hayBale);
-                    for (const px of [-0.8, 0.8]) {
-                        const rope = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.72, 1.52), woodDarkMat);
-                        rope.position.set(px, 2 + j * 0.7, -1.8 + i * 1.8);
-                        trailerGroup.add(rope);
-                    }
-                }
-            }
-            const trailerWheelGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.6, 12);
-            trailerWheelGeo.rotateZ(Math.PI / 2);
-            for (const px of [-1.6, 1.6]) {
-                const tw = new THREE.Mesh(trailerWheelGeo, tractorBlackMat);
-                tw.position.set(px, 0.85, 0);
-                trailerGroup.add(tw);
-                const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.65, 8).rotateZ(Math.PI / 2), metalMat);
-                hub.position.set(px, 0.85, 0);
-                trailerGroup.add(hub);
-            }
-            const hitch = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5, 6), tractorBlackMat);
-            hitch.rotation.x = Math.PI / 2;
-            hitch.position.set(0, 1, 3.5);
-            trailerGroup.add(hitch);
-
-            trailerGroup.position.set(x, 0, z);
-            trailerGroup.rotation.y = rotation;
-            scene.add(trailerGroup);
-            buildings.push({ x, z, halfW: 2, halfD: 3 });
-        }
-
-        // Römork MERKEZ (traktörün arkasında)
-        createTrailer(farmX - 4, farmZ + 10, -0.6);
-
-        // --- SAMAN BALYALARI (GÜNEY-BATI) ---
-        function createHayBaleStack(x, z) {
-            const stackGroup = new THREE.Group();
-            const baleW = 1.4;
-            const baleH = 1.2;
-            const baleD = 1.4;
-
-            for (let i = 0; i < 4; i++) {
-                const bale = new THREE.Mesh(new THREE.BoxGeometry(baleW, baleH, baleD), hayMat);
-                bale.position.set(-2.1 + i * 1.4, baleH / 2, 0);
-                stackGroup.add(bale);
-                const rope1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, baleH, 0.06), woodDarkMat);
-                rope1.position.set(-2.1 + i * 1.4, baleH / 2, 0.4);
-                stackGroup.add(rope1);
-                const rope2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, baleH, 0.06), woodDarkMat);
-                rope2.position.set(-2.1 + i * 1.4, baleH / 2, -0.4);
-                stackGroup.add(rope2);
-            }
-            for (let i = 0; i < 3; i++) {
-                const bale = new THREE.Mesh(new THREE.BoxGeometry(baleW, baleH, baleD), hayDarkMat);
-                bale.position.set(-1.4 + i * 1.4, baleH * 1.5, 0);
-                stackGroup.add(bale);
-            }
-            for (let i = 0; i < 2; i++) {
-                const bale = new THREE.Mesh(new THREE.BoxGeometry(baleW, baleH, baleD), hayMat);
-                bale.position.set(-0.7 + i * 1.4, baleH * 2.5, 0);
-                stackGroup.add(bale);
-            }
-            const topBale = new THREE.Mesh(new THREE.BoxGeometry(baleW, baleH, baleD), hayDarkMat);
-            topBale.position.set(0, baleH * 3.5, 0);
-            stackGroup.add(topBale);
-
-            stackGroup.position.set(x, 0, z);
-            scene.add(stackGroup);
-            buildings.push({ x, z, halfW: 3, halfD: 1 });
-        }
-
-        createHayBaleStack(farmX - 35, farmZ + 40);
-        createHayBaleStack(farmX - 35, farmZ + 44);
-
-        for (let i = 0; i < 8; i++) {
-            const baleX = farmX - 42 + Math.random() * 10;
-            const baleZ = farmZ + 38 + Math.random() * 10;
-            const bale = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 1.8, 14), hayMat);
-            bale.rotation.z = Math.PI / 2;
-            bale.position.set(baleX, 1.2, baleZ);
-            scene.add(bale);
-            const rope = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.06, 6, 12), woodDarkMat);
-            rope.position.set(baleX, 1.2, baleZ);
-            rope.rotation.y = Math.PI / 2;
-            scene.add(rope);
-            buildings.push({ x: baleX, z: baleZ, halfW: 1.3, halfD: 1.3 });
-        }
-
-        // --- KÜMES (GÜNEY) ---
-        function createDetailedChickenCoop(x, z) {
-            const coopGroup = new THREE.Group();
-            const coopW = 7;
-            const coopD = 5;
-            const coopH = 3;
-
-            const coopFoundation = new THREE.Mesh(new THREE.BoxGeometry(coopW + 0.4, 0.3, coopD + 0.4), stoneMat);
-            coopFoundation.position.y = 0.15;
-            coopGroup.add(coopFoundation);
-            const coopBody = new THREE.Mesh(new THREE.BoxGeometry(coopW, coopH, coopD), new THREE.MeshLambertMaterial({ color: 0xcc9944 }));
-            coopBody.position.y = coopH / 2 + 0.3;
-            coopGroup.add(coopBody);
-
-            for (let i = 0; i < 5; i++) {
-                const plank = new THREE.Mesh(new THREE.BoxGeometry(coopW + 0.02, 0.1, 0.05), woodDarkMat);
-                plank.position.set(0, 0.6 + i * 0.55, coopD / 2 + 0.01);
-                coopGroup.add(plank);
-                const plank2 = new THREE.Mesh(new THREE.BoxGeometry(coopW + 0.02, 0.1, 0.05), woodDarkMat);
-                plank2.position.set(0, 0.6 + i * 0.55, -coopD / 2 - 0.01);
-                coopGroup.add(plank2);
-            }
-
-            const coopRoofGroup = new THREE.Group();
-            const coopRoof1 = new THREE.Mesh(new THREE.BoxGeometry(coopW / 2 + 0.5, 0.2, coopD + 1), roofTileMat);
-            coopRoof1.position.set(-coopW / 4, coopH + 0.9, 0);
-            coopRoof1.rotation.z = 0.45;
-            coopRoofGroup.add(coopRoof1);
-            const coopRoof2 = new THREE.Mesh(new THREE.BoxGeometry(coopW / 2 + 0.5, 0.2, coopD + 1), roofTileMat);
-            coopRoof2.position.set(coopW / 4, coopH + 0.9, 0);
-            coopRoof2.rotation.z = -0.45;
-            coopRoofGroup.add(coopRoof2);
-            const coopRoofPeak = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, coopD + 1), roofTileDarkMat);
-            coopRoofPeak.position.set(0, coopH + 1.6, 0);
-            coopRoofGroup.add(coopRoofPeak);
-            coopGroup.add(coopRoofGroup);
-
-            const coopDoor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 0.1), woodDarkMat);
-            coopDoor.position.set(0, 1.05, coopD / 2 + 0.06);
-            coopGroup.add(coopDoor);
-            for (let i = 0; i < 4; i++) {
-                const bar = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.4, 0.05), metalMat);
-                bar.position.set(-0.4 + i * 0.27, 1.05, coopD / 2 + 0.12);
-                coopGroup.add(bar);
-            }
-            const ramp = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 1.2), woodLightMat);
-            ramp.position.set(0, 0.4, coopD / 2 + 0.7);
-            ramp.rotation.x = -0.3;
-            coopGroup.add(ramp);
-
-            const runW = 6;
-            const runD = 5;
-            const runZ = coopD / 2 + runD / 2 + 0.5;
-
-            const runGround = new THREE.Mesh(new THREE.PlaneGeometry(runW, runD), new THREE.MeshLambertMaterial({ color: 0xb0a080 }));
-            runGround.rotation.x = -Math.PI / 2;
-            runGround.position.set(0, 0.02, runZ);
-            coopGroup.add(runGround);
-
-            function createWirePanel(px, pz, w, rotation) {
-                const panelGroup = new THREE.Group();
-                const frameH = 1.2;
-                const topRail = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, 0.08), metalMat);
-                topRail.position.y = frameH;
-                panelGroup.add(topRail);
-                const botRail = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, 0.08), metalMat);
-                botRail.position.y = 0.1;
-                panelGroup.add(botRail);
-                const barCount = Math.floor(w / 0.3);
-                for (let i = 0; i <= barCount; i++) {
-                    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.04, frameH, 0.04), metalMat);
-                    bar.position.set(-w / 2 + i * (w / barCount), frameH / 2, 0);
-                    panelGroup.add(bar);
-                }
-                for (let h = 0.2; h < frameH; h += 0.2) {
-                    const wire = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, 0.02), metalMat);
-                    wire.position.y = h;
-                    panelGroup.add(wire);
-                }
-                panelGroup.position.set(px, 0, pz);
-                panelGroup.rotation.y = rotation;
-                return panelGroup;
-            }
-
-            coopGroup.add(createWirePanel(-runW / 2, runZ, runD, Math.PI / 2));
-            coopGroup.add(createWirePanel(runW / 2, runZ, runD, Math.PI / 2));
-            coopGroup.add(createWirePanel(0, runZ + runD / 2, runW, 0));
-
-            const feederMat = metalMat;
-            const feederBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.2, 10), feederMat);
-            feederBase.position.set(-1.5, 0.1, runZ);
-            coopGroup.add(feederBase);
-            const feederTop = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 0.4, 10), feederMat);
-            feederTop.position.set(-1.5, 0.4, runZ);
-            coopGroup.add(feederTop);
-            const feedMat = new THREE.MeshLambertMaterial({ color: 0xffcc44 });
-            const feed = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.05, 10), feedMat);
-            feed.position.set(-1.5, 0.23, runZ);
-            coopGroup.add(feed);
-
-            const waterBase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.25, 10), new THREE.MeshLambertMaterial({ color: 0xcc3333 }));
-            waterBase.position.set(1.5, 0.13, runZ);
-            coopGroup.add(waterBase);
-            const waterTop = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.35, 10), new THREE.MeshLambertMaterial({ color: 0xdd4444 }));
-            waterTop.position.set(1.5, 0.4, runZ);
-            coopGroup.add(waterTop);
-            const waterInner = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.48, 0.05, 10), new THREE.MeshLambertMaterial({ color: 0x3399dd }));
-            waterInner.position.set(1.5, 0.26, runZ);
-            coopGroup.add(waterInner);
-
-            const perchMat = woodDarkMat;
-            const outerPerch1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3, 6), perchMat);
-            outerPerch1.rotation.z = Math.PI / 2;
-            outerPerch1.position.set(0, 1.4, runZ);
-            coopGroup.add(outerPerch1);
-            for (const px of [-1.4, 1.4]) {
-                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.4, 0.1), perchMat);
-                leg.position.set(px, 0.7, runZ);
-                coopGroup.add(leg);
-            }
-            const innerPerch = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3, 6), perchMat);
-            innerPerch.rotation.z = Math.PI / 2;
-            innerPerch.position.set(0, 1.5, 0);
-            coopGroup.add(innerPerch);
-
-            const nestBox = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 1.2), woodMat);
-            nestBox.position.set(coopW / 2 - 0.8, 0.7, -coopD / 2 + 0.8);
-            coopGroup.add(nestBox);
-            const nestHay = new THREE.Mesh(new THREE.BoxGeometry(1, 0.3, 1), hayMat);
-            nestHay.position.set(coopW / 2 - 0.8, 1, -coopD / 2 + 0.8);
-            coopGroup.add(nestHay);
-
-            function createChicken(px, pz, isRooster) {
-                const chickenGroup = new THREE.Group();
-                const bodyColor = isRooster ? 0xcc4422 : 0xf5f5f0;
-                const bodyMat = new THREE.MeshLambertMaterial({ color: bodyColor });
-                const combMat = new THREE.MeshLambertMaterial({ color: 0xdd2222 });
-                const beakMat = new THREE.MeshLambertMaterial({ color: 0xffaa00 });
-                const legMat = new THREE.MeshLambertMaterial({ color: 0xffaa00 });
-                const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-
-                const cbody = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.6), bodyMat);
-                cbody.position.y = 0.4;
-                chickenGroup.add(cbody);
-                const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.4), bodyMat);
-                wingL.position.set(-0.24, 0.45, 0);
-                chickenGroup.add(wingL);
-                const wingR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.4), bodyMat);
-                wingR.position.set(0.24, 0.45, 0);
-                chickenGroup.add(wingR);
-                const chead = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), bodyMat);
-                chead.position.set(0, 0.7, 0.25);
-                chickenGroup.add(chead);
-                const comb = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.15, 0.25), combMat);
-                comb.position.set(0, 0.9, 0.25);
-                chickenGroup.add(comb);
-                const beak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.15, 4), beakMat);
-                beak.rotation.x = Math.PI / 2;
-                beak.position.set(0, 0.68, 0.45);
-                chickenGroup.add(beak);
-                for (const px of [-0.08, 0.08]) {
-                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 4, 4), eyeMat);
-                    eye.position.set(px, 0.73, 0.4);
-                    chickenGroup.add(eye);
-                }
-                for (const px of [-0.1, 0.1]) {
-                    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.05), legMat);
-                    leg.position.set(px, 0.1, 0);
-                    chickenGroup.add(leg);
-                }
-                if (isRooster) {
-                    const tailMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+                // İçinde hayvanlar / otlar / samanlar
+                if (Math.random() > 0.5) {
+                    // Saman balyaları yığını
                     for (let i = 0; i < 3; i++) {
-                        const tail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.35, 0.1), tailMat);
-                        tail.position.set(-0.05 + i * 0.05, 0.5 + i * 0.05, -0.35 - i * 0.05);
-                        tail.rotation.x = -0.5 + i * 0.2;
-                        chickenGroup.add(tail);
+                        for (let j = 0; j < 2; j++) {
+                            const hayBale = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 1), hayMat);
+                            hayBale.position.set(-1.5 + i * 1.5, 0.85 + j * 0.95, -1);
+                            storageGroup.add(hayBale);
+                        }
                     }
-                    comb.scale.set(1, 1.5, 1);
+                } else {
+                    // Hayvanlar (basit inek/koyun)
+                    const animalMat = Math.random() > 0.5 ? 0xf5f5f0 : 0x8b6f47;
+                    for (let i = 0; i < 2; i++) {
+                        const animalGroup = new THREE.Group();
+                        const aBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 1.8), animalMat);
+                        aBody.position.y = 1.1;
+                        animalGroup.add(aBody);
+                        const aHead = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), animalMat);
+                        aHead.position.set(0, 1.5, 1.1);
+                        animalGroup.add(aHead);
+                        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                        const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), eyeMat);
+                        eye1.position.set(0.15, 1.6, 1.4);
+                        animalGroup.add(eye1);
+                        const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), eyeMat);
+                        eye2.position.set(-0.15, 1.6, 1.4);
+                        animalGroup.add(eye2);
+                        for (const px of [-0.4, 0.4]) {
+                            for (const pz of [-0.6, 0.6]) {
+                                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.7, 0.25), animalMat);
+                                leg.position.set(px, 0.35, pz);
+                                animalGroup.add(leg);
+                            }
+                        }
+                        animalGroup.position.set(-1 + i * 2, 0, 0);
+                        animalGroup.rotation.y = (Math.random() - 0.5) * 0.5;
+                        storageGroup.add(animalGroup);
+                    }
                 }
-                chickenGroup.position.set(px, 0, pz);
-                chickenGroup.rotation.y = Math.random() * Math.PI * 2;
-                return chickenGroup;
+            } else {
+                // Kapalı cephe - ahşap kapı
+                const doorMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
+                const door = new THREE.Mesh(new THREE.BoxGeometry(w - 1, 3.5, 0.15), doorMat);
+                door.position.set(0, 2.05, d / 2 + 0.08);
+                storageGroup.add(door);
+                
+                // Kapı detay çizgileri (dikey)
+                for (let i = 0; i < 5; i++) {
+                    const line = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.5, 0.16), woodMat);
+                    line.position.set(-w / 2 + 1 + i * ((w - 2) / 4), 2.05, d / 2 + 0.1);
+                    storageGroup.add(line);
+                }
+                // Yatay kiriş
+                for (const py of [0.8, 3.3]) {
+                    const beam = new THREE.Mesh(new THREE.BoxGeometry(w - 0.8, 0.15, 0.17), woodMat);
+                    beam.position.set(0, py, d / 2 + 0.11);
+                    storageGroup.add(beam);
+                }
+                // Kilit
+                const lock = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.2), metalMat);
+                lock.position.set(0, 2, d / 2 + 0.2);
+                storageGroup.add(lock);
             }
 
-            const chickens = [];
-            chickens.push(createChicken(-1.5, runZ - 0.5, false));
-            chickens.push(createChicken(0, runZ + 0.8, false));
-            chickens.push(createChicken(1.5, runZ - 0.8, false));
-            chickens.push(createChicken(-0.5, runZ - 1.5, false));
-            chickens.push(createChicken(0.8, runZ + 1.5, true));
-            for (const ch of chickens) coopGroup.add(ch);
+            storageGroup.position.set(x, 0, z);
+            storageGroup.rotation.y = rotation;
+            scene.add(storageGroup);
 
-            coopGroup.position.set(x, 0, z);
-            scene.add(coopGroup);
-            buildings.push({ x, z, halfW: coopW / 2 + 1, halfD: coopD / 2 + runD });
+            // Çarpışma kutusu (rotation yaklaşık dikdörtgen)
+            const cosR = Math.abs(Math.cos(rotation));
+            const sinR = Math.abs(Math.sin(rotation));
+            const halfW = (w / 2) * cosR + (d / 2) * sinR;
+            const halfD = (w / 2) * sinR + (d / 2) * cosR;
+            buildings.push({ x, z, halfW, halfD });
         }
 
-        // Kümes GÜNEY-BATI'da
-        createDetailedChickenCoop(farmX - 30, farmZ + 20);
+        // Krokiye göre 6 depo binası yerleştir
+        // Sol üst: 1 büyük depo
+        createStorageBarn(FARM_CX - 35, FARM_CZ - 40, 20, 12, 0, false);
+        // Üst-orta: 1 depo
+        createStorageBarn(FARM_CX + 5, FARM_CZ - 42, 14, 10, 0.2, true);
+        // Orta-sol: 1 küçük depo
+        createStorageBarn(FARM_CX - 25, FARM_CZ - 15, 12, 8, -0.3, true);
+        // Merkez sağ: 1 depo
+        createStorageBarn(FARM_CX + 15, FARM_CZ - 5, 13, 9, 0.4, false);
+        // Merkez: 1 depo
+        createStorageBarn(FARM_CX - 5, FARM_CZ + 5, 12, 10, 0, true);
+        // Alt: 1 büyük depo
+        createStorageBarn(FARM_CX - 25, FARM_CZ + 30, 18, 11, 0.1, false);
 
-        // --- SU KUYUSU (BATI) ---
+        // ==========================================
+        // KUYU (MAVİ - 2 ADET)
+        // ==========================================
         function createWell(x, z) {
             const wellGroup = new THREE.Group();
             const stoneRingMat = new THREE.MeshLambertMaterial({ color: 0x999988 });
@@ -1542,188 +1111,259 @@
             buildings.push({ x, z, halfW: 1.6, halfD: 1.6 });
         }
 
-        // Kuyu BATI'da
-        createWell(farmX - 40, farmZ - 10);
-
-        // --- ÇEŞME (BATI) ---
-        function createFountain(x, z) {
-            const fountainGroup = new THREE.Group();
-            const poolOuter = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.5, 0.6, 12), stoneMat);
-            poolOuter.position.y = 0.3;
-            fountainGroup.add(poolOuter);
-            const poolInner = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.5, 12), new THREE.MeshLambertMaterial({ color: 0x2266aa }));
-            poolInner.position.y = 0.35;
-            fountainGroup.add(poolInner);
-            const center = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2, 8), stoneMat);
-            center.position.y = 1.3;
-            fountainGroup.add(center);
-            const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 6), metalMat);
-            spout.rotation.z = Math.PI / 2;
-            spout.position.set(0.4, 1.8, 0);
-            fountainGroup.add(spout);
-            const spoutHandle = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), metalMat);
-            spoutHandle.position.set(0.65, 1.8, 0);
-            fountainGroup.add(spoutHandle);
-
-            fountainGroup.position.set(x, 0, z);
-            scene.add(fountainGroup);
-            buildings.push({ x, z, halfW: 1.5, halfD: 1.5 });
-        }
-
-        // Çeşme BATI'da (kuyunun yanında)
-        createFountain(farmX - 40, farmZ + 5);
-
-        // --- YEM ARABASI (MERKEZ-YAKIN) ---
-        function createFeedCart(x, z) {
-            const cartGroup = new THREE.Group();
-            const cartWoodMat = woodMat;
-            const cartBase = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.15, 2.4), cartWoodMat);
-            cartBase.position.y = 0.7;
-            cartGroup.add(cartBase);
-            for (const px of [-0.8, 0.8]) {
-                const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 2.4), cartWoodMat);
-                rail.position.set(px, 1, 0);
-                cartGroup.add(rail);
-            }
-            for (const pz of [-1.2, 1.2]) {
-                const rail = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.1), cartWoodMat);
-                rail.position.set(0, 1, pz);
-                cartGroup.add(rail);
-            }
-            const handle = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 1.5), cartWoodMat);
-            handle.position.set(0, 0.7, 1.9);
-            cartGroup.add(handle);
-            const grip = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.1), cartWoodMat);
-            grip.position.set(0, 0.7, 2.6);
-            cartGroup.add(grip);
-            const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.15, 12);
-            wheelGeo.rotateZ(Math.PI / 2);
-            for (const px of [-0.85, 0.85]) {
-                const wheel = new THREE.Mesh(wheelGeo, woodDarkMat);
-                wheel.position.set(px, 0.4, -0.6);
-                cartGroup.add(wheel);
-            }
-            const cartHay = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.3, 2.2), hayMat);
-            cartHay.position.set(0, 0.9, 0);
-            cartGroup.add(cartHay);
-
-            cartGroup.position.set(x, 0, z);
-            cartGroup.rotation.y = 0.7;
-            scene.add(cartGroup);
-            buildings.push({ x, z, halfW: 1, halfD: 1.4 });
-        }
-
-        createFeedCart(farmX + 10, farmZ - 15);
-
-        // --- EKİPMANLAR ---
-        function createFarmTools(x, z) {
-            const toolsGroup = new THREE.Group();
-            const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.25, 0.45, 10), metalMat);
-            bucket.position.set(-0.5, 0.22, 0);
-            toolsGroup.add(bucket);
-            const bucketHandle = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.03, 4, 8, Math.PI), metalMat);
-            bucketHandle.position.set(-0.5, 0.48, 0);
-            toolsGroup.add(bucketHandle);
-            const shovelHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 6), woodMat);
-            shovelHandle.position.set(0.3, 0.9, 0);
-            shovelHandle.rotation.z = 0.2;
-            toolsGroup.add(shovelHandle);
-            const shovelBlade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.05), metalMat);
-            shovelBlade.position.set(0.5, 0.1, 0);
-            shovelBlade.rotation.z = 0.2;
-            toolsGroup.add(shovelBlade);
-            const forkHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 6), woodMat);
-            forkHandle.position.set(1, 0.9, 0);
-            forkHandle.rotation.z = -0.3;
-            toolsGroup.add(forkHandle);
-            for (let i = 0; i < 3; i++) {
-                const tine = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 4), metalMat);
-                tine.position.set(1.15 + i * 0.08 - 0.08, 0.2, 0);
-                tine.rotation.z = -0.3;
-                toolsGroup.add(tine);
-            }
-
-            toolsGroup.position.set(x, 0, z);
-            scene.add(toolsGroup);
-            buildings.push({ x, z, halfW: 1.5, halfD: 0.5 });
-        }
-
-        createFarmTools(farmX + 18, farmZ - 20);
+        // 2 kuyu: merkez ve alt
+        createWell(FARM_CX - 8, FARM_CZ - 5);
+        createWell(FARM_CX + 5, FARM_CZ + 45);
 
         // ==========================================
-        // ÇİFTLİK ÇİTİ (BÜYÜK, ÇARPIŞMALI, GİRİŞ BOŞLUKLU)
+        // KÜMES (LİLA - 3 ADET)
         // ==========================================
-        function createFarmFenceCollidable(centerX, centerZ, radius) {
-            const fenceGroup = new THREE.Group();
-            const postMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
-            const railMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+        function createChickenCoop(x, z, rotation = 0) {
+            const coopGroup = new THREE.Group();
+            const coopW = 6;
+            const coopD = 5;
+            const coopH = 3;
 
-            const totalPosts = 100;
-            const postHeight = 2.2;
-            const postSpacingAngle = (Math.PI * 2) / totalPosts;
+            const coopFoundation = new THREE.Mesh(new THREE.BoxGeometry(coopW + 0.4, 0.3, coopD + 0.4), stoneMat);
+            coopFoundation.position.y = 0.15;
+            coopGroup.add(coopFoundation);
+            const coopBody = new THREE.Mesh(new THREE.BoxGeometry(coopW, coopH, coopD), new THREE.MeshLambertMaterial({ color: 0xc8a0d0 }));
+            coopBody.position.y = coopH / 2 + 0.3;
+            coopGroup.add(coopBody);
 
-            // GİRİŞ BOŞLUĞU: güneye bakan (aşağı) tarafta 4 direk boşluk
-            const gapStart = Math.floor(totalPosts * 0.20); // 20%
-            const gapEnd = Math.floor(totalPosts * 0.30);   // 30% (giriş)
-            const isInGap = (i) => i >= gapStart && i < gapEnd;
+            for (let i = 0; i < 5; i++) {
+                const plank = new THREE.Mesh(new THREE.BoxGeometry(coopW + 0.02, 0.1, 0.05), woodDarkMat);
+                plank.position.set(0, 0.6 + i * 0.55, coopD / 2 + 0.01);
+                coopGroup.add(plank);
+                const plank2 = new THREE.Mesh(new THREE.BoxGeometry(coopW + 0.02, 0.1, 0.05), woodDarkMat);
+                plank2.position.set(0, 0.6 + i * 0.55, -coopD / 2 - 0.01);
+                coopGroup.add(plank2);
+            }
 
-            for (let i = 0; i < totalPosts; i++) {
-                const angle = i * postSpacingAngle;
-                const px = Math.cos(angle) * radius;
-                const pz = Math.sin(angle) * radius;
+            const coopRoof1 = new THREE.Mesh(new THREE.BoxGeometry(coopW / 2 + 0.5, 0.2, coopD + 1), roofTileMat);
+            coopRoof1.position.set(-coopW / 4, coopH + 0.9, 0);
+            coopRoof1.rotation.z = 0.45;
+            coopGroup.add(coopRoof1);
+            const coopRoof2 = new THREE.Mesh(new THREE.BoxGeometry(coopW / 2 + 0.5, 0.2, coopD + 1), roofTileMat);
+            coopRoof2.position.set(coopW / 4, coopH + 0.9, 0);
+            coopRoof2.rotation.z = -0.45;
+            coopGroup.add(coopRoof2);
+            const coopRoofPeak = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, coopD + 1), roofTileDarkMat);
+            coopRoofPeak.position.set(0, coopH + 1.6, 0);
+            coopGroup.add(coopRoofPeak);
 
-                if (!isInGap(i)) {
-                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, postHeight, 0.3), postMat);
-                    post.position.set(px, postHeight / 2, pz);
-                    post.rotation.y = -angle;
-                    fenceGroup.add(post);
+            const coopDoor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 0.1), woodDarkMat);
+            coopDoor.position.set(0, 1.05, coopD / 2 + 0.06);
+            coopGroup.add(coopDoor);
+            for (let i = 0; i < 4; i++) {
+                const bar = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.4, 0.05), metalMat);
+                bar.position.set(-0.4 + i * 0.27, 1.05, coopD / 2 + 0.12);
+                coopGroup.add(bar);
+            }
+            const ramp = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 1.2), woodLightMat);
+            ramp.position.set(0, 0.4, coopD / 2 + 0.7);
+            ramp.rotation.x = -0.3;
+            coopGroup.add(ramp);
 
-                    // Her direk çarpışma kutusu (ahşap direk)
-                    buildings.push({
-                        x: centerX + px,
-                        z: centerZ + pz,
-                        halfW: 0.35,
-                        halfD: 0.35
-                    });
+            // Tel örgü alanı
+            const runW = 5, runD = 4;
+            const runZ = coopD / 2 + runD / 2 + 0.5;
+            const runGround = new THREE.Mesh(new THREE.PlaneGeometry(runW, runD), new THREE.MeshLambertMaterial({ color: 0xb0a080 }));
+            runGround.rotation.x = -Math.PI / 2;
+            runGround.position.set(0, 0.02, runZ);
+            coopGroup.add(runGround);
+
+            function createWirePanel(px, pz, w, rotation) {
+                const panelGroup = new THREE.Group();
+                const frameH = 1.2;
+                const topRail = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, 0.08), metalMat);
+                topRail.position.y = frameH;
+                panelGroup.add(topRail);
+                const botRail = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, 0.08), metalMat);
+                botRail.position.y = 0.1;
+                panelGroup.add(botRail);
+                const barCount = Math.floor(w / 0.3);
+                for (let i = 0; i <= barCount; i++) {
+                    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.04, frameH, 0.04), metalMat);
+                    bar.position.set(-w / 2 + i * (w / barCount), frameH / 2, 0);
+                    panelGroup.add(bar);
                 }
+                for (let h = 0.2; h < frameH; h += 0.2) {
+                    const wire = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, 0.02), metalMat);
+                    wire.position.y = h;
+                    panelGroup.add(wire);
+                }
+                panelGroup.position.set(px, 0, pz);
+                panelGroup.rotation.y = rotation;
+                return panelGroup;
             }
 
-            for (let i = 0; i < totalPosts; i++) {
-                if (isInGap(i)) continue;
-                const nextI = (i + 1) % totalPosts;
-                if (isInGap(nextI)) continue;
+            coopGroup.add(createWirePanel(-runW / 2, runZ, runD, Math.PI / 2));
+            coopGroup.add(createWirePanel(runW / 2, runZ, runD, Math.PI / 2));
+            coopGroup.add(createWirePanel(0, runZ + runD / 2, runW, 0));
 
-                const angle1 = i * postSpacingAngle;
-                const angle2 = (i + 1) * postSpacingAngle;
-                const p1x = Math.cos(angle1) * radius;
-                const p1z = Math.sin(angle1) * radius;
-                const p2x = Math.cos(angle2) * radius;
-                const p2z = Math.sin(angle2) * radius;
-                
+            // Yemlik
+            const feederBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.2, 10), metalMat);
+            feederBase.position.set(-1.5, 0.1, runZ);
+            coopGroup.add(feederBase);
+            const feederTop = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 0.4, 10), metalMat);
+            feederTop.position.set(-1.5, 0.4, runZ);
+            coopGroup.add(feederTop);
+            const feed = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.05, 10), new THREE.MeshLambertMaterial({ color: 0xffcc44 }));
+            feed.position.set(-1.5, 0.23, runZ);
+            coopGroup.add(feed);
+
+            // Su kabı
+            const waterBase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.25, 10), new THREE.MeshLambertMaterial({ color: 0xcc3333 }));
+            waterBase.position.set(1.5, 0.13, runZ);
+            coopGroup.add(waterBase);
+            const waterInner = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.48, 0.05, 10), new THREE.MeshLambertMaterial({ color: 0x3399dd }));
+            waterInner.position.set(1.5, 0.26, runZ);
+            coopGroup.add(waterInner);
+
+            // Tavuklar
+            function createChicken(px, pz, isRooster) {
+                const chickenGroup = new THREE.Group();
+                const bodyColor = isRooster ? 0xcc4422 : 0xf5f5f0;
+                const bodyMat = new THREE.MeshLambertMaterial({ color: bodyColor });
+                const combMat = new THREE.MeshLambertMaterial({ color: 0xdd2222 });
+                const beakMat = new THREE.MeshLambertMaterial({ color: 0xffaa00 });
+                const legMat = new THREE.MeshLambertMaterial({ color: 0xffaa00 });
+                const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+                const cbody = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.6), bodyMat);
+                cbody.position.y = 0.4;
+                chickenGroup.add(cbody);
+                const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.4), bodyMat);
+                wingL.position.set(-0.24, 0.45, 0);
+                chickenGroup.add(wingL);
+                const wingR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.4), bodyMat);
+                wingR.position.set(0.24, 0.45, 0);
+                chickenGroup.add(wingR);
+                const chead = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), bodyMat);
+                chead.position.set(0, 0.7, 0.25);
+                chickenGroup.add(chead);
+                const comb = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.15, 0.25), combMat);
+                comb.position.set(0, 0.9, 0.25);
+                chickenGroup.add(comb);
+                const beak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.15, 4), beakMat);
+                beak.rotation.x = Math.PI / 2;
+                beak.position.set(0, 0.68, 0.45);
+                chickenGroup.add(beak);
+                for (const ex of [-0.08, 0.08]) {
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 4, 4), eyeMat);
+                    eye.position.set(ex, 0.73, 0.4);
+                    chickenGroup.add(eye);
+                }
+                for (const lx of [-0.1, 0.1]) {
+                    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.05), legMat);
+                    leg.position.set(lx, 0.1, 0);
+                    chickenGroup.add(leg);
+                }
+                if (isRooster) {
+                    const tailMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+                    for (let i = 0; i < 3; i++) {
+                        const tail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.35, 0.1), tailMat);
+                        tail.position.set(-0.05 + i * 0.05, 0.5 + i * 0.05, -0.35 - i * 0.05);
+                        tail.rotation.x = -0.5 + i * 0.2;
+                        chickenGroup.add(tail);
+                    }
+                    comb.scale.set(1, 1.5, 1);
+                }
+                chickenGroup.position.set(px, 0, pz);
+                chickenGroup.rotation.y = Math.random() * Math.PI * 2;
+                return chickenGroup;
+            }
+
+            coopGroup.add(createChicken(-1.2, runZ - 0.3, false));
+            coopGroup.add(createChicken(0.2, runZ + 0.6, false));
+            coopGroup.add(createChicken(1.3, runZ - 0.5, true));
+
+            coopGroup.position.set(x, 0, z);
+            coopGroup.rotation.y = rotation;
+            scene.add(coopGroup);
+            buildings.push({ x, z, halfW: coopW / 2 + 1, halfD: coopD / 2 + runD / 2 + 1 });
+        }
+
+        // 3 kümes (krokiye göre dağınık)
+        createChickenCoop(FARM_CX - 12, FARM_CZ - 25, 0.3);
+        createChickenCoop(FARM_CX - 18, FARM_CZ + 15, -0.4);
+        createChickenCoop(FARM_CX + 8, FARM_CZ + 25, 0.1);
+
+        // ==========================================
+        // ÇİFTLİK ÇİTİ + GİRİŞ TABELASI
+        // ==========================================
+        function createFarmFenceWithGate(centerX, centerZ, radiusX, radiusZ) {
+            const fenceGroup = new THREE.Group();
+            const postMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
+            const railMat = new THREE.MeshLambertMaterial({ color: 0xa87848 });
+
+            const totalPosts = 120;
+            const postHeight = 2.4;
+            const angleStep = (Math.PI * 2) / totalPosts;
+
+            // GİRİŞ BOŞLUĞU: alt kısımda (krokiye göre)
+            // Alt merkez açısı = PI/2 (yani güney)
+            const gapCenterAngle = Math.PI / 2;
+            const gapHalfWidth = angleStep * 6; // 6 direk genişliğinde boşluk
+
+            const isInGap = (angle) => {
+                let diff = Math.abs(angle - gapCenterAngle);
+                while (diff > Math.PI) diff = Math.abs(diff - Math.PI * 2);
+                return diff < gapHalfWidth;
+            };
+
+            // Direkler
+            for (let i = 0; i < totalPosts; i++) {
+                const angle = i * angleStep;
+                if (isInGap(angle)) continue;
+
+                const px = Math.cos(angle) * radiusX;
+                const pz = Math.sin(angle) * radiusZ;
+
+                const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, postHeight, 0.35), postMat);
+                post.position.set(px, postHeight / 2, pz);
+                post.rotation.y = -angle;
+                fenceGroup.add(post);
+
+                // Direk çarpışması
+                buildings.push({ x: centerX + px, z: centerZ + pz, halfW: 0.4, halfD: 0.4 });
+            }
+
+            // Raylar
+            for (let i = 0; i < totalPosts; i++) {
+                const angle1 = i * angleStep;
+                const angle2 = (i + 1) * angleStep;
+                if (isInGap(angle1) || isInGap(angle2)) continue;
+
+                const p1x = Math.cos(angle1) * radiusX;
+                const p1z = Math.sin(angle1) * radiusZ;
+                const p2x = Math.cos(angle2) * radiusX;
+                const p2z = Math.sin(angle2) * radiusZ;
+
                 const midX = (p1x + p2x) / 2;
                 const midZ = (p1z + p2z) / 2;
                 const len = Math.sqrt((p2x - p1x) ** 2 + (p2z - p1z) ** 2);
                 const railAngle = Math.atan2(p2z - p1z, p2x - p1x);
 
-                for (let h = 0; h < 2; h++) {
+                for (let h = 0; h < 3; h++) {
                     const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.15, 0.15), railMat);
-                    rail.position.set(midX, 0.6 + h * 0.9, midZ);
+                    rail.position.set(midX, 0.7 + h * 0.7, midZ);
                     rail.rotation.y = -railAngle;
                     fenceGroup.add(rail);
                 }
 
-                // Her ray çarpışma kutusu (ahşap blok)
-                const segments = 3;
-                for (let s = 0; s < segments; s++) {
-                    const t = (s + 0.5) / segments;
+                // Ray çarpışması (3 parçaya böl)
+                for (let s = 0; s < 3; s++) {
+                    const t = (s + 0.5) / 3;
                     const sx = p1x + (p2x - p1x) * t;
                     const sz = p1z + (p2z - p1z) * t;
-                    const segLen = len / segments;
+                    const segLen = len / 3;
                     buildings.push({
                         x: centerX + sx,
                         z: centerZ + sz,
-                        halfW: Math.max(0.4, Math.abs(Math.cos(railAngle)) * segLen / 2 + 0.3),
-                        halfD: Math.max(0.4, Math.abs(Math.sin(railAngle)) * segLen / 2 + 0.3)
+                        halfW: Math.max(0.5, Math.abs(Math.cos(railAngle)) * segLen / 2 + 0.3),
+                        halfD: Math.max(0.5, Math.abs(Math.sin(railAngle)) * segLen / 2 + 0.3)
                     });
                 }
             }
@@ -1732,8 +1372,234 @@
             scene.add(fenceGroup);
         }
 
-        // BÜYÜK ÇİT (radius: 90)
-        createFarmFenceCollidable(farmX, farmZ, 90);
+        // OVAL ÇİT (krokiye göre)
+        createFarmFenceWithGate(FARM_CX, FARM_CZ, 85, 75);
+
+        // ==========================================
+        // GİRİŞ TABELASI (Ahşap tabela "ÇİFTLİK")
+        // ==========================================
+        function createFarmSign(x, z) {
+            const signGroup = new THREE.Group();
+            
+            // İki direk
+            for (const px of [-2, 2]) {
+                const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 5, 0.3), woodDarkMat);
+                post.position.set(px, 2.5, 0);
+                signGroup.add(post);
+            }
+
+            // Ana tabela tahtası
+            const signBoard = new THREE.Mesh(new THREE.BoxGeometry(5, 2, 0.3), woodMat);
+            signBoard.position.set(0, 4, 0);
+            signGroup.add(signBoard);
+
+            // Tabela çerçevesi (koyu ahşap)
+            const frameMat = woodDarkMat;
+            const frameTop = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.3, 0.4), frameMat);
+            frameTop.position.set(0, 5.15, 0);
+            signGroup.add(frameTop);
+            const frameBot = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.3, 0.4), frameMat);
+            frameBot.position.set(0, 2.85, 0);
+            signGroup.add(frameBot);
+            const frameL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.4, 0.4), frameMat);
+            frameL.position.set(-2.55, 4, 0);
+            signGroup.add(frameL);
+            const frameR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.4, 0.4), frameMat);
+            frameR.position.set(2.55, 4, 0);
+            signGroup.add(frameR);
+
+            // "ÇİFTLİK" yazısı - harf harf ahşap harfler
+            // Basitçe tahta üzerine koyu harfler
+            const letterMat = new THREE.MeshLambertMaterial({ color: 0x2a1a0a });
+            const letters = ['Ç', 'İ', 'F', 'T', 'L', 'İ', 'K'];
+            const totalWidth = letters.length * 0.55;
+            const startX = -totalWidth / 2 + 0.275;
+            
+            letters.forEach((letter, i) => {
+                // Basit harf şekli - küçük kutular
+                const letterGroup = new THREE.Group();
+                const lx = startX + i * 0.55;
+                
+                // Harf yerine dekoratif kutular
+                const block1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.15, 0.05), letterMat);
+                block1.position.set(0, 0.15, 0.16);
+                letterGroup.add(block1);
+                const block2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.15, 0.05), letterMat);
+                block2.position.set(0, -0.15, 0.16);
+                letterGroup.add(block2);
+                const block3 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, 0.05), letterMat);
+                block3.position.set(-0.15, 0, 0.16);
+                letterGroup.add(block3);
+                
+                letterGroup.position.set(lx, 4, 0);
+                signGroup.add(letterGroup);
+            });
+
+            // Ahşap çatı (tabelanın üstünde)
+            const roofSignGroup = new THREE.Group();
+            const signRoof1 = new THREE.Mesh(new THREE.BoxGeometry(3, 0.15, 1), roofTileMat);
+            signRoof1.position.set(-1.3, 5.7, 0);
+            signRoof1.rotation.z = 0.4;
+            roofSignGroup.add(signRoof1);
+            const signRoof2 = new THREE.Mesh(new THREE.BoxGeometry(3, 0.15, 1), roofTileMat);
+            signRoof2.position.set(1.3, 5.7, 0);
+            signRoof2.rotation.z = -0.4;
+            roofSignGroup.add(signRoof2);
+            signGroup.add(roofSignGroup);
+
+            // Fener (direk tepesinde)
+            const lampPost = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.15), metalMat);
+            lampPost.position.set(-2, 5.2, 0);
+            signGroup.add(lampPost);
+            const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffdd88 }));
+            lamp.position.set(-2, 5.55, 0);
+            signGroup.add(lamp);
+
+            signGroup.position.set(x, 0, z);
+            scene.add(signGroup);
+
+            // Çarpışma kutuları (iki direk)
+            buildings.push({ x: x - 2, z, halfW: 0.3, halfD: 0.3 });
+            buildings.push({ x: x + 2, z, halfW: 0.3, halfD: 0.3 });
+        }
+
+        // Tabela giriş boşluğunda (çitin alt/güney kısmı)
+        createFarmSign(FARM_CX, FARM_CZ + 75);
+
+        // ==========================================
+        // ÇİFTLİK EKSTRALARI
+        // ==========================================
+
+        // Saman balyaları (açık alanda)
+        function createHayBaleStack(x, z) {
+            const stackGroup = new THREE.Group();
+            const baleW = 1.4, baleH = 1.2, baleD = 1.4;
+            for (let i = 0; i < 4; i++) {
+                const bale = new THREE.Mesh(new THREE.BoxGeometry(baleW, baleH, baleD), hayMat);
+                bale.position.set(-2.1 + i * 1.4, baleH / 2, 0);
+                stackGroup.add(bale);
+                const rope1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, baleH, 0.06), woodDarkMat);
+                rope1.position.set(-2.1 + i * 1.4, baleH / 2, 0.4);
+                stackGroup.add(rope1);
+                const rope2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, baleH, 0.06), woodDarkMat);
+                rope2.position.set(-2.1 + i * 1.4, baleH / 2, -0.4);
+                stackGroup.add(rope2);
+            }
+            for (let i = 0; i < 3; i++) {
+                const bale = new THREE.Mesh(new THREE.BoxGeometry(baleW, baleH, baleD), hayDarkMat);
+                bale.position.set(-1.4 + i * 1.4, baleH * 1.5, 0);
+                stackGroup.add(bale);
+            }
+            for (let i = 0; i < 2; i++) {
+                const bale = new THREE.Mesh(new THREE.BoxGeometry(baleW, baleH, baleD), hayMat);
+                bale.position.set(-0.7 + i * 1.4, baleH * 2.5, 0);
+                stackGroup.add(bale);
+            }
+            const topBale = new THREE.Mesh(new THREE.BoxGeometry(baleW, baleH, baleD), hayDarkMat);
+            topBale.position.set(0, baleH * 3.5, 0);
+            stackGroup.add(topBale);
+            stackGroup.position.set(x, 0, z);
+            scene.add(stackGroup);
+            buildings.push({ x, z, halfW: 3, halfD: 1 });
+        }
+
+        createHayBaleStack(FARM_CX - 40, FARM_CZ + 40);
+        createHayBaleStack(FARM_CX - 40, FARM_CZ + 44);
+
+        // Dağıtılmış silindirik balyalar
+        for (let i = 0; i < 10; i++) {
+            const baleX = FARM_CX - 45 + Math.random() * 15;
+            const baleZ = FARM_CZ + 35 + Math.random() * 15;
+            const bale = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 1.8, 14), hayMat);
+            bale.rotation.z = Math.PI / 2;
+            bale.position.set(baleX, 1.2, baleZ);
+            scene.add(bale);
+            const rope = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.06, 6, 12), woodDarkMat);
+            rope.position.set(baleX, 1.2, baleZ);
+            rope.rotation.y = Math.PI / 2;
+            scene.add(rope);
+            buildings.push({ x: baleX, z: baleZ, halfW: 1.3, halfD: 1.3 });
+        }
+
+        // Ağaçlar (çiftlik içi)
+        function createTree(x, z, scale = 1) {
+            const treeGroup = new THREE.Group();
+            const trunkGeo = new THREE.CylinderGeometry(0.4 * scale, 0.5 * scale, 5 * scale, 6);
+            const trunk = new THREE.Mesh(trunkGeo, new THREE.MeshLambertMaterial({ color: 0x4a2f1a }));
+            trunk.position.y = 2.5 * scale;
+            treeGroup.add(trunk);
+            const leafGeo = new THREE.SphereGeometry(2.5 * scale, 6, 6);
+            const leaf = new THREE.Mesh(leafGeo, new THREE.MeshLambertMaterial({ color: 0x1f5c14 }));
+            leaf.position.y = 6 * scale;
+            treeGroup.add(leaf);
+            treeGroup.position.set(x, 0, z);
+            scene.add(treeGroup);
+            buildings.push({ x, z, halfW: 0.6 * scale, halfD: 0.6 * scale });
+        }
+
+        // Çiftlik içi ağaçlar
+        createTree(FARM_CX - 20, FARM_CZ - 10, 1.2);
+        createTree(FARM_CX + 12, FARM_CZ - 20, 1);
+        createTree(FARM_CX - 30, FARM_CZ + 5, 1.1);
+        createTree(FARM_CX + 25, FARM_CZ + 35, 1);
+
+        // Traktör
+        function createTractor(x, z, rotation) {
+            const tractorGroup = new THREE.Group();
+            const tractorRedMat = new THREE.MeshLambertMaterial({ color: 0xcc2200 });
+            const tractorDarkRedMat = new THREE.MeshLambertMaterial({ color: 0x881100 });
+            const tractorBlackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+            const tractorYellowMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
+            const tractorGlassMat = new THREE.MeshLambertMaterial({ color: 0x88ccff, transparent: true, opacity: 0.6 });
+
+            tractorGroup.add(new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.8, 5), tractorRedMat)).position.y = 1.6;
+            const hood = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.2, 2), tractorDarkRedMat);
+            hood.position.set(0, 1.8, 1.8);
+            tractorGroup.add(hood);
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 2.5), tractorRedMat);
+            cabin.position.set(0, 3.7, -0.8);
+            tractorGroup.add(cabin);
+            const cabinRoof = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.15, 2.7), tractorDarkRedMat);
+            cabinRoof.position.set(0, 4.85, -0.8);
+            tractorGroup.add(cabinRoof);
+            const glassF = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.8, 0.05), tractorGlassMat);
+            glassF.position.set(0, 3.7, 0.46);
+            tractorGroup.add(glassF);
+            const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3.5, 8), tractorBlackMat);
+            exhaust.position.set(0.9, 4.2, 1.5);
+            tractorGroup.add(exhaust);
+            const bigWheelGeo = new THREE.CylinderGeometry(1.4, 1.4, 0.9, 16);
+            bigWheelGeo.rotateZ(Math.PI / 2);
+            const bigWheel1 = new THREE.Mesh(bigWheelGeo, tractorBlackMat);
+            bigWheel1.position.set(-1.5, 1.4, -1.4);
+            tractorGroup.add(bigWheel1);
+            const bigWheel2 = new THREE.Mesh(bigWheelGeo, tractorBlackMat);
+            bigWheel2.position.set(1.5, 1.4, -1.4);
+            tractorGroup.add(bigWheel2);
+            const hubGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.95, 10);
+            hubGeo.rotateZ(Math.PI / 2);
+            const hub1 = new THREE.Mesh(hubGeo, tractorYellowMat);
+            hub1.position.set(-1.5, 1.4, -1.4);
+            tractorGroup.add(hub1);
+            const hub2 = new THREE.Mesh(hubGeo, tractorYellowMat);
+            hub2.position.set(1.5, 1.4, -1.4);
+            tractorGroup.add(hub2);
+            const smallWheelGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.6, 12);
+            smallWheelGeo.rotateZ(Math.PI / 2);
+            const smallWheel1 = new THREE.Mesh(smallWheelGeo, tractorBlackMat);
+            smallWheel1.position.set(-1.2, 0.8, 2);
+            tractorGroup.add(smallWheel1);
+            const smallWheel2 = new THREE.Mesh(smallWheelGeo, tractorBlackMat);
+            smallWheel2.position.set(1.2, 0.8, 2);
+            tractorGroup.add(smallWheel2);
+
+            tractorGroup.position.set(x, 0, z);
+            tractorGroup.rotation.y = rotation;
+            scene.add(tractorGroup);
+            buildings.push({ x, z, halfW: 2.2, halfD: 3 });
+        }
+
+        createTractor(FARM_CX + 15, FARM_CZ + 40, -0.6);
 
         // ==========================================
         // ŞEHİR
@@ -1770,7 +1636,6 @@
                 scene.add(dash);
             }
         }
-
         for (let i = 0; i <= gridCount; i++) {
             const roadX = CITY_CENTER_X - cityWidth / 2 + ROAD_WIDTH / 2 + i * (ROAD_WIDTH + BLOCK_TOTAL);
             const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, cityWidth);
@@ -1787,7 +1652,6 @@
                 scene.add(dash);
             }
         }
-
         for (let bx = 0; bx < gridCount; bx++) {
             for (let bz = 0; bz < gridCount; bz++) {
                 const blockCenterX = firstBlockCenterX + bx * GRID_STEP;
@@ -1815,9 +1679,7 @@
 
         function createSkyscraper(x, z, width, depth, height, color) {
             const group = new THREE.Group();
-            const bodyMat = new THREE.MeshLambertMaterial({ color: color });
-            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), new THREE.MeshLambertMaterial({ color: color }));
             body.position.y = height / 2;
             group.add(body);
             const floors = Math.floor(height / 6);
@@ -1836,13 +1698,6 @@
                     group.add(win2);
                 }
             }
-            if (height > 60) {
-                const antennaGeo = new THREE.CylinderGeometry(0.15, 0.15, 8, 4);
-                const antennaMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
-                const antenna = new THREE.Mesh(antennaGeo, antennaMat);
-                antenna.position.y = height + 4;
-                group.add(antenna);
-            }
             group.position.set(x, 0, z);
             scene.add(group);
             buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
@@ -1851,21 +1706,15 @@
         function createHouse(x, z, width, depth, color) {
             const group = new THREE.Group();
             const height = 8;
-            const bodyMat = new THREE.MeshLambertMaterial({ color: color });
-            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), new THREE.MeshLambertMaterial({ color: color }));
             body.position.y = height / 2;
             group.add(body);
-            const roofMat = new THREE.MeshLambertMaterial({ color: 0x8b3a3a });
-            const roofRadius = Math.sqrt(width * width + depth * depth) / 2;
-            const roofGeo = new THREE.ConeGeometry(roofRadius, 4, 4);
-            const roof = new THREE.Mesh(roofGeo, roofMat);
+            const roofGeo = new THREE.ConeGeometry(Math.sqrt(width * width + depth * depth) / 2, 4, 4);
+            const roof = new THREE.Mesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0x8b3a3a }));
             roof.position.y = height + 2;
             roof.rotation.y = Math.PI / 4;
             group.add(roof);
-            const doorMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
-            const doorGeo = new THREE.PlaneGeometry(1.5, 3);
-            const door = new THREE.Mesh(doorGeo, doorMat);
+            const door = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3), new THREE.MeshLambertMaterial({ color: 0x4a2f1a }));
             door.position.set(0, 1.5, depth / 2 + 0.01);
             group.add(door);
             const winGeo = new THREE.PlaneGeometry(1.2, 1.2);
@@ -1883,24 +1732,16 @@
         function createShop(x, z, width, depth, color, signColor) {
             const group = new THREE.Group();
             const height = 7;
-            const bodyMat = new THREE.MeshLambertMaterial({ color: color });
-            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), new THREE.MeshLambertMaterial({ color: color }));
             body.position.y = height / 2;
             group.add(body);
-            const roofMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
-            const roofGeo = new THREE.BoxGeometry(width + 0.5, 0.5, depth + 0.5);
-            const roof = new THREE.Mesh(roofGeo, roofMat);
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(width + 0.5, 0.5, depth + 0.5), new THREE.MeshLambertMaterial({ color: 0x444444 }));
             roof.position.y = height + 0.25;
             group.add(roof);
-            const glassMat = new THREE.MeshLambertMaterial({ color: 0x88ccff, transparent: true, opacity: 0.7 });
-            const glassGeo = new THREE.PlaneGeometry(width - 2, height - 2.5);
-            const glass = new THREE.Mesh(glassGeo, glassMat);
+            const glass = new THREE.Mesh(new THREE.PlaneGeometry(width - 2, height - 2.5), new THREE.MeshLambertMaterial({ color: 0x88ccff, transparent: true, opacity: 0.7 }));
             glass.position.set(0, (height - 2.5) / 2 + 0.5, depth / 2 + 0.01);
             group.add(glass);
-            const signMat = new THREE.MeshLambertMaterial({ color: signColor });
-            const signGeo = new THREE.BoxGeometry(width - 1, 1.5, 0.3);
-            const sign = new THREE.Mesh(signGeo, signMat);
+            const sign = new THREE.Mesh(new THREE.BoxGeometry(width - 1, 1.5, 0.3), new THREE.MeshLambertMaterial({ color: signColor }));
             sign.position.set(0, height - 0.3, depth / 2 + 0.2);
             group.add(sign);
             group.position.set(x, 0, z);
@@ -1908,105 +1749,19 @@
             buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
         }
 
-        function createParkingLot(x, z, width, depth) {
-            const group = new THREE.Group();
-            const parkMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
-            const parkGeo = new THREE.PlaneGeometry(width, depth);
-            parkGeo.rotateX(-Math.PI / 2);
-            const park = new THREE.Mesh(parkGeo, parkMat);
-            park.position.y = 0.05;
-            group.add(park);
-            const lineMat2 = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const spotsPerRow = Math.floor(width / 5);
-            for (let i = 0; i < spotsPerRow; i++) {
-                const lineGeo = new THREE.PlaneGeometry(0.15, depth / 2 - 1);
-                lineGeo.rotateX(-Math.PI / 2);
-                const line = new THREE.Mesh(lineGeo, lineMat2);
-                line.position.set(-width / 2 + i * 5, 0.06, -depth / 4);
-                group.add(line);
-                const line2 = new THREE.Mesh(lineGeo, lineMat2);
-                line2.position.set(-width / 2 + i * 5, 0.06, depth / 4);
-                group.add(line2);
-            }
-            const carColors = [0xcc4444, 0x4444cc];
-            for (let i = 0; i < 2; i++) {
-                const carColor = carColors[i];
-                const carMat = new THREE.MeshLambertMaterial({ color: carColor });
-                const carGroup = new THREE.Group();
-                const carBodyGeo = new THREE.BoxGeometry(2, 1, 4);
-                const carBody = new THREE.Mesh(carBodyGeo, carMat);
-                carBody.position.y = 0.7;
-                carGroup.add(carBody);
-                carGroup.position.set(-width / 2 + i * 5 + 2.5, 0, -depth / 4);
-                group.add(carGroup);
-            }
-            group.position.set(x, 0, z);
-            scene.add(group);
-            buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
-        }
-
-        function createGasStation(x, z, width, depth) {
-            const group = new THREE.Group();
-            const groundMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
-            const groundGeo = new THREE.PlaneGeometry(width, depth);
-            groundGeo.rotateX(-Math.PI / 2);
-            const ground = new THREE.Mesh(groundGeo, groundMat);
-            ground.position.y = 0.05;
-            group.add(ground);
-            const shopMat = new THREE.MeshLambertMaterial({ color: 0xdddddd });
-            const shopGeo = new THREE.BoxGeometry(width * 0.35, 5, depth * 0.4);
-            const shop = new THREE.Mesh(shopGeo, shopMat);
-            shop.position.set(-width / 2 + width * 0.25, 2.5, -depth / 2 + depth * 0.25);
-            group.add(shop);
-            const signMat = new THREE.MeshLambertMaterial({ color: 0xff2222 });
-            const signGeo = new THREE.BoxGeometry(width * 0.35, 1.2, 0.3);
-            const sign = new THREE.Mesh(signGeo, signMat);
-            sign.position.set(-width / 2 + width * 0.25, 5.5, -depth / 2 + depth * 0.25 + depth * 0.2 + 0.15);
-            group.add(sign);
-            const canopyMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
-            const canopyGeo = new THREE.BoxGeometry(width * 0.6, 0.5, depth * 0.35);
-            const canopy = new THREE.Mesh(canopyGeo, canopyMat);
-            canopy.position.set(width * 0.15, 6, depth * 0.15);
-            group.add(canopy);
-            const pillarMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
-            const pillarGeo = new THREE.BoxGeometry(0.4, 6, 0.4);
-            const positions = [[-0.4, 0.4], [-0.4, -0.4], [0.4, 0.4], [0.4, -0.4]];
-            for (let p of positions) {
-                const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-                pillar.position.set(width * 0.15 + p[0] * width * 0.25, 3, depth * 0.15 + p[1] * depth * 0.12);
-                group.add(pillar);
-            }
-            const pumpMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-            const pumpGeo = new THREE.BoxGeometry(0.8, 2, 0.8);
-            const pump1 = new THREE.Mesh(pumpGeo, pumpMat);
-            pump1.position.set(width * 0.15 - 1.2, 1, depth * 0.15);
-            group.add(pump1);
-            const pump2 = new THREE.Mesh(pumpGeo, pumpMat);
-            pump2.position.set(width * 0.15 + 1.2, 1, depth * 0.15);
-            group.add(pump2);
-            group.position.set(x, 0, z);
-            scene.add(group);
-            buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
-        }
-
         function createPark(x, z, width, depth) {
             const group = new THREE.Group();
-            const parkMat = new THREE.MeshLambertMaterial({ color: 0x3d8c28 });
-            const parkGeo = new THREE.PlaneGeometry(width, depth);
-            parkGeo.rotateX(-Math.PI / 2);
-            const park = new THREE.Mesh(parkGeo, parkMat);
+            const park = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), new THREE.MeshLambertMaterial({ color: 0x3d8c28 }));
+            park.rotation.x = -Math.PI / 2;
             park.position.y = 0.04;
             group.add(park);
             const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
             const leafMat = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
-            const treePositions = [[-width/3, -depth/3], [width/3, depth/3]];
-            for (let p of treePositions) {
-                const trunkGeo = new THREE.CylinderGeometry(0.4, 0.5, 5, 6);
-                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            for (let p of [[-width/3, -depth/3], [width/3, depth/3]]) {
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 5, 6), trunkMat);
                 trunk.position.set(p[0], 2.5, p[1]);
                 group.add(trunk);
-                const leafGeo = new THREE.SphereGeometry(2.2, 6, 6);
-                const leaf = new THREE.Mesh(leafGeo, leafMat);
+                const leaf = new THREE.Mesh(new THREE.SphereGeometry(2.2, 6, 6), leafMat);
                 leaf.position.set(p[0], 6.5, p[1]);
                 group.add(leaf);
             }
@@ -2050,67 +1805,45 @@
                 const usableW = BLOCK_INNER - 12;
                 const usableD = BLOCK_INNER - 12;
                 if (type === 'M') {
-                    const plazaGeo = new THREE.PlaneGeometry(BLOCK_INNER - 2, BLOCK_INNER - 2);
-                    plazaGeo.rotateX(-Math.PI / 2);
-                    const plazaMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
-                    const plaza = new THREE.Mesh(plazaGeo, plazaMat);
+                    const plaza = new THREE.Mesh(new THREE.PlaneGeometry(BLOCK_INNER - 2, BLOCK_INNER - 2), new THREE.MeshLambertMaterial({ color: 0xcccccc }));
+                    plaza.rotation.x = -Math.PI / 2;
                     plaza.position.set(blockCenterX, 0.06, blockCenterZ);
                     scene.add(plaza);
-                    const poolGeo = new THREE.CircleGeometry(6, 16);
-                    poolGeo.rotateX(-Math.PI / 2);
-                    const poolMat = new THREE.MeshLambertMaterial({ color: 0x3399dd });
-                    const pool = new THREE.Mesh(poolGeo, poolMat);
+                    const pool = new THREE.Mesh(new THREE.CircleGeometry(6, 16), new THREE.MeshLambertMaterial({ color: 0x3399dd }));
+                    pool.rotation.x = -Math.PI / 2;
                     pool.position.set(blockCenterX, 0.08, blockCenterZ);
                     scene.add(pool);
-                    const monBaseGeo = new THREE.CylinderGeometry(3, 4, 2, 8);
-                    const monBaseMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
-                    const monBase = new THREE.Mesh(monBaseGeo, monBaseMat);
+                    const monBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 2, 8), new THREE.MeshLambertMaterial({ color: 0xcccccc }));
                     monBase.position.set(blockCenterX, 1, blockCenterZ);
                     scene.add(monBase);
-                    const monGeo = new THREE.CylinderGeometry(0.6, 1.2, 18, 6);
-                    const monMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
-                    const mon = new THREE.Mesh(monGeo, monMat);
+                    const mon = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.2, 18, 6), new THREE.MeshLambertMaterial({ color: 0xffd700 }));
                     mon.position.set(blockCenterX, 11, blockCenterZ);
                     scene.add(mon);
-                    const monTopGeo = new THREE.SphereGeometry(1.5, 8, 8);
-                    const monTopMat = new THREE.MeshLambertMaterial({ color: 0xffd700 });
-                    const monTop = new THREE.Mesh(monTopGeo, monTopMat);
+                    const monTop = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 8), new THREE.MeshLambertMaterial({ color: 0xffd700 }));
                     monTop.position.set(blockCenterX, 21, blockCenterZ);
                     scene.add(monTop);
                     buildings.push({ x: blockCenterX, z: blockCenterZ, halfW: 5, halfD: 5 });
                 } else if (type === 'S') {
-                    const h = 50 + Math.random() * 40;
-                    createSkyscraper(blockCenterX, blockCenterZ, usableW, usableD, h, 0x4477bb);
+                    createSkyscraper(blockCenterX, blockCenterZ, usableW, usableD, 50 + Math.random() * 40, 0x4477bb);
                 } else if (type === 'H') {
                     if (Math.random() > 0.5) createHouseQuad(blockCenterX, blockCenterZ);
                     else createHousePair(blockCenterX, blockCenterZ);
                 } else if (type === 'D') {
                     const colors = [0xddddcc, 0xeeeecc];
-                    const color = colors[Math.floor(Math.random() * colors.length)];
                     const signColors = [0xff3333, 0xffaa00];
-                    const signColor = signColors[Math.floor(Math.random() * signColors.length)];
-                    createShop(blockCenterX, blockCenterZ, usableW + 2, usableD, color, signColor);
+                    createShop(blockCenterX, blockCenterZ, usableW + 2, usableD, colors[Math.floor(Math.random() * colors.length)], signColors[Math.floor(Math.random() * signColors.length)]);
                 } else if (type === 'P') {
                     createPark(blockCenterX, blockCenterZ, BLOCK_INNER - 6, BLOCK_INNER - 6);
-                } else if (type === 'O') {
-                    createParkingLot(blockCenterX, blockCenterZ, BLOCK_INNER - 6, BLOCK_INNER - 6);
-                } else if (type === 'B') {
-                    createGasStation(blockCenterX, blockCenterZ, BLOCK_INNER - 6, BLOCK_INNER - 6);
                 }
             }
         }
 
-        const lampPoleMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
-        const lampLightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
-
         function createStreetLamp(x, z) {
             const lampGroup = new THREE.Group();
-            const poleGeo = new THREE.CylinderGeometry(0.15, 0.15, 7, 4);
-            const pole = new THREE.Mesh(poleGeo, lampPoleMat);
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 7, 4), new THREE.MeshLambertMaterial({ color: 0x333333 }));
             pole.position.y = 3.5;
             lampGroup.add(pole);
-            const lampGeo = new THREE.SphereGeometry(0.6, 6, 6);
-            const lampMesh = new THREE.Mesh(lampGeo, lampLightMat);
+            const lampMesh = new THREE.Mesh(new THREE.SphereGeometry(0.6, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffaa }));
             lampMesh.position.y = 7;
             lampGroup.add(lampMesh);
             lampGroup.position.set(x, 0, z);
@@ -2125,17 +1858,12 @@
             }
         }
 
-        const treeTrunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f1a });
-        const treeLeafMat = new THREE.MeshLambertMaterial({ color: 0x1f5c14 });
-
-        function createTree(x, z) {
+        function createTreeOutside(x, z) {
             const treeGroup = new THREE.Group();
-            const trunkGeo = new THREE.CylinderGeometry(0.4, 0.5, 5, 5);
-            const trunk = new THREE.Mesh(trunkGeo, treeTrunkMat);
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 5, 5), new THREE.MeshLambertMaterial({ color: 0x4a2f1a }));
             trunk.position.y = 2.5;
             treeGroup.add(trunk);
-            const leafGeo = new THREE.SphereGeometry(2.5, 6, 6);
-            const leaf = new THREE.Mesh(leafGeo, treeLeafMat);
+            const leaf = new THREE.Mesh(new THREE.SphereGeometry(2.5, 6, 6), new THREE.MeshLambertMaterial({ color: 0x1f5c14 }));
             leaf.position.y = 6;
             treeGroup.add(leaf);
             treeGroup.position.set(x, 0, z);
@@ -2159,9 +1887,10 @@
                 if (Math.sqrt(dx * dx + dz * dz) < m.radius + 5) { tooCloseToMountain = true; break; }
             }
             if (tooCloseToMountain) continue;
-            createTree(x, z);
+            createTreeOutside(x, z);
         }
 
+        // Bulutlar
         const clouds = [];
         const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
 
@@ -2184,6 +1913,7 @@
             createCloud((Math.random() - 0.5) * 600, 100 + Math.random() * 50, (Math.random() - 0.5) * 600);
         }
 
+        // Kuşlar
         const birds = [];
         const birdMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
 
@@ -2217,6 +1947,9 @@
             birds.push(bird);
         }
 
+        // ==========================================
+        // EŞEK MODELİ
+        // ==========================================
         function createDonkeyModel() {
             const donkeyGroup = new THREE.Group();
             const greyMat = new THREE.MeshLambertMaterial({ color: 0x808080 });
@@ -2229,25 +1962,21 @@
                 return mesh;
             }
 
-            const body = createBox(1.2, 1.0, 2.0, greyMat, 0, 1.5, 0);
-            donkeyGroup.add(body);
+            donkeyGroup.add(createBox(1.2, 1.0, 2.0, greyMat, 0, 1.5, 0));
 
             const neckHeadGroup = new THREE.Group();
             neckHeadGroup.position.set(0, 1.8, 0.7);
             const neck = createBox(0.6, 0.9, 0.6, greyMat, 0, 0.4, 0);
             neck.rotation.x = 0.3;
             neckHeadGroup.add(neck);
-            const head = createBox(0.6, 0.6, 0.9, greyMat, 0, 0.9, 0.3);
-            neckHeadGroup.add(head);
-            const muzzle = createBox(0.58, 0.4, 0.4, muzzleMat, 0, 0.8, 0.75);
-            neckHeadGroup.add(muzzle);
-            const eyes = new THREE.Group();
-            eyes.add(createBox(0.1, 0.1, 0.1, blackMat, 0.31, 1.0, 0.3));
-            eyes.add(createBox(0.1, 0.1, 0.1, blackMat, -0.31, 1.0, 0.3));
-            neckHeadGroup.add(eyes);
+            neckHeadGroup.add(createBox(0.6, 0.6, 0.9, greyMat, 0, 0.9, 0.3));
+            neckHeadGroup.add(createBox(0.58, 0.4, 0.4, muzzleMat, 0, 0.8, 0.75));
+            neckHeadGroup.add(createBox(0.1, 0.1, 0.1, blackMat, 0.31, 1.0, 0.3));
+            neckHeadGroup.add(createBox(0.1, 0.1, 0.1, blackMat, -0.31, 1.0, 0.3));
             const earLeft = createBox(0.15, 0.8, 0.2, greyMat, 0.25, 1.5, 0); earLeft.rotation.set(-0.2, 0, -0.2);
             const earRight = createBox(0.15, 0.8, 0.2, greyMat, -0.25, 1.5, 0); earRight.rotation.set(-0.2, 0, 0.2);
-            neckHeadGroup.add(earLeft); neckHeadGroup.add(earRight);
+            neckHeadGroup.add(earLeft);
+            neckHeadGroup.add(earRight);
             donkeyGroup.add(neckHeadGroup);
 
             const legs = [];
@@ -2413,7 +2142,7 @@
         function startGame(mode) {
             controlMode = mode;
             initWebSocket();
-            playerDonkey.position.set(SPAWN_X, 0, SPAWN_Z - 2);
+            playerDonkey.position.set(BARN_X, 0, BARN_Z - 2);
             gameStarted = true;
             cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
@@ -2754,11 +2483,11 @@
                 menuCameraAngle += 0.003;
                 const menuRadius = 55;
                 const menuHeight = 25;
-                const camX = SPAWN_X + Math.cos(menuCameraAngle) * menuRadius;
-                const camZ = SPAWN_Z + Math.sin(menuCameraAngle) * menuRadius;
+                const camX = BARN_X + Math.cos(menuCameraAngle) * menuRadius;
+                const camZ = BARN_Z + Math.sin(menuCameraAngle) * menuRadius;
                 const camY = menuHeight;
                 camera.position.set(camX, camY, camZ);
-                camera.lookAt(new THREE.Vector3(SPAWN_X + 25, 5, SPAWN_Z));
+                camera.lookAt(new THREE.Vector3(BARN_X + 25, 5, BARN_Z));
                 scene.background = new THREE.Color(0.65, 0.75, 0.92);
                 scene.fog.color = scene.background;
                 sunMesh.position.set(-200, 300, -200);
@@ -2868,8 +2597,8 @@
                     doorRightGroup.rotation.y = doorAnimProgress * Math.PI / 2;
                 }
 
-                const doorX = SPAWN_X;
-                const doorZ = SPAWN_Z + 11;
+                const doorX = BARN_X;
+                const doorZ = BARN_Z + 11;
                 const DOOR_INTERACT_DIST = 4.5;
                 const distToDoorReal = Math.sqrt((playerDonkey.position.x - doorX) ** 2 + (playerDonkey.position.z - doorZ) ** 2);
                 
