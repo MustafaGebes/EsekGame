@@ -179,7 +179,7 @@
         // Zemin
         const terrainGeo = new THREE.PlaneGeometry(1000, 1000, 20, 20);
         terrainGeo.rotateX(-Math.PI / 2);
-        const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0x2d5a1e }));
+        const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ map: grassTexture, color: 0xa8c8a0 }));
         scene.add(terrainMesh);
 
         // ==========================================
@@ -269,23 +269,170 @@
         }
 
         // ==========================================
+        // PROSEDÜREL DOKULAR (Texture Detayı)
+        // ==========================================
+        function makeCanvasTexture(size, drawFn, repeatX, repeatY) {
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            drawFn(ctx, size);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(repeatX, repeatY);
+            tex.magFilter = THREE.NearestFilter;
+            return tex;
+        }
+
+        const grassTexture = makeCanvasTexture(256, (ctx, s) => {
+            ctx.fillStyle = '#2d7a1e';
+            ctx.fillRect(0, 0, s, s);
+            for (let i = 0; i < 3000; i++) {
+                const x = Math.random() * s, y = Math.random() * s;
+                const shade = Math.random();
+                ctx.fillStyle = shade > 0.66 ? '#4a9c2a' : (shade > 0.33 ? '#1f5c14' : '#3a8a22');
+                ctx.fillRect(x, y, 1.5, 3 + Math.random() * 3);
+            }
+        }, 60, 50);
+
+        const dirtTexture = makeCanvasTexture(256, (ctx, s) => {
+            ctx.fillStyle = '#8a7a5a';
+            ctx.fillRect(0, 0, s, s);
+            for (let i = 0; i < 1400; i++) {
+                const x = Math.random() * s, y = Math.random() * s;
+                const shade = Math.random();
+                ctx.fillStyle = shade > 0.5 ? 'rgba(70,55,35,0.35)' : 'rgba(170,150,110,0.3)';
+                const r = 1 + Math.random() * 3;
+                ctx.fillRect(x, y, r, r);
+            }
+        }, 16, 12);
+
+        const woodTexture = makeCanvasTexture(256, (ctx, s) => {
+            ctx.fillStyle = '#8b5a2b';
+            ctx.fillRect(0, 0, s, s);
+            for (let y = 0; y < s; y += 4 + Math.random() * 3) {
+                ctx.strokeStyle = `rgba(60,35,15,${0.15 + Math.random() * 0.2})`;
+                ctx.lineWidth = 1 + Math.random();
+                ctx.beginPath();
+                ctx.moveTo(0, y + Math.sin(y) * 2);
+                for (let x = 0; x <= s; x += 16) ctx.lineTo(x, y + Math.sin((x + y) * 0.1) * 3);
+                ctx.stroke();
+            }
+            for (let i = 0; i < 25; i++) {
+                ctx.fillStyle = 'rgba(40,20,10,0.25)';
+                ctx.beginPath();
+                ctx.ellipse(Math.random() * s, Math.random() * s, 3, 6, Math.random() * Math.PI, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }, 6, 2);
+
+        const metalRoofTexture = makeCanvasTexture(128, (ctx, s) => {
+            ctx.fillStyle = '#b8c0c8';
+            ctx.fillRect(0, 0, s, s);
+            for (let x = 0; x < s; x += 8) {
+                const grad = ctx.createLinearGradient(x, 0, x + 8, 0);
+                grad.addColorStop(0, 'rgba(90,98,105,0.5)');
+                grad.addColorStop(0.5, 'rgba(230,235,240,0.6)');
+                grad.addColorStop(1, 'rgba(90,98,105,0.5)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(x, 0, 8, s);
+            }
+            ctx.fillStyle = 'rgba(60,40,30,0.12)';
+            for (let i = 0; i < 30; i++) ctx.fillRect(Math.random() * s, Math.random() * s, 3, 1);
+        }, 5, 5);
+
+        const hayTexture = makeCanvasTexture(128, (ctx, s) => {
+            ctx.fillStyle = '#d4a017';
+            ctx.fillRect(0, 0, s, s);
+            for (let i = 0; i < 900; i++) {
+                const x = Math.random() * s, y = Math.random() * s;
+                ctx.strokeStyle = Math.random() > 0.5 ? 'rgba(160,110,10,0.4)' : 'rgba(240,200,80,0.4)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + Math.random() * 6 - 3, y + 4 + Math.random() * 4);
+                ctx.stroke();
+            }
+        }, 2, 2);
+
+        const stuccoTexture = makeCanvasTexture(128, (ctx, s) => {
+            ctx.fillStyle = '#f0e6d0';
+            ctx.fillRect(0, 0, s, s);
+            for (let i = 0; i < 1800; i++) {
+                const x = Math.random() * s, y = Math.random() * s;
+                ctx.fillStyle = Math.random() > 0.5 ? 'rgba(210,195,165,0.3)' : 'rgba(255,252,240,0.35)';
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }, 3, 2);
+
+        // ==========================================
+        // ÇİFTLİK HAYVANLARI - CANLI ANİMASYON SİSTEMİ
+        // ==========================================
+        const farmAnimals = [];
+        function registerFarmAnimal(group, legs, head, bounds) {
+            group.userData.legs = legs;
+            group.userData.head = head;
+            group.userData.bounds = bounds;
+            group.userData.phase = Math.random() * Math.PI * 2;
+            group.userData.idleTimer = Math.random() * 4;
+            group.userData.walkCycle = Math.random() * 10;
+            group.userData.target = null;
+            farmAnimals.push(group);
+        }
+
+        function updateFarmAnimals(deltaSec, t) {
+            for (const a of farmAnimals) {
+                const ud = a.userData;
+                if (ud.head) ud.head.rotation.x = Math.sin(t * 1.3 + ud.phase) * 0.12 + 0.04;
+                if (!ud.target) {
+                    ud.idleTimer -= deltaSec;
+                    if (ud.legs) { for (const l of ud.legs) l.rotation.x *= 0.85; }
+                    if (ud.idleTimer <= 0) {
+                        const b = ud.bounds;
+                        ud.target = { x: b.minX + Math.random() * (b.maxX - b.minX), z: b.minZ + Math.random() * (b.maxZ - b.minZ) };
+                    }
+                } else {
+                    const dx = ud.target.x - a.position.x;
+                    const dz = ud.target.z - a.position.z;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+                    if (dist < 0.2) {
+                        ud.target = null;
+                        ud.idleTimer = 2 + Math.random() * 4;
+                    } else {
+                        const spd = 0.55 * deltaSec;
+                        a.position.x += (dx / dist) * spd;
+                        a.position.z += (dz / dist) * spd;
+                        a.rotation.y = Math.atan2(dx, dz);
+                        ud.walkCycle += deltaSec * 4;
+                        if (ud.legs && ud.legs.length === 4) {
+                            ud.legs[0].rotation.x = Math.sin(ud.walkCycle) * 0.4;
+                            ud.legs[1].rotation.x = -Math.sin(ud.walkCycle) * 0.4;
+                            ud.legs[2].rotation.x = -Math.sin(ud.walkCycle) * 0.4;
+                            ud.legs[3].rotation.x = Math.sin(ud.walkCycle) * 0.4;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ==========================================
         // ORTAK MALZEMELER
         // ==========================================
         const buildings = [];
-        const woodDarkMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
-        const woodMat = new THREE.MeshLambertMaterial({ color: 0x8b5a2b });
-        const woodLightMat = new THREE.MeshLambertMaterial({ color: 0xa87848 });
-        const hayMat = new THREE.MeshLambertMaterial({ color: 0xd4a017 });
-        const hayDarkMat = new THREE.MeshLambertMaterial({ color: 0xb8860b });
-        const dirtMat = new THREE.MeshLambertMaterial({ color: 0x6b4423 });
+        const woodDarkMat = new THREE.MeshLambertMaterial({ map: woodTexture, color: 0x8a7060 });
+        const woodMat = new THREE.MeshLambertMaterial({ map: woodTexture, color: 0xc8b8a0 });
+        const woodLightMat = new THREE.MeshLambertMaterial({ map: woodTexture, color: 0xd8c8a8 });
+        const hayMat = new THREE.MeshLambertMaterial({ map: hayTexture, color: 0xffffff });
+        const hayDarkMat = new THREE.MeshLambertMaterial({ map: hayTexture, color: 0xc8a860 });
+        const dirtMat = new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0x9a8060 });
         const dirtDarkMat = new THREE.MeshLambertMaterial({ color: 0x4a2f15 });
         const cropMat = new THREE.MeshLambertMaterial({ color: 0x7cbf3f });
         const cropMat2 = new THREE.MeshLambertMaterial({ color: 0xa8d840 });
         const stoneMat = new THREE.MeshLambertMaterial({ color: 0x888878 });
         const metalMat = new THREE.MeshLambertMaterial({ color: 0x777777 });
         const brickMat = new THREE.MeshLambertMaterial({ color: 0xa0402a });
-        const plasterMat = new THREE.MeshLambertMaterial({ color: 0xf0e6d0 });
-        const roofTileMat = new THREE.MeshLambertMaterial({ color: 0x8b3a3a });
+        const plasterMat = new THREE.MeshLambertMaterial({ map: stuccoTexture, color: 0xffffff });
+        const roofTileMat = new THREE.MeshLambertMaterial({ map: metalRoofTexture, color: 0xb05a4a });
         const roofTileDarkMat = new THREE.MeshLambertMaterial({ color: 0x6a2828 });
         const steelMat = new THREE.MeshLambertMaterial({ color: 0xaaacb0 });
         const concreteMat = new THREE.MeshLambertMaterial({ color: 0xc8c8c0 });
@@ -297,14 +444,14 @@
         // Ana çiftlik zemini (büyük beton alan)
         const farmGroundGeo = new THREE.PlaneGeometry(180, 160);
         farmGroundGeo.rotateX(-Math.PI / 2);
-        const farmGround = new THREE.Mesh(farmGroundGeo, new THREE.MeshLambertMaterial({ color: 0x9a8a70 }));
+        const farmGround = new THREE.Mesh(farmGroundGeo, new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0xb8ac90 }));
         farmGround.position.set(FARM_CX, 0.04, FARM_CZ);
         scene.add(farmGround);
 
         // Ahır zemini (kırmızı beton) - sol üst
         const barnGroundGeo = new THREE.PlaneGeometry(60, 40);
         barnGroundGeo.rotateX(-Math.PI / 2);
-        const barnGround = new THREE.Mesh(barnGroundGeo, new THREE.MeshLambertMaterial({ color: 0xa89880 }));
+        const barnGround = new THREE.Mesh(barnGroundGeo, new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0xc0b090 }));
         barnGround.position.set(FARM_CX - 55, 0.05, FARM_CZ - 55);
         scene.add(barnGround);
 
@@ -325,15 +472,15 @@
             const wallHeight = 6;
             const doorWidth = 5;
             
-            const wallMat = new THREE.MeshLambertMaterial({ color: 0xa8271c });
-            const roofMat = new THREE.MeshLambertMaterial({ color: 0xd0d0c8 });
+            const wallMat = new THREE.MeshLambertMaterial({ map: woodTexture, color: 0xa8271c });
+            const roofMat = new THREE.MeshLambertMaterial({ map: metalRoofTexture, color: 0xc8c8c0 });
             const trimMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
             const darkInteriorMat = new THREE.MeshLambertMaterial({ color: 0x2a1a0a });
             
             // Zemin
             const floorGeo = new THREE.PlaneGeometry(width, depth);
             floorGeo.rotateX(-Math.PI / 2);
-            const floor = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({ color: 0x8a7a5a }));
+            const floor = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0xa89a78 }));
             floor.position.y = 0.06;
             barnGroup.add(floor);
             
@@ -452,13 +599,13 @@
             const depth = 12;
             const wallHeight = 6;
             
-            const wallMat = new THREE.MeshLambertMaterial({ color: 0x4a7a3a }); // Yeşil (büyükbaş)
-            const roofMat = new THREE.MeshLambertMaterial({ color: 0xd0d0c8 });
+            const wallMat = new THREE.MeshLambertMaterial({ map: woodTexture, color: 0x4a7a3a }); // Yeşil (büyükbaş)
+            const roofMat = new THREE.MeshLambertMaterial({ map: metalRoofTexture, color: 0xc8c8c0 });
             
             // Zemin
             const floorGeo = new THREE.PlaneGeometry(width, depth);
             floorGeo.rotateX(-Math.PI / 2);
-            const floor = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({ color: 0x8a7a5a }));
+            const floor = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0xa89a78 }));
             floor.position.y = 0.06;
             barnGroup.add(floor);
             
@@ -610,7 +757,7 @@
             }
             
             // Çatı (dalgalı sac - düz görünüm)
-            const roofMat = new THREE.MeshLambertMaterial({ color: 0xb8c0c8 });
+            const roofMat = new THREE.MeshLambertMaterial({ map: metalRoofTexture, color: 0xc8ccd0 });
             const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 1, 0.15, d + 1), roofMat);
             roof.position.set(0, postHeight + 0.2, 0);
             shadeGroup.add(roof);
@@ -622,13 +769,33 @@
                 shadeGroup.add(ridge);
             }
             
-            // İçinde hayvanlar (inek/koyun)
+            // İçinde hayvanlar (inek/koyun) - grid tabanlı yerleşim (üst üste binmesin)
             const animalMat = new THREE.MeshLambertMaterial({ color: 0xf5f5f0 });
             const animalMat2 = new THREE.MeshLambertMaterial({ color: 0x8b6f47 });
-            const animalCount = Math.floor((w * d) / 20);
+            const usableW = w - 4, usableD = d - 4;
+            const cellSize = 3.2;
+            const cols = Math.max(1, Math.floor(usableW / cellSize));
+            const rows = Math.max(1, Math.floor(usableD / cellSize));
+            const slots = [];
+            for (let cx = 0; cx < cols; cx++) {
+                for (let cz = 0; cz < rows; cz++) {
+                    slots.push({
+                        x: -usableW / 2 + cellSize / 2 + cx * cellSize,
+                        z: -usableD / 2 + cellSize / 2 + cz * cellSize
+                    });
+                }
+            }
+            // Karıştır ve alanın ~%70'ini doldur (fazla sıkışık olmasın)
+            for (let i = slots.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [slots[i], slots[j]] = [slots[j], slots[i]];
+            }
+            const animalCount = Math.min(slots.length, Math.ceil(slots.length * 0.7));
             for (let i = 0; i < animalCount; i++) {
-                const ax = (Math.random() - 0.5) * (w - 4);
-                const az = (Math.random() - 0.5) * (d - 4);
+                const jitterX = (Math.random() - 0.5) * (cellSize * 0.3);
+                const jitterZ = (Math.random() - 0.5) * (cellSize * 0.3);
+                const ax = slots[i].x + jitterX;
+                const az = slots[i].z + jitterZ;
                 const animalGroup = new THREE.Group();
                 const useFirst = Math.random() > 0.5;
                 const mat = useFirst ? animalMat : animalMat2;
@@ -647,16 +814,23 @@
                 eye2.position.set(-0.18, 1.7, 1.5);
                 animalGroup.add(eye2);
                 // Bacaklar
+                const legs = [];
                 for (const bx of [-0.5, 0.5]) {
                     for (const bz of [-0.7, 0.7]) {
                         const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.8, 0.3), mat);
                         leg.position.set(bx, 0.4, bz);
                         animalGroup.add(leg);
+                        legs.push(leg);
                     }
                 }
                 animalGroup.position.set(ax, 0, az);
                 animalGroup.rotation.y = Math.random() * Math.PI * 2;
                 shadeGroup.add(animalGroup);
+                // Küçük gezinme alanı - hayvan kendi hücresinin biraz dışına taşmasın
+                registerFarmAnimal(animalGroup, legs, aHead, {
+                    minX: ax - cellSize * 0.6, maxX: ax + cellSize * 0.6,
+                    minZ: az - cellSize * 0.6, maxZ: az + cellSize * 0.6
+                });
             }
             
             shadeGroup.position.set(x, 0, z);
@@ -677,7 +851,7 @@
             // Zemin (toprak)
             const groundGeo = new THREE.PlaneGeometry(w, d);
             groundGeo.rotateX(-Math.PI / 2);
-            const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ color: 0x8a7a5a }));
+            const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0xa89a78 }));
             ground.position.y = 0.05;
             paddockGroup.add(ground);
             
@@ -730,11 +904,17 @@
             buildings.push({ x: x + w / 2, z, halfW: 0.15, halfD: d / 2 });
         }
 
-        // Koyun padoku (sağ orta, büyük)
-        createOpenPaddock(FARM_CX + 60, FARM_CZ + 5, 40, 35);
+        // Koyun padoku ve gölgelik-3 çakışmaması için biraz daha doğuya/güneye kaydırıldı
+        const SHEEP_PEN_CX = FARM_CX + 65;
+        const SHEEP_PEN_CZ = FARM_CZ + 10;
+        const SHEEP_PEN_W = 36;
+        const SHEEP_PEN_D = 32;
+
+        // Koyun padoku (sağ orta, büyük) - gölgelik-3 ile çakışmasın diye kaydırıldı
+        createOpenPaddock(SHEEP_PEN_CX, SHEEP_PEN_CZ, SHEEP_PEN_W, SHEEP_PEN_D);
 
         // Koyunlar (padok içinde)
-        function createSheep(x, z) {
+        function createSheep(x, z, bounds) {
             const sheepGroup = new THREE.Group();
             const bodyMat = new THREE.MeshLambertMaterial({ color: 0xf5f5f5 });
             const headMat = new THREE.MeshLambertMaterial({ color: 0x4a3a2a });
@@ -744,22 +924,29 @@
             const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), headMat);
             head.position.set(0, 1, 0.9);
             sheepGroup.add(head);
+            const legs = [];
             for (const bx of [-0.35, 0.35]) {
                 for (const bz of [-0.5, 0.5]) {
                     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.2), headMat);
                     leg.position.set(bx, 0.25, bz);
                     sheepGroup.add(leg);
+                    legs.push(leg);
                 }
             }
             sheepGroup.position.set(x, 0, z);
             sheepGroup.rotation.y = Math.random() * Math.PI * 2;
             scene.add(sheepGroup);
+            if (bounds) registerFarmAnimal(sheepGroup, legs, head, bounds);
         }
 
-        for (let i = 0; i < 25; i++) {
-            const sx = FARM_CX + 60 + (Math.random() - 0.5) * 35;
-            const sz = FARM_CZ + 5 + (Math.random() - 0.5) * 30;
-            createSheep(sx, sz);
+        const sheepBounds = {
+            minX: SHEEP_PEN_CX - SHEEP_PEN_W / 2 + 3, maxX: SHEEP_PEN_CX + SHEEP_PEN_W / 2 - 3,
+            minZ: SHEEP_PEN_CZ - SHEEP_PEN_D / 2 + 3, maxZ: SHEEP_PEN_CZ + SHEEP_PEN_D / 2 - 3
+        };
+        for (let i = 0; i < 20; i++) {
+            const sx = SHEEP_PEN_CX + (Math.random() - 0.5) * (SHEEP_PEN_W - 8);
+            const sz = SHEEP_PEN_CZ + (Math.random() - 0.5) * (SHEEP_PEN_D - 8);
+            createSheep(sx, sz, sheepBounds);
         }
 
         // ==========================================
@@ -1101,6 +1288,9 @@
                 railR.position.set((gateRight + maxX) / 2, py, maxZ);
                 fenceGroup.add(railR);
             }
+            // Ön çit - tam kapsamlı çarpışma (post aralarındaki boşluklardan geçişi engeller)
+            buildings.push({ x: (minX + gateLeft) / 2, z: maxZ, halfW: (gateLeft - minX) / 2, halfD: 0.25 });
+            buildings.push({ x: (gateRight + maxX) / 2, z: maxZ, halfW: (maxX - gateRight) / 2, halfD: 0.25 });
             
             // Arka taraf
             for (let x = minX; x <= maxX; x += 3) {
@@ -1114,6 +1304,7 @@
                 rail.position.set(FARM_CX, py, minZ);
                 fenceGroup.add(rail);
             }
+            buildings.push({ x: FARM_CX, z: minZ, halfW: (maxX - minX) / 2, halfD: 0.25 });
             
             // Sol taraf
             for (let z = minZ; z <= maxZ; z += 3) {
@@ -1127,6 +1318,7 @@
                 rail.position.set(minX, py, FARM_CZ - 5);
                 fenceGroup.add(rail);
             }
+            buildings.push({ x: minX, z: FARM_CZ - 5, halfW: 0.25, halfD: (maxZ - minZ) / 2 });
             
             // Sağ taraf
             for (let z = minZ; z <= maxZ; z += 3) {
@@ -1140,11 +1332,157 @@
                 rail.position.set(maxX, py, FARM_CZ - 5);
                 fenceGroup.add(rail);
             }
+            buildings.push({ x: maxX, z: FARM_CZ - 5, halfW: 0.25, halfD: (maxZ - minZ) / 2 });
             
             scene.add(fenceGroup);
         }
 
         createFarmPerimeterFence();
+
+        // ==========================================
+        // YENİ DETAYLI AHIR (İçinde hayvanlı, kapalı) - Boş alan (silo yanı, batıda)
+        // ==========================================
+        const BARN3_X = FARM_CX - 74;
+        const BARN3_Z = FARM_CZ + 12;
+
+        function createDetailedBarn3(x, z) {
+            const barnGroup = new THREE.Group();
+            const width = 24, depth = 18, wallHeight = 6.5, doorWidth = 6;
+            const frontSideW = (width - doorWidth) / 2;
+
+            const wallMat3 = new THREE.MeshLambertMaterial({ map: woodTexture, color: 0x9a5a30 });
+            const roofMat3 = new THREE.MeshLambertMaterial({ map: metalRoofTexture, color: 0xb04838 });
+            const floorMat3 = new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0xa89a78 });
+            const trimMat3 = new THREE.MeshLambertMaterial({ color: 0xffffff });
+
+            // Zemin (saman serpilmiş toprak)
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), floorMat3);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = 0.07;
+            barnGroup.add(floor);
+
+            // Yan duvarlar
+            const sideWallGeo = new THREE.BoxGeometry(0.4, wallHeight, depth);
+            const leftWall = new THREE.Mesh(sideWallGeo, wallMat3);
+            leftWall.position.set(-width / 2, wallHeight / 2, 0);
+            barnGroup.add(leftWall);
+            const rightWall = new THREE.Mesh(sideWallGeo, wallMat3);
+            rightWall.position.set(width / 2, wallHeight / 2, 0);
+            barnGroup.add(rightWall);
+
+            // Arka duvar
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(width, wallHeight, 0.4), wallMat3);
+            backWall.position.set(0, wallHeight / 2, -depth / 2);
+            barnGroup.add(backWall);
+
+            // Ön duvar - ortada kapı boşluğu
+            const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(frontSideW, wallHeight, 0.4), wallMat3);
+            frontLeft.position.set(-(doorWidth / 2 + frontSideW / 2), wallHeight / 2, depth / 2);
+            barnGroup.add(frontLeft);
+            const frontRight = new THREE.Mesh(new THREE.BoxGeometry(frontSideW, wallHeight, 0.4), wallMat3);
+            frontRight.position.set((doorWidth / 2 + frontSideW / 2), wallHeight / 2, depth / 2);
+            barnGroup.add(frontRight);
+
+            // Kapı çerçevesi (beyaz kirişler)
+            for (const dx of [-doorWidth / 2, doorWidth / 2]) {
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(0.3, wallHeight, 0.3), trimMat3);
+                frame.position.set(dx, wallHeight / 2, depth / 2);
+                barnGroup.add(frame);
+            }
+
+            // Çatı (iki eğimli sac + mahya)
+            const roofSlopeWidth = Math.sqrt((width / 2) ** 2 + 3.5 * 3.5);
+            const roofAngle = Math.atan2(3.5, width / 2);
+            const roofLeft = new THREE.Mesh(new THREE.BoxGeometry(roofSlopeWidth, 0.35, depth + 1.5), roofMat3);
+            roofLeft.position.set(-width / 4, wallHeight + 1.75, 0);
+            roofLeft.rotation.z = roofAngle;
+            barnGroup.add(roofLeft);
+            const roofRight = new THREE.Mesh(new THREE.BoxGeometry(roofSlopeWidth, 0.35, depth + 1.5), roofMat3);
+            roofRight.position.set(width / 4, wallHeight + 1.75, 0);
+            roofRight.rotation.z = -roofAngle;
+            barnGroup.add(roofRight);
+            const roofPeak = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, depth + 1.5), steelMat);
+            roofPeak.position.set(0, wallHeight + 3.5, 0);
+            barnGroup.add(roofPeak);
+
+            // Ön kapı direkleri
+            const postGeo = new THREE.CylinderGeometry(0.3, 0.35, wallHeight, 8);
+            const postL = new THREE.Mesh(postGeo, steelMat);
+            postL.position.set(-doorWidth / 2, wallHeight / 2, depth / 2 + 0.2);
+            barnGroup.add(postL);
+            const postR = new THREE.Mesh(postGeo, steelMat);
+            postR.position.set(doorWidth / 2, wallHeight / 2, depth / 2 + 0.2);
+            barnGroup.add(postR);
+
+            // İç mekan: bölme direkleri (ahşap ahır bölmeleri)
+            for (const dx of [-width / 2 + 8.5, width / 2 - 8.5]) {
+                const divider = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.3, depth - 4), woodDarkMat);
+                divider.position.set(dx, 0.65, -1);
+                barnGroup.add(divider);
+            }
+
+            // Saman yığınları (arka duvar boyunca)
+            for (let i = 0; i < 3; i++) {
+                const hay = new THREE.Mesh(new THREE.BoxGeometry(3, 1.4, 2.4), i % 2 === 0 ? hayMat : hayDarkMat);
+                hay.position.set(-width / 2 + 4 + i * 8, 0.7, -depth / 2 + 2);
+                barnGroup.add(hay);
+            }
+
+            // Su yalağı
+            const trough = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 1), new THREE.MeshLambertMaterial({ color: 0x556666 }));
+            trough.position.set(width / 2 - 4, 0.3, -depth / 2 + 2.5);
+            barnGroup.add(trough);
+
+            // İçindeki hayvanlar (inekler) - canlı animasyonlu
+            const cowMat1 = new THREE.MeshLambertMaterial({ color: 0x3a2a1a });
+            const cowMat2 = new THREE.MeshLambertMaterial({ color: 0xf0ece0 });
+            const cowSlots = [[-9, -2.5], [-9, 2.5], [0, -2.5], [0, 2.5], [9, -2.5], [9, 2.5]];
+            for (const [cx, cz] of cowSlots) {
+                const mat = Math.random() > 0.5 ? cowMat1 : cowMat2;
+                const cowGroup = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.1, 2.2), mat);
+                body.position.y = 1.2;
+                cowGroup.add(body);
+                const head = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.75), mat);
+                head.position.set(0, 1.6, 1.3);
+                cowGroup.add(head);
+                const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                for (const ex of [0.2, -0.2]) {
+                    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), eyeMat);
+                    eye.position.set(ex, 1.7, 1.65);
+                    cowGroup.add(eye);
+                }
+                const legs = [];
+                for (const bx of [-0.55, 0.55]) {
+                    for (const bz of [-0.85, 0.85]) {
+                        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.85, 0.32), mat);
+                        leg.position.set(bx, 0.42, bz);
+                        cowGroup.add(leg);
+                        legs.push(leg);
+                    }
+                }
+                cowGroup.position.set(cx, 0, cz);
+                cowGroup.rotation.y = Math.random() * Math.PI * 2;
+                barnGroup.add(cowGroup);
+                registerFarmAnimal(cowGroup, legs, head, {
+                    minX: cx - 1.6, maxX: cx + 1.6, minZ: cz - 1.6, maxZ: cz + 1.6
+                });
+            }
+
+            barnGroup.position.set(x, 0, z);
+            scene.add(barnGroup);
+
+            // Çarpışma (duvarlar + kapı direkleri, kapı boşluğu açık)
+            buildings.push({ x: x - width / 2, z, halfW: 0.3, halfD: depth / 2 });
+            buildings.push({ x: x + width / 2, z, halfW: 0.3, halfD: depth / 2 });
+            buildings.push({ x, z: z - depth / 2, halfW: width / 2, halfD: 0.3 });
+            buildings.push({ x: x - (doorWidth / 2 + frontSideW / 2), z: z + depth / 2, halfW: frontSideW / 2, halfD: 0.3 });
+            buildings.push({ x: x + (doorWidth / 2 + frontSideW / 2), z: z + depth / 2, halfW: frontSideW / 2, halfD: 0.3 });
+            buildings.push({ x: x - doorWidth / 2, z: z + depth / 2 + 0.2, halfW: 0.35, halfD: 0.35 });
+            buildings.push({ x: x + doorWidth / 2, z: z + depth / 2 + 0.2, halfW: 0.35, halfD: 0.35 });
+        }
+
+        createDetailedBarn3(BARN3_X, BARN3_Z);
 
         // ==========================================
         // ÇİFTLİK İÇİ TOPRAK YOLLAR
@@ -2052,6 +2390,8 @@
                 starMaterial.opacity = starOpacity;
                 stars.position.copy(camera.position);
                 stars.rotation.y = yaw * 0.5;
+
+                updateFarmAnimals(deltaSec, now * 0.001);
 
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
