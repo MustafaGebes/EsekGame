@@ -3464,6 +3464,16 @@ function stepCar(c,dt){
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'block';
             }
+            (function positionCameraBehindDonkey() {
+                const camDistance = 6;
+                const camHeight = 2.5;
+                const camX = playerDonkey.position.x - Math.sin(yaw) * camDistance;
+                const camY = playerDonkey.position.y + camHeight + (pitch * 2.5);
+                const camZ = playerDonkey.position.z - Math.cos(yaw) * camDistance;
+                camera.position.set(camX, camY, camZ);
+                camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 1.5, playerDonkey.position.z);
+                camera.updateMatrixWorld(true);
+            })();
             window.__spawnTime = performance.now();
             // Kamerayı spawn noktasına hemen yerleştir (ilk frame'de doğru görünsün)
             if (cameraMode === 'third') {
@@ -3479,6 +3489,16 @@ function stepCar(c,dt){
                 camera.position.set(playerDonkey.position.x, playerDonkey.position.y + 2.0, playerDonkey.position.z);
                 camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 2.0, playerDonkey.position.z - 1);
             }
+                  (function positionCameraBehindDonkey() {
+                const camDistance = 6;
+                const camHeight = 2.5;
+                const camX = playerDonkey.position.x - Math.sin(yaw) * camDistance;
+                const camY = playerDonkey.position.y + camHeight + (pitch * 2.5);
+                const camZ = playerDonkey.position.z - Math.cos(yaw) * camDistance;
+                camera.position.set(camX, camY, camZ);
+                camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 1.5, playerDonkey.position.z);
+                camera.updateMatrixWorld(true);
+            })();
         }
 
         initWebSocket();
