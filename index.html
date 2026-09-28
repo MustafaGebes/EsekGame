@@ -2100,22 +2100,33 @@
         // Oyuncu çiftlik girişinin biraz uzağında başlar
 
         // ==========================================
-        // ŞEHİR ALANI / DÜNYA ZEMİNİ
-        // Eski şehir ve plaj objeleri kaldırıldı; çiftlik, orman ve dağlar korunuyor.
+        // ŞEHİR
         // ==========================================
+        const legacyPreCityScene = new Set(scene.children);
         const CITY_CENTER_X = -180;
         const CITY_CENTER_Z = -180;
         const CITY_MODEL_SCALE = 0.78;
+        const ROAD_WIDTH = 12;
+        const BLOCK_INNER = 35;
+        const SIDEWALK_WIDTH = 3;
+        const BLOCK_TOTAL = BLOCK_INNER + SIDEWALK_WIDTH * 2;
+        const GRID_STEP = BLOCK_TOTAL + ROAD_WIDTH;
+        const gridCount = 5;
+        const cityWidth = gridCount * BLOCK_TOTAL + (gridCount + 1) * ROAD_WIDTH;
+        const CITY_RADIUS = cityWidth / 2 + 30;
+        // Dik açılı güzergâh: çiftliğin kuzeyinden ve doğusundan dolaşır, çit sınırını geçmez.
         const ROAD_PATH = [
-            { x: -47, z: CITY_CENTER_Z },
+            { x: -47, z: CITY_CENTER_Z }, // mevcut şehrin doğu-kuzey-güney caddesine bağlanır
             { x: -30, z: CITY_CENTER_Z },
-            { x: -30, z: 70 },
+            { x: -30, z: 70 },             // çiftliğin kuzey sınırı z=95'in dışında
             { x: 210, z: 70 },
-            { x: 210, z: 220 }
+            { x: 210, z: 220 }             // doğu çitinin (x=200) dışında
         ];
-        const CITY_RADIUS = 145;
+        // Şehrin kuzey caddesinden sahil otoparkına kadar dümdüz, simetrik bağlanan yol.
+        const BEACH_ROAD_PATH = [{ x: -153.5, z: -312.5 }, { x: -153.5, z: -366.5 }];
+        const BEACH_PARKING_CENTER = { x: -153.5, z: -377 };
+        const BEACH_WATER_EDGE = -452.5;
         const FOREST_POND_CENTER = { x: 300, z: -8 };
-        const townNpcs = [];
 
         function smoothStep(edge0, edge1, value) {
             const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
@@ -2127,8 +2138,14 @@
                 const a = ROAD_PATH[i], b = ROAD_PATH[i + 1];
                 const dx = b.x - a.x, dz = b.z - a.z;
                 const lengthSq = dx * dx + dz * dz;
-                const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / Math.max(1, lengthSq)));
+                const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / lengthSq));
                 nearest = Math.min(nearest, Math.hypot(x - (a.x + t * dx), z - (a.z + t * dz)));
+            }
+            for (let i = 0; i < BEACH_ROAD_PATH.length - 1; i++) {
+                const ba = BEACH_ROAD_PATH[i], bb = BEACH_ROAD_PATH[i + 1];
+                const bdx = bb.x - ba.x, bdz = bb.z - ba.z;
+                const bt = Math.max(0, Math.min(1, ((x - ba.x) * bdx + (z - ba.z) * bdz) / Math.max(1, bdx * bdx + bdz * bdz)));
+                nearest = Math.min(nearest, Math.hypot(x - (ba.x + bt * bdx), z - (ba.z + bt * bdz)));
             }
             const a = { x: 210, z: 175 }, b = { x: PARKING_CENTER.x - 17, z: 175 };
             const dx = b.x - a.x, dz = b.z - a.z;
@@ -2144,11 +2161,17 @@
             const parkingDx = Math.max(0, Math.abs(x - PARKING_CENTER.x) - 17);
             const parkingDz = Math.max(0, Math.abs(z - PARKING_CENTER.z) - 12);
             const parkingFlat = smoothStep(2, 16, Math.hypot(parkingDx, parkingDz));
+            const beachDx = Math.max(0, Math.abs(x - BEACH_PARKING_CENTER.x) - 21);
+            const beachDz = Math.max(0, Math.abs(z - BEACH_PARKING_CENTER.z) - 14);
+            const beachParkingFlat = smoothStep(2, 15, Math.hypot(beachDx, beachDz));
+            const beachLandDx = Math.max(0, Math.abs(x - BEACH_PARKING_CENTER.x) - 128);
+            const beachLandDz = Math.max(0, Math.abs(z + 420) - 42);
+            const beachFlat = smoothStep(2, 20, Math.hypot(beachLandDx, beachLandDz));
             const pondFlat = smoothStep(10, 22, Math.hypot(x - FOREST_POND_CENTER.x, z - FOREST_POND_CENTER.z));
             const edgeFade = 1 - smoothStep(310, 350, radial);
             const broadHills = (Math.sin(x * 0.027) * 1.15 + Math.cos(z * 0.023) * 1.05 + Math.sin((x + z) * 0.041) * 0.65);
             const smallUndulation = Math.sin(x * 0.11 + z * 0.07) * 0.22;
-            return (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * parkingFlat * pondFlat * edgeFade;
+            return (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * parkingFlat * beachParkingFlat * beachFlat * pondFlat * edgeFade;
         }
         const terrainPositions = terrainGeo.attributes.position;
         for (let i = 0; i < terrainPositions.count; i++) {
@@ -2157,7 +2180,7 @@
         terrainPositions.needsUpdate = true;
         terrainGeo.computeVertexNormals();
 
-        // Mevcut dünya çimleri korunuyor.
+        // 3 çim türü, binlerce sap: yalnızca üç InstancedMesh/draw call.
         const grassMaterials = [grassMat1, grassMat2, grassMat3];
         const grassBatches = grassMaterials.map(mat => new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, 1, 0.06), mat, grassSpots.length * 3));
         const grassCounts = [0, 0, 0];
@@ -2180,7 +2203,7 @@
             scene.add(batch);
         });
 
-        // Dünya kayaları korunuyor; eski şehir filtresi kaldırıldı.
+        // Engebeli kırlara yayılmış kayalar; çiftlik, şehir, yol ve dağ tabanlarından uzak tutulur.
         const rockCapacity = 210;
         const rockMesh = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ vertexColors: true }), rockCapacity);
         const rockDummy = new THREE.Object3D();
@@ -2191,6 +2214,7 @@
             const radius = 95 + Math.random() * 235;
             const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
             if (Math.hypot(x - FARM_CX, z - FARM_CZ) < 178) continue;
+            if (Math.hypot(x - CITY_CENTER_X, z - CITY_CENTER_Z) < CITY_RADIUS + 20) continue;
             if (distanceToRoadAxis(x, z) < 18) continue;
             if (Math.abs(x - PARKING_CENTER.x) < 27 && Math.abs(z - PARKING_CENTER.z) < 17) continue;
             let nearMountain = false;
@@ -2205,6 +2229,7 @@
             const tint = 0.72 + Math.random() * 0.4;
             rockColor.setRGB(tint, tint * (0.98 + Math.random() * 0.04), tint * (0.92 + Math.random() * 0.12));
             rockMesh.setColorAt(rockCount, rockColor);
+            buildings.push({ x, z, halfW: Math.max(sx, sz) * 0.72, halfD: Math.max(sx, sz) * 0.72 });
             rockCount++;
         }
         rockMesh.count = rockCount;
@@ -2212,11 +2237,402 @@
         if (rockMesh.instanceColor) rockMesh.instanceColor.needsUpdate = true;
         scene.add(rockMesh);
 
+        const firstBlockCenterX = CITY_CENTER_X - cityWidth / 2 + ROAD_WIDTH + BLOCK_TOTAL / 2;
+        const firstBlockCenterZ = CITY_CENTER_Z - cityWidth / 2 + ROAD_WIDTH + BLOCK_TOTAL / 2;
+
+        const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+        for (let i = 0; i <= gridCount; i++) {
+            const roadZ = CITY_CENTER_Z - cityWidth / 2 + ROAD_WIDTH / 2 + i * (ROAD_WIDTH + BLOCK_TOTAL);
+            const roadGeo = new THREE.PlaneGeometry(cityWidth, ROAD_WIDTH);
+            roadGeo.rotateX(-Math.PI / 2);
+            const road = new THREE.Mesh(roadGeo, roadMat);
+            road.position.set(CITY_CENTER_X, 0.03, roadZ);
+            scene.add(road);
+            const dashCount = Math.floor(cityWidth / 12);
+            for (let d = 0; d < dashCount; d++) {
+                const dashGeo = new THREE.PlaneGeometry(3, 0.4);
+                dashGeo.rotateX(-Math.PI / 2);
+                const dash = new THREE.Mesh(dashGeo, lineMat);
+                dash.position.set(CITY_CENTER_X - cityWidth / 2 + d * 12 + 6, 0.04, roadZ);
+                scene.add(dash);
+            }
+        }
+        for (let i = 0; i <= gridCount; i++) {
+            const roadX = CITY_CENTER_X - cityWidth / 2 + ROAD_WIDTH / 2 + i * (ROAD_WIDTH + BLOCK_TOTAL);
+            const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, cityWidth);
+            roadGeo.rotateX(-Math.PI / 2);
+            const road = new THREE.Mesh(roadGeo, roadMat);
+            road.position.set(roadX, 0.03, CITY_CENTER_Z);
+            scene.add(road);
+            const dashCount = Math.floor(cityWidth / 12);
+            for (let d = 0; d < dashCount; d++) {
+                const dashGeo = new THREE.PlaneGeometry(0.4, 3);
+                dashGeo.rotateX(-Math.PI / 2);
+                const dash = new THREE.Mesh(dashGeo, lineMat);
+                dash.position.set(roadX, 0.04, CITY_CENTER_Z - cityWidth / 2 + d * 12 + 6);
+                scene.add(dash);
+            }
+        }
+        for (let bx = 0; bx < gridCount; bx++) {
+            for (let bz = 0; bz < gridCount; bz++) {
+                const blockCenterX = firstBlockCenterX + bx * GRID_STEP;
+                const blockCenterZ = firstBlockCenterZ + bz * GRID_STEP;
+                const sideGeoH = new THREE.PlaneGeometry(BLOCK_TOTAL, SIDEWALK_WIDTH);
+                sideGeoH.rotateX(-Math.PI / 2);
+                const sideN = new THREE.Mesh(sideGeoH, sidewalkMat);
+                sideN.position.set(blockCenterX, 0.05, blockCenterZ - BLOCK_INNER / 2 - SIDEWALK_WIDTH / 2);
+                scene.add(sideN);
+                const sideS = new THREE.Mesh(sideGeoH, sidewalkMat);
+                sideS.position.set(blockCenterX, 0.05, blockCenterZ + BLOCK_INNER / 2 + SIDEWALK_WIDTH / 2);
+                scene.add(sideS);
+                const sideGeoV = new THREE.PlaneGeometry(SIDEWALK_WIDTH, BLOCK_INNER);
+                sideGeoV.rotateX(-Math.PI / 2);
+                const sideW = new THREE.Mesh(sideGeoV, sidewalkMat);
+                sideW.position.set(blockCenterX - BLOCK_INNER / 2 - SIDEWALK_WIDTH / 2, 0.05, blockCenterZ);
+                scene.add(sideW);
+                const sideE = new THREE.Mesh(sideGeoV, sidewalkMat);
+                sideE.position.set(blockCenterX + BLOCK_INNER / 2 + SIDEWALK_WIDTH / 2, 0.05, blockCenterZ);
+                scene.add(sideE);
+            }
+        }
+
+        function createSegmentRoad(x1, z1, x2, z2, width, material, y = 0.085) {
+            const dx = x2 - x1, dz = z2 - z1;
+            const length = Math.hypot(dx, dz);
+            const rotation = Math.atan2(dx, dz);
+            const roadGeo = new THREE.PlaneGeometry(width, length);
+            roadGeo.rotateX(-Math.PI / 2);
+            const road = new THREE.Mesh(roadGeo, material);
+            road.position.set((x1 + x2) / 2, y, (z1 + z2) / 2);
+            road.rotation.y = rotation;
+            scene.add(road);
+            const stripeMat = new THREE.MeshBasicMaterial({ color: 0xe5dfbf });
+            for (let t = 0.08; t < 0.96; t += 0.065) {
+                const dashGeo = new THREE.PlaneGeometry(3.3, 0.28);
+                dashGeo.rotateX(-Math.PI / 2);
+                const dash = new THREE.Mesh(dashGeo, stripeMat);
+                dash.position.set(x1 + dx * t, y + 0.012, z1 + dz * t);
+                dash.rotation.y = rotation;
+                scene.add(dash);
+            }
+        }
+        const connectorShoulderMat = new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0x97876c });
+        for (let i = 0; i < ROAD_PATH.length - 1; i++) {
+            const a = ROAD_PATH[i], b = ROAD_PATH[i + 1];
+            createSegmentRoad(a.x, a.z, b.x, b.z, 13, connectorShoulderMat, 0.065);
+            createSegmentRoad(a.x, a.z, b.x, b.z, 8.5, connectorRoadMat, 0.085);
+        }
+        // Doğu tarafındaki dış otoparka kısa ve düz giriş bağlantısı.
+        createSegmentRoad(210, 175, 221, 175, 8, connectorRoadMat, 0.085);
+        for (let i = 0; i < BEACH_ROAD_PATH.length - 1; i++) {
+            const a = BEACH_ROAD_PATH[i], b = BEACH_ROAD_PATH[i + 1];
+            createSegmentRoad(a.x, a.z, b.x, b.z, 13, connectorShoulderMat, 0.065);
+            createSegmentRoad(a.x, a.z, b.x, b.z, 8.5, connectorRoadMat, 0.085);
+        }
+
+        const windowMat = new THREE.MeshBasicMaterial({ color: 0xffff99 });
+
+        function createSkyscraper(x, z, width, depth, height, color) {
+            const group = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), new THREE.MeshLambertMaterial({ color: color }));
+            body.position.y = height / 2;
+            group.add(body);
+            const floors = Math.floor(height / 6);
+            const colsX = Math.floor(width / 5);
+            for (let f = 1; f < floors; f++) {
+                const y = f * 6;
+                for (let c = 0; c < colsX; c++) {
+                    const wx = -width / 2 + 2 + c * 5;
+                    const winGeo = new THREE.PlaneGeometry(2, 3);
+                    const win = new THREE.Mesh(winGeo, windowMat);
+                    win.position.set(wx, y, depth / 2 + 0.01);
+                    group.add(win);
+                    const win2 = new THREE.Mesh(winGeo, windowMat);
+                    win2.position.set(wx, y, -depth / 2 - 0.01);
+                    win2.rotation.y = Math.PI;
+                    group.add(win2);
+                }
+            }
+            group.position.set(x, 0, z);
+            scene.add(group);
+            buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
+        }
+
+        function createHouse(x, z, width, depth, color) {
+            const group = new THREE.Group();
+            const height = 8;
+            const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), new THREE.MeshLambertMaterial({ color: color }));
+            body.position.y = height / 2;
+            group.add(body);
+            const roofGeo = new THREE.ConeGeometry(Math.sqrt(width * width + depth * depth) / 2, 4, 4);
+            const roof = new THREE.Mesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0x8b3a3a }));
+            roof.position.y = height + 2;
+            roof.rotation.y = Math.PI / 4;
+            group.add(roof);
+            const door = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3), new THREE.MeshLambertMaterial({ color: 0x4a2f1a }));
+            door.position.set(0, 1.5, depth / 2 + 0.01);
+            group.add(door);
+            const winGeo = new THREE.PlaneGeometry(1.2, 1.2);
+            const win1 = new THREE.Mesh(winGeo, windowMat);
+            win1.position.set(-width / 2 + 1.5, 5, depth / 2 + 0.01);
+            group.add(win1);
+            const win2 = new THREE.Mesh(winGeo, windowMat);
+            win2.position.set(width / 2 - 1.5, 5, depth / 2 + 0.01);
+            group.add(win2);
+            // Gerçek ev oranlarını koruyan saçak, pencere çerçevesi, kepenk, kapı kasası ve baca.
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x703a32 });
+            const roofLeft = new THREE.Mesh(new THREE.BoxGeometry(width * 0.58, 0.42, depth + 1.3), roofMat);
+            roofLeft.position.set(-width * 0.23, height + 1.05, 0); roofLeft.rotation.z = -0.38; group.add(roofLeft);
+            const roofRight = new THREE.Mesh(new THREE.BoxGeometry(width * 0.58, 0.42, depth + 1.3), roofMat);
+            roofRight.position.set(width * 0.23, height + 1.05, 0); roofRight.rotation.z = 0.38; group.add(roofRight);
+            const trimMat = new THREE.MeshLambertMaterial({ color: 0xf3dfbe });
+            for (const wx of [-width / 2 + 1.5, width / 2 - 1.5]) {
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(1.55, 1.55, 0.12), trimMat);
+                frame.position.set(wx, 5, depth / 2 + 0.07); group.add(frame);
+                const shutterMat = new THREE.MeshLambertMaterial({ color: 0x426852 });
+                for (const side of [-1, 1]) {
+                    const shutter = new THREE.Mesh(new THREE.BoxGeometry(0.38, 1.5, 0.12), shutterMat);
+                    shutter.position.set(wx + side * 1.02, 5, depth / 2 + 0.11); group.add(shutter);
+                }
+            }
+            const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(1.82, 3.35, 0.18), trimMat);
+            doorFrame.position.set(0, 1.68, depth / 2 + 0.03); group.add(doorFrame);
+            const doorKnob = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshLambertMaterial({ color: 0xd7b24b }));
+            doorKnob.position.set(0.48, 1.55, depth / 2 + 0.16); group.add(doorKnob);
+            const step = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.24, 0.8), new THREE.MeshLambertMaterial({ color: 0x9b907e }));
+            step.position.set(0, 0.12, depth / 2 + 0.45); group.add(step);
+            const chimney = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.6, 1.2), new THREE.MeshLambertMaterial({ color: 0x87463a }));
+            chimney.position.set(width * 0.28, height + 2.1, -depth * 0.18); group.add(chimney);
+            group.position.set(x, 0, z);
+            scene.add(group);
+            buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
+        }
+
+        const blockTypes = [
+            ['S', 'H', 'H', 'H', 'S'],
+            ['H', 'H', 'H', 'H', 'H'],
+            ['H', 'H', 'P', 'H', 'H'],
+            ['H', 'H', 'H', 'H', 'H'],
+            ['S', 'H', 'H', 'H', 'S']
+        ];
+
+        for (let bx = 0; bx < gridCount; bx++) {
+            for (let bz = 0; bz < gridCount; bz++) {
+                const blockCenterX = firstBlockCenterX + bx * GRID_STEP;
+                const blockCenterZ = firstBlockCenterZ + bz * GRID_STEP;
+                const type = blockTypes[bz][bx];
+                const usableW = BLOCK_INNER - 12;
+                const usableD = BLOCK_INNER - 12;
+                if (type === 'S') {
+                    createSkyscraper(blockCenterX, blockCenterZ, usableW, usableD, 50 + Math.random() * 30, 0x4477bb);
+                } else if (type === 'H') {
+                    const colors = [0xddaa77, 0xcc8855, 0xbb9966, 0xaaccaa];
+                    createHouse(blockCenterX, blockCenterZ, usableW, usableD, colors[Math.floor(Math.random() * colors.length)]);
+                } else if (type === 'P') {
+                    const park = new THREE.Mesh(new THREE.PlaneGeometry(BLOCK_INNER - 6, BLOCK_INNER - 6), new THREE.MeshLambertMaterial({ color: 0x3d8c28 }));
+                    park.rotation.x = -Math.PI / 2;
+                    park.position.set(blockCenterX, 0.04, blockCenterZ);
+                    scene.add(park);
+                }
+            }
+        }
+
+        // Ağaçlar (çiftlik ve şehir dışı)
+        function createTreeOutside(x, z) {
+            const treeGroup = new THREE.Group();
+            const scale = 0.8 + Math.random() * 0.65;
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * scale, 0.55 * scale, 5 * scale, 6), new THREE.MeshLambertMaterial({ color: 0x4a2f1a }));
+            trunk.position.y = 2.5 * scale;
+            treeGroup.add(trunk);
+            const leafMat = new THREE.MeshLambertMaterial({ color: Math.random() > 0.5 ? 0x286b24 : 0x397a31 });
+            for (const [ox, oy, oz, radius] of [[0, 6, 0, 2.5], [-1.25, 5.5, 0.15, 1.7], [1.15, 5.7, -0.2, 1.8]]) {
+                const leaf = new THREE.Mesh(new THREE.SphereGeometry(radius * scale, 7, 6), leafMat);
+                leaf.position.set(ox * scale, oy * scale, oz * scale);
+                treeGroup.add(leaf);
+            }
+            treeGroup.position.set(x, terrainHeightAt(x, z), z);
+            scene.add(treeGroup);
+            buildings.push({ x, z, halfW: 0.85 * scale, halfD: 0.85 * scale });
+        }
+
+        for (let i = 0; i < 82; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = CITY_RADIUS + Math.random() * 100;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            const distToCity = Math.sqrt((x - CITY_CENTER_X) ** 2 + (z - CITY_CENTER_Z) ** 2);
+            if (distToCity < CITY_RADIUS) continue;
+            const distToFarm = Math.sqrt((x - FARM_CX) ** 2 + (z - FARM_CZ) ** 2);
+            if (distToFarm < 150 || distanceToRoadAxis(x, z) < 20) continue;
+            if (Math.abs(x - PARKING_CENTER.x) < 27 && Math.abs(z - PARKING_CENTER.z) < 17) continue;
+            let tooCloseToMountain = false;
+            for (let m of mountains) {
+                const dx = x - m.x;
+                const dz = z - m.z;
+                if (Math.sqrt(dx * dx + dz * dz) < m.radius + 5) { tooCloseToMountain = true; break; }
+            }
+            if (tooCloseToMountain) continue;
+            createTreeOutside(x, z);
+        }
+
+
+        // Sahil: şehirden gelen düz yolun sonunda kare çizgili otopark, kum ve sığ deniz.
+        const sandMat = new THREE.MeshLambertMaterial({ map: sandTexture, color: 0xe7c78d });
+        const beachSand = new THREE.Mesh(new THREE.PlaneGeometry(250, 65), sandMat);
+        beachSand.rotation.x = -Math.PI / 2;
+        beachSand.position.set(BEACH_PARKING_CENTER.x, 0.018, -420);
+        scene.add(beachSand);
+        const beachCarPark = new THREE.Mesh(new THREE.PlaneGeometry(38, 22), new THREE.MeshLambertMaterial({ color: 0x35393b }));
+        beachCarPark.rotation.x = -Math.PI / 2;
+        beachCarPark.position.set(BEACH_PARKING_CENTER.x, 0.078, BEACH_PARKING_CENTER.z);
+        scene.add(beachCarPark);
+        const parkLineMat = new THREE.MeshBasicMaterial({ color: 0xf1e6c9 });
+        for (let i = 0; i < 5; i++) {
+            const line = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 8), parkLineMat);
+            line.rotation.x = -Math.PI / 2;
+            line.position.set(BEACH_PARKING_CENTER.x - 12 + i * 6, 0.088, BEACH_PARKING_CENTER.z);
+            scene.add(line);
+        }
+        const beachCarMaterials = [0x4477a8, 0xb54436, 0xe3d7ae, 0x43554d];
+        for (let i = 0; i < 4; i++) {
+            const cx = BEACH_PARKING_CENTER.x - 9 + (i % 2) * 18;
+            const cz = BEACH_PARKING_CENTER.z - 5 + Math.floor(i / 2) * 10;
+            const car = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.15, 2.05), new THREE.MeshLambertMaterial({ color: beachCarMaterials[i] }));
+            body.position.y = 0.9; car.add(body);
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.9, 1.75), new THREE.MeshLambertMaterial({ color: 0x9db6bb }));
+            cabin.position.set(0, 1.78, -0.08); car.add(cabin);
+            const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.22, 10);
+            const wheelMat = new THREE.MeshLambertMaterial({ color: 0x161819 });
+            for (const wx of [-1.5, 1.5]) for (const wz of [-0.86, 0.86]) {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat); wheel.rotation.z = Math.PI / 2; wheel.position.set(wx, 0.45, wz); car.add(wheel);
+            }
+            car.position.set(cx, 0.08, cz); scene.add(car);
+            buildings.push({ x: cx, z: cz, halfW: 2.5, halfD: 1.45 });
+        }
+        const waterGeo = new THREE.PlaneGeometry(280, 53, 48, 16);
+        waterGeo.rotateX(-Math.PI / 2);
+        const waterColors = [];
+        const waterPos = waterGeo.attributes.position;
+        for (let i = 0; i < waterPos.count; i++) {
+            const edge = Math.max(0, Math.min(1, (waterPos.getZ(i) + 26.5) / 53));
+            waterColors.push(0.10 + edge * 0.02, 0.58 - edge * 0.12, 0.68 + edge * 0.12);
+        }
+        waterGeo.setAttribute('color', new THREE.Float32BufferAttribute(waterColors, 3));
+        const waterMat = new THREE.MeshPhongMaterial({ vertexColors: true, transparent: true, opacity: 0.91, shininess: 70, side: THREE.DoubleSide });
+        const seaMesh = new THREE.Mesh(waterGeo, waterMat);
+        seaMesh.position.set(BEACH_PARKING_CENTER.x, -0.16, BEACH_WATER_EDGE - 26.5);
+        scene.add(seaMesh);
+        const waterBaseY = waterGeo.attributes.position.array.slice();
+        const beachFoam = new THREE.Mesh(new THREE.PlaneGeometry(248, 1.2), new THREE.MeshBasicMaterial({ color: 0xe8f4eb, transparent: true, opacity: 0.63 }));
+        beachFoam.rotation.x = -Math.PI / 2;
+        beachFoam.position.set(BEACH_PARKING_CENTER.x, 0.005, BEACH_WATER_EDGE + 0.3);
+        scene.add(beachFoam);
+        const pondShore = new THREE.Mesh(new THREE.RingGeometry(11.5, 15.5, 32), new THREE.MeshLambertMaterial({ color: 0x8b896b }));
+        pondShore.rotation.x = -Math.PI / 2; pondShore.position.set(FOREST_POND_CENTER.x, 0.012, FOREST_POND_CENTER.z); scene.add(pondShore);
+        const pondSurface = new THREE.Mesh(new THREE.CircleGeometry(12, 32), new THREE.MeshPhongMaterial({ color: 0x347f8c, transparent: true, opacity: 0.88, shininess: 55, side: THREE.DoubleSide }));
+        pondSurface.rotation.x = -Math.PI / 2; pondSurface.position.set(FOREST_POND_CENTER.x, -0.08, FOREST_POND_CENTER.z); scene.add(pondSurface);
+        const beachRockMesh = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ vertexColors: true }), 58);
+        const beachRockDummy = new THREE.Object3D(), beachRockColor = new THREE.Color(); let beachRockCount = 0;
+        for (let i = 0; i < 58; i++) {
+            const x = BEACH_PARKING_CENTER.x - 118 + i * 4.1;
+            const z = (i % 2 ? -450.7 : -451.8);
+            const sx = 0.35 + (i % 4) * 0.12, sy = 0.25 + (i % 3) * 0.09;
+            beachRockDummy.position.set(x, sy * 0.45, z); beachRockDummy.rotation.set(0.1, i * 0.7, 0.08); beachRockDummy.scale.set(sx, sy, 0.45 + sx * 0.4); beachRockDummy.updateMatrix();
+            beachRockMesh.setMatrixAt(beachRockCount, beachRockDummy.matrix);
+            beachRockColor.setHex([0x887d69,0x9e9279,0x6f756f][i % 3]); beachRockMesh.setColorAt(beachRockCount, beachRockColor); beachRockCount++;
+        }
+        beachRockMesh.count = beachRockCount; beachRockMesh.instanceMatrix.needsUpdate = true; if (beachRockMesh.instanceColor) beachRockMesh.instanceColor.needsUpdate = true; scene.add(beachRockMesh);
+        const umbrellaMats = [new THREE.MeshLambertMaterial({ color: 0xd64c3d }), new THREE.MeshLambertMaterial({ color: 0xf1d16c }), new THREE.MeshLambertMaterial({ color: 0x327ba0 })];
+        for (let i = 0; i < 5; i++) {
+            const x = BEACH_PARKING_CENTER.x - 95 + i * 46, z = -414 - (i % 2) * 10;
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,2.8,6), new THREE.MeshLambertMaterial({ color: 0xe9e1cb })); pole.position.set(x,1.4,z); scene.add(pole);
+            const canopy = new THREE.Mesh(new THREE.ConeGeometry(2.2,0.8,8), umbrellaMats[i%umbrellaMats.length]); canopy.position.set(x,2.9,z); scene.add(canopy);
+            const towel = new THREE.Mesh(new THREE.BoxGeometry(3.4,0.04,5), new THREE.MeshLambertMaterial({ color: i%2 ? 0x2a7d9c : 0xd64f44 })); towel.position.set(x+4,0.035,z); scene.add(towel);
+        }
+        const palmMat = new THREE.MeshLambertMaterial({ color: 0x76502f });
+        const palmLeafMat = new THREE.MeshLambertMaterial({ color: 0x3f843e, side: THREE.DoubleSide });
+        for (let i = 0; i < 6; i++) {
+            const x = BEACH_PARKING_CENTER.x - 118 + i * 46, z = -392 - (i%2)*15;
+            const palm = new THREE.Group();
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.66,8,7), palmMat); trunk.position.y=4; palm.add(trunk);
+            for(let f=0;f<7;f++) { const leaf=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.12,5.4),palmLeafMat); leaf.position.set(0,7.5,0); leaf.rotation.y=f*Math.PI*2/7; leaf.rotation.x=-0.25; palm.add(leaf); }
+            palm.position.set(x,0,z); scene.add(palm);
+        }
+        // Mağara ağızları ve kayalık yığınları orman kıyısında, yol ve yürünebilir alandan uzakta.
+        for (const [cx,cz] of [[312,-108],[306,42]]) {
+            const cave = new THREE.Group();
+            const rockMat = new THREE.MeshLambertMaterial({ color: 0x625b50 });
+            const arch = new THREE.Mesh(new THREE.TorusGeometry(3.6,1.15,7,12,Math.PI),rockMat); arch.position.y=3.2; arch.rotation.z=Math.PI; cave.add(arch);
+            const dark = new THREE.Mesh(new THREE.CircleGeometry(2.65,12),new THREE.MeshBasicMaterial({color:0x101319,side:THREE.DoubleSide})); dark.position.set(0,2.05,0.42); cave.add(dark);
+            for(let r=0;r<7;r++){const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1,0),rockMat);stone.scale.set(1.1+r%2*.35,.8+r%3*.2,1);stone.position.set(-5.4+r*1.8,.35+(r%2)*.22,0.8);cave.add(stone);}
+            cave.position.set(cx,terrainHeightAt(cx,cz),cz); scene.add(cave);
+            buildings.push({x:cx,z:cz,halfW:5.2,halfD:3.2});
+        }
+
+        // İnsan ölçüsünde, duraklayıp yürüyen kasaba ve plaj sakinleri.
+        const townNpcs = [];
+        function createHumanNpc(x,z,seed,beach=false) {
+            const g = new THREE.Group();
+            const colors = [[0x3d7290,0x34414f],[0x9b6042,0x3e5b48],[0x6f587f,0x474245],[0x45765d,0x494d59],[0xc09449,0x56636e]];
+            const palette=colors[seed%colors.length], skin=new THREE.MeshLambertMaterial({color:[0xc58f6c,0xe0b49a,0x936348][seed%3]}), shirt=new THREE.MeshLambertMaterial({color:palette[0]}), pants=new THREE.MeshLambertMaterial({color:palette[1]}), hair=new THREE.MeshLambertMaterial({color:[0x35271e,0x18191d,0x785532][seed%3]}), shoeMat=new THREE.MeshLambertMaterial({color:0x292622});
+            const torso=new THREE.Mesh(new THREE.BoxGeometry(.52,.78,.3),shirt); torso.position.y=1.05; g.add(torso);
+            const neck=new THREE.Mesh(new THREE.CylinderGeometry(.09,.11,.16,7),skin); neck.position.y=1.52; g.add(neck);
+            const head=new THREE.Mesh(new THREE.SphereGeometry(.22,10,8),skin); head.position.y=1.76; g.add(head);
+            const hairCap=new THREE.Mesh(new THREE.SphereGeometry(.225,10,6,0,Math.PI*2,0,Math.PI*.48),hair); hairCap.position.y=1.83; g.add(hairCap);
+            const eyeMat=new THREE.MeshBasicMaterial({color:0x1b1b1b}); for(const ex of [-.075,.075]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.025,6,5),eyeMat);eye.position.set(ex,1.78,.202);g.add(eye);}
+            const armL=new THREE.Group(),armR=new THREE.Group(); armL.position.set(-.33,1.31,0);armR.position.set(.33,1.31,0);
+            for(const [arm,sign] of [[armL,-1],[armR,1]]){const sleeve=new THREE.Mesh(new THREE.CylinderGeometry(.09,.075,.52,7),shirt);sleeve.position.y=-.21;arm.add(sleeve);const hand=new THREE.Mesh(new THREE.SphereGeometry(.075,7,6),skin);hand.position.y=-.49;arm.add(hand);g.add(arm);}
+            const legs=[];for(const lx of [-.145,.145]){const leg=new THREE.Group();leg.position.set(lx,.68,0);const trousers=new THREE.Mesh(new THREE.CylinderGeometry(.105,.09,.62,7),pants);trousers.position.y=-.14;leg.add(trousers);const shoe=new THREE.Mesh(new THREE.BoxGeometry(.2,.12,.32),shoeMat);shoe.position.set(0,-.49,.07);leg.add(shoe);g.add(leg);legs.push(leg);}
+            if(beach){const shorts=new THREE.Mesh(new THREE.BoxGeometry(.5,.28,.31),new THREE.MeshLambertMaterial({color:0x3e7185}));shorts.position.y=.72;g.add(shorts);}
+            g.position.set(x,terrainHeightAt(x,z),z);g.rotation.y=(seed%6)*Math.PI/3;g.userData={legs,armL,armR,phase:seed*1.7,pace:.45+seed%4*.08,homeX:x,homeZ:z,walkRadius:beach?3:6};scene.add(g);townNpcs.push(g);return g;
+        }
+        const parkHumanX = firstBlockCenterX + 2 * GRID_STEP, parkHumanZ = firstBlockCenterZ + 2 * GRID_STEP;
+        [[-8,-7],[6,-8],[-2,6],[9,6],[-10,4],[1,10]].forEach((p,i)=>createHumanNpc(parkHumanX+p[0],parkHumanZ+p[1],i,false));
+        for(let i=0;i<8;i++) createHumanNpc(BEACH_PARKING_CENTER.x-85+(i%4)*44,-405+Math.floor(i/4)*17,20+i,true);
+
+        // ==========================================
+        // ESKİ ŞEHİR + PLAJ TEMİZLİĞİ
+        // Sadece eski şehir ve plaj objeleri kaldırılır. Çiftlik ve dağlar korunur.
+        // ==========================================
+        const legacyCityCenter = { x: CITY_CENTER_X, z: CITY_CENTER_Z };
+        const legacyBeachCenter = BEACH_PARKING_CENTER;
+        const cityLimit = CITY_RADIUS + 18;
+        const beachMinX = legacyBeachCenter.x - 140, beachMaxX = legacyBeachCenter.x + 140;
+        const beachMinZ = -456, beachMaxZ = -378;
+        for (const obj of scene.children.slice()) {
+            // Sadece şehir/plaj kodunun oluşturduğu objeleri değerlendir.
+            // Güneş, ay, gökyüzü, çiftlik, dağlar, bulutlar ve diğer önceden var olan dünya objeleri korunur.
+            if (legacyPreCityScene.has(obj)) continue;
+            if (Array.isArray(grassBatches) && grassBatches.includes(obj)) continue;
+            if (obj === rockMesh) continue;
+            const p = obj.position;
+            const nearCity = Math.hypot(p.x - legacyCityCenter.x, p.z - legacyCityCenter.z) <= cityLimit;
+            const nearBeach = p.x >= beachMinX && p.x <= beachMaxX && p.z >= beachMinZ && p.z <= beachMaxZ;
+            const isPond = Math.hypot(p.x - FOREST_POND_CENTER.x, p.z - FOREST_POND_CENTER.z) < 25;
+            if ((nearCity || nearBeach) && !isPond) scene.remove(obj);
+        }
+        const keptBuildings = buildings.filter(b => {
+            const nearCity = Math.hypot(b.x - legacyCityCenter.x, b.z - legacyCityCenter.z) <= cityLimit;
+            const nearBeach = b.x >= beachMinX && b.x <= beachMaxX && b.z >= beachMinZ && b.z <= beachMaxZ;
+            return !nearCity && !nearBeach;
+        });
+        buildings.splice(0, buildings.length, ...keptBuildings);
+        for (const npc of townNpcs) scene.remove(npc);
+        townNpcs.length = 0;
+
         // ==========================================
         // YENİ ŞEHİR MAKETİ
+        // Şehir Maketi 3D.html içindeki model mevcut oyun sahnesine aktarılıyor.
+        // ==========================================
+
         // Şehir Maketi 3D.html içindeki model, mevcut oyun sahnesine aktarılıyor.
         // Dağlara ve çiftliğe dokunulmaz.
         // ==========================================
+        const cityModelController = (() => {
         const cityRoot = new THREE.Group();
         cityRoot.position.set(CITY_CENTER_X, terrainHeightAt(CITY_CENTER_X, CITY_CENTER_Z) + 0.2, CITY_CENTER_Z);
         cityRoot.scale.setScalar(CITY_MODEL_SCALE);
@@ -2385,13 +2801,15 @@ function stepCar(c,dt){
 
         // Modelin kendi animasyonları ana oyun döngüsüne bağlanır.
         let cityClock = 0, cityTt = 0;
-        function updateCityModel(dt) {
+        return function updateCityModel(dt) {
             cityClock += dt;
             cityTt = cityClock % 30;
             if (typeof lights === 'function') lights();
             if (typeof cars !== 'undefined') cars.forEach(c => stepCar(c, dt));
             if (typeof peds !== 'undefined') peds.forEach(p => stepPed(p, dt));
-        }
+        };
+        })();
+        function updateCityModel(dt) { cityModelController(dt); }
         // Lush forest region: thousands of low-cost instanced trees cover ~90% of the woodland canopy.
         const forestTrees=[]; const orchardTrees=[]; const forestTreeGrid=new Map(); const FOREST_CELL=8;
         function mulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
@@ -2418,6 +2836,8 @@ function stepCar(c,dt){
             if(Math.hypot(x-FARM_CX,z-FARM_CZ)<164)continue;
             if(Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<CITY_RADIUS+22)continue;
             if(distanceToRoadAxis(x,z)<10)continue;
+            if(Math.abs(x-BEACH_PARKING_CENTER.x)<135&&z<-382)continue;
+            if(Math.abs(x-BEACH_PARKING_CENTER.x)<20&&z<-305&&z>-372)continue;
             const scale=.82+forestRand()*.66, groundY=terrainHeightAt(x,z);
             const tree={x,z,scale,groundY,radius:.68*scale,id:null,apples:6};
             const gridKey=`${Math.floor(x/FOREST_CELL)},${Math.floor(z/FOREST_CELL)}`;
@@ -3711,6 +4131,8 @@ function stepCar(c,dt){
                     const score=along+side*2;if(score<bestScore){bestScore=score;best={type:'apple',treeId:tree.id,point,distance:along};}
                 }
             }
+            const waterX=Math.max(BEACH_PARKING_CENTER.x-122,Math.min(BEACH_PARKING_CENTER.x+122,x));
+            const waterTargets=[{x:waterX,z:BEACH_WATER_EDGE+1.0},{x:FOREST_POND_CENTER.x,z:FOREST_POND_CENTER.z}];
             for(const target of waterTargets){const waterPoint=new THREE.Vector3(target.x,0,target.z),waterVec=waterPoint.clone().sub(origin);const waterDistance=Math.hypot(x-target.x,z-target.z),waterFacing=waterVec.normalize().dot(dir);if(waterDistance<6.2&&waterFacing>.28&&(!best||waterDistance<best.distance+.3))best={type:'water',distance:waterDistance};}
             return best;
         }
@@ -3792,6 +4214,7 @@ function stepCar(c,dt){
             for(let gx=cx-reach;gx<=cx+reach;gx++)for(let gz=cz-reach;gz<=cz+reach;gz++){
                 for(const tree of (forestTreeGrid.get(`${gx},${gz}`)||[]))if(Math.hypot(x-tree.x,z-tree.z)<radius+tree.radius)return true;
             }
+            if(x>BEACH_PARKING_CENTER.x-142&&x<BEACH_PARKING_CENTER.x+142&&z<BEACH_WATER_EDGE-2&&z>BEACH_WATER_EDGE-54)return true;
             return false;
         };
         function updateTownNpcs(dt,now) {
@@ -3829,7 +4252,7 @@ function stepCar(c,dt){
                 }
                 const mx=targetX-animal.position.x,mz=targetZ-animal.position.z,ml=Math.hypot(mx,mz);const speed=u.temperament==='aggressive'&&distance<12?4.4:(u.temperament==='shy'&&distance<10?4.8:1.25);
                 if(ml>.6){const step=Math.min(ml,speed*dt);const nx=animal.position.x+mx/ml*step,nz=animal.position.z+mz/ml*step;
-                    if(!previousCollisionCheck(nx,nz,.55)){animal.position.x=nx;animal.position.z=nz;}
+                    if(!previousCollisionCheck(nx,nz,.55)&&!(nx>BEACH_PARKING_CENTER.x-142&&nx<BEACH_PARKING_CENTER.x+142&&nz<BEACH_WATER_EDGE-2)){animal.position.x=nx;animal.position.z=nz;}
                     animal.rotation.y=Math.atan2(mx,mz);u.legs.forEach((leg,i)=>leg.rotation.x=Math.sin(u.phase*4+(i%2)*Math.PI)*.42);
                 }else u.legs.forEach(l=>l.rotation.x*=.78);
                 animal.position.y=terrainHeightAt(animal.position.x,animal.position.z)+Math.abs(Math.sin(u.phase*2))*.08;
@@ -3839,7 +4262,11 @@ function stepCar(c,dt){
                 animal.userData.statusSprite.visible=gameStarted&&distance<18;
             }
         }
-        function animateNeedsAndInteraction(){const now=performance.now();const dt=Math.min(.07,Math.max(.001,(now-lastNpcUpdate)/1000));lastNpcUpdate=now;updateTownNpcs(dt,now);updateWildlife(dt,now);updateCityModel(dt);scanInteraction(now);
+        function updateWater(now) {
+            const pos=waterGeo.attributes.position;for(let i=0;i<pos.count;i++){const base=waterBaseY[i*3+1],x=waterBaseY[i*3],z=waterBaseY[i*3+2];pos.setY(i,base+Math.sin(x*.055+now*.0018)*.16+Math.cos(z*.09+now*.0014)*.09);}
+            pos.needsUpdate=true;waterGeo.computeVertexNormals();beachFoam.material.opacity=.48+Math.sin(now*.0018)*.12;
+        }
+        function animateNeedsAndInteraction(){const now=performance.now();const dt=Math.min(.07,Math.max(.001,(now-lastNpcUpdate)/1000));lastNpcUpdate=now;updateWater(now);updateTownNpcs(dt,now);updateWildlife(dt,now);updateCityModel(dt);scanInteraction(now);
             if(gameStarted&&playerDonkey.userData.neckHeadGroup&&now<actionAnimationUntil){const pulse=Math.sin((now-(actionAnimationUntil-1100))*.012);if(actionAnimationType==='eat')playerDonkey.userData.neckHeadGroup.rotation.x=pitch+.55*Math.max(0,pulse);else if(actionAnimationType==='drink')playerDonkey.userData.neckHeadGroup.rotation.x=pitch-.3+.18*pulse;else if(actionAnimationType==='attack'){playerDonkey.userData.neckHeadGroup.rotation.x=pitch-.4*Math.max(0,pulse);playerDonkey.userData.legs[0].rotation.x=-.72*Math.max(0,pulse);}else if(actionAnimationType==='hurt')playerDonkey.rotation.z=.12*pulse;}
             else if(playerDonkey.userData.neckHeadGroup&&gameStarted){playerDonkey.userData.neckHeadGroup.rotation.x=pitch;playerDonkey.rotation.z=0;}
         }
