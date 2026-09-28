@@ -2050,33 +2050,40 @@
             for(const box of suppliedFarmColliders){
                 buildings.push({x:box.x,z:box.z,halfW:box.halfW,halfD:box.halfD});
             }
-            // Çiftlikteki sabit görünen nesnelerin tamamını collider'a dahil et.
-            // Yürünebilir zemin, yollar ve ahır çatısı gibi yüzeyler özellikle hariç tutulur.
+            // Çiftlik collider'ları: sadece gerçek engel olan nesneler.
+            // Ahır iç mekanı yürünebilir, kapı boşlukları açık bırakılır.
             const farmColliderSkip=/^(Arazi|Çalışma avlusu|Gölet|Toprak yoldaki tekerlek izi|Ahır çatısı|Çatı mahyası|Saçak çıtası|Ahır üçgen alınlığı|Ahır içi saman zemin|Ahır orta geçit|Ahır tavan kirişi|Ahır samanlık merdiveni|Ahır lambası|Üst kapak|Üst kapak çerçevesi|Yan ahır penceresi)$/i;
             const farmIsWalkableMesh=(obj)=>{
                 const n=String(obj.name||'').toLocaleLowerCase('tr-TR');
                 if(farmColliderSkip.test(String(obj.name||'')))return true;
                 if(/yol|iz|avlu|tarla|bostan|sebze yatağı|çim|arazi|zemin|göl/.test(n))return true;
-                if(/çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere/.test(n))return true;
+                if(/çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere|çiçek|çayır|yaprak/.test(n))return true;
                 return false;
             };
             const farmExtraColliderKeys=new Set();
-            // Tanım, ilk traverse çağrısından önce olmalı; aksi halde TDZ ReferenceError menüyü de durdurur.
             const isDynamicFarmMesh=(mesh)=>{let p=mesh.parent;while(p&&p!==farmRoot){if(p.userData?.isFarmWorker||p.userData?.walkAgent||p.userData?.isBarnDoorPivot)return true;p=p.parent}return false};
             const farmColliderBuildingStart=buildings.length;
+            // Ahır içindeki nesnelerin collider olmaması için ahır referansı
+            const barnInteriorNames=/Ahır|Barn/i;
             farmRoot.traverse(object=>{
-                if(!object.isMesh||farmIsWalkableMesh(object)||isDynamicFarmMesh(object))return;
-                let inBarn=false,par=object.parent;while(par&&par!==farmRoot){if(par.name==='Ahır'){inBarn=true;break}par=par.parent}
-                const n=String(object.name||'').toLocaleLowerCase('tr-TR');
-                // Ahırın içini tamamen kapatan tek parça collider kullanma. İçerisi yürünebilir;
-                // sadece duvar/temel/kapı çerçevesi gibi gerçek sınırlar aşağıda ayrıca eklenir.
-                if(inBarn)return;
+                if(!object.isMesh||!object.geometry||!object.material)return;
+                if(farmIsWalkableMesh(object)||isDynamicFarmMesh(object))return;
+                // Ahır içindeki nesneleri atla (inekler, bölmeler, saman vb. yürünebilir olmalı)
+                let par=object.parent;
+                while(par&&par!==farmRoot){
+                    if(par.name&&barnInteriorNames.test(par.name))return;
+                    par=par.parent;
+                }
                 const bounds=new THREE.Box3().setFromObject(object);if(bounds.isEmpty())return;
                 const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
-                if(size.x<.06||size.z<.06||size.x>60||size.z>60)return;
+                // Çok küçük veya çok büyük nesneleri atla
+                if(size.x<.35||size.z<.35)return;
+                if(size.x>60||size.z>60)return;
+                // Sadece belirgin yükseklikteki nesneler collider olsun (yerdeki düz şeyler değil)
+                if(size.y<.4)return;
                 const key=[center.x.toFixed(2),center.z.toFixed(2),size.x.toFixed(2),size.z.toFixed(2)].join('|');
                 if(farmExtraColliderKeys.has(key))return;farmExtraColliderKeys.add(key);
-                buildings.push({x:center.x,z:center.z,halfW:size.x*.5+.28,halfD:size.z*.5+.28});
+                buildings.push({x:center.x,z:center.z,halfW:size.x*.5+.25,halfD:size.z*.5+.25});
             });
             const staticBatches=new Map();
             farmRoot.traverse(object=>{
@@ -2105,13 +2112,11 @@
             // Collider kutuları modelin yerel koordinatlarında oluşturuldu; farmRoot ölçek/konumundan
             // sonra bunları dünya koordinatına taşı. Böylece çiftlik objelerinin collider'ları kaymaz.
             const farmScale=farmRoot.scale.x||1;
-            // Ahır: sadece duvarlar ve kapı çevresi collider. İç zemin, bölmeler, yemlikler,
-            // çatı ve ışıklar oyuncunun yatay hareketini bloke etmez. Kapı kanatları açık
-            // başlangıçta olduğu için geçiş ağzına collider koyulmuyor.
+            // Ahır: sadece yan ve arka duvarlar + ön duvarın kapı dışı kısımları.
+            // Kapı direkleri ve lento collider değil (içeride doğuyoruz, kapıdan geçebilelim).
             const barnWallColliders=[
                 [-4.41,0,.18,6.0], [4.41,0,.18,6.0], [0,-2.91,9.0,.18],
-                [-4.50,2.91,1.30,.18], [4.50,2.91,1.30,.18],
-                [-3.20,3.08,.20,.28], [3.20,3.08,.20,.28], [0,3.08,6.55,.18]
+                [-4.50,2.91,1.30,.18], [4.50,2.91,1.30,.18]
             ];
             for(const [lx,lz,hw,hd] of barnWallColliders){
                 const wx=farmRoot.position.x-lx*farmScale, wz=farmRoot.position.z-lz*farmScale;
@@ -3365,7 +3370,7 @@ function stepCar(c,dt){
             initWebSocket();
             // Başlangıç noktası doğrudan yeni çiftlik modelindeki ahırın içi.
             const barnSpawnX=FARM_CX+1.2, barnSpawnZ=FARM_CZ+1.2;
-            playerDonkey.position.set(barnSpawnX, terrainHeightAt(barnSpawnX, barnSpawnZ)+.02, barnSpawnZ);
+            playerDonkey.position.set(barnSpawnX, 0.25, barnSpawnZ);
             gameStarted = true;
             cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
