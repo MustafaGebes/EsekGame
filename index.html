@@ -387,7 +387,7 @@
         // Zemin
         const terrainGeo = new THREE.PlaneGeometry(1200, 1200, 80, 80);
         terrainGeo.rotateX(-Math.PI / 2);
-        const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ map: grassTexture, color: 0xa8c8a0 }));
+        const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ map: grassTexture, color: 0x4f7f38 }));
         scene.add(terrainMesh);
 
         // ==========================================
@@ -2050,6 +2050,29 @@
             for(const box of suppliedFarmColliders){
                 buildings.push({x:box.x,z:box.z,halfW:box.halfW,halfD:box.halfD});
             }
+            // Çiftlikteki sabit görünen nesnelerin tamamını collider'a dahil et.
+            // Yürünebilir zemin, yollar ve ahır çatısı gibi yüzeyler özellikle hariç tutulur.
+            const farmColliderSkip=/^(Arazi|Çalışma avlusu|Gölet|Toprak yoldaki tekerlek izi|Ahır çatısı|Çatı mahyası|Saçak çıtası|Ahır üçgen alınlığı|Ahır içi saman zemin|Ahır orta geçit|Ahır tavan kirişi|Ahır samanlık merdiveni|Ahır lambası|Üst kapak|Üst kapak çerçevesi|Yan ahır penceresi)$/i;
+            const farmIsWalkableMesh=(obj)=>{
+                const n=String(obj.name||'').toLocaleLowerCase('tr-TR');
+                if(farmColliderSkip.test(String(obj.name||'')))return true;
+                if(/yol|iz|avlu|tarla|bostan|sebze yatağı|çim|arazi|zemin|göl/.test(n))return true;
+                if(/çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere/.test(n))return true;
+                return false;
+            };
+            const farmExtraColliderKeys=new Set();
+            farmRoot.traverse(object=>{
+                if(!object.isMesh||farmIsWalkableMesh(object)||isDynamicFarmMesh(object))return;
+                let inBarn=false,par=object.parent;while(par&&par!==farmRoot){if(par.name==='Ahır'){inBarn=true;break}par=par.parent}
+                const n=String(object.name||'').toLocaleLowerCase('tr-TR');
+                if(inBarn&&!/duvar|cephe|temel|söve|lento|tahta|bölme|yemlik|ray|varil/.test(n))return;
+                const bounds=new THREE.Box3().setFromObject(object);if(bounds.isEmpty())return;
+                const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+                if(size.x<.06||size.z<.06||size.x>60||size.z>60)return;
+                const key=[center.x.toFixed(2),center.z.toFixed(2),size.x.toFixed(2),size.z.toFixed(2)].join('|');
+                if(farmExtraColliderKeys.has(key))return;farmExtraColliderKeys.add(key);
+                buildings.push({x:center.x,z:center.z,halfW:size.x*.5+.28,halfD:size.z*.5+.28});
+            });
             const isDynamicFarmMesh=(mesh)=>{let p=mesh.parent;while(p&&p!==farmRoot){if(p.userData?.isFarmWorker||p.userData?.walkAgent||p.userData?.isBarnDoorPivot)return true;p=p.parent}return false};
             const staticBatches=new Map();
             farmRoot.traverse(object=>{
@@ -3312,8 +3335,9 @@ function stepCar(c,dt){
         function startGame(mode) {
             controlMode = mode;
             initWebSocket();
-            // Eşek çiftlik girişinin uzağında spawn olsun
-            playerDonkey.position.set(FARM_CX, terrainHeightAt(FARM_CX, FARM_CZ), FARM_CZ);
+            // Başlangıç noktası doğrudan yeni çiftlik modelindeki ahırın içi.
+            const barnSpawnX=FARM_CX+1.2, barnSpawnZ=FARM_CZ+1.2;
+            playerDonkey.position.set(barnSpawnX, terrainHeightAt(barnSpawnX, barnSpawnZ)+.02, barnSpawnZ);
             gameStarted = true;
             cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
@@ -3614,6 +3638,26 @@ function stepCar(c,dt){
             for (let b of buildings) {
                 if (x + radius > b.x - b.halfW && x - radius < b.x + b.halfW &&
                     z + radius > b.z - b.halfD && z - radius < b.z + b.halfD) return true;
+            }
+            // Hareketli çiftlik/şehir insanları da collider'dır.
+            if (typeof townNpcs !== 'undefined') for (const npc of townNpcs) {
+                if (npc && npc.visible && Math.hypot(x-npc.position.x,z-npc.position.z)<radius+.48) return true;
+            }
+            if (typeof peds !== 'undefined') for (const ped of peds) {
+                const g=ped&&ped.m&&ped.m.g;if(g&&g.visible&&Math.hypot(x-g.position.x,z-g.position.z)<radius+.42)return true;
+            }
+            if (typeof farmWorkers !== 'undefined') for (const worker of farmWorkers) {
+                if(!worker||!worker.visible)continue;const wp=worker.getWorldPosition(new THREE.Vector3());
+                if(Math.hypot(x-wp.x,z-wp.z)<radius+.48)return true;
+            }
+            // Şehir maketindeki ağaçlar ve trafik lambaları için sabit collider.
+            if (typeof cityRoot !== 'undefined' && typeof tl !== 'undefined') {
+                const sx=cityRoot.scale.x||1,sz=cityRoot.scale.z||1;
+                for(const t of tl){const wx=cityRoot.position.x+t[0]*sx,wz=cityRoot.position.z+t[1]*sz;if(Math.hypot(x-wx,z-wz)<radius+1.25)return true;}
+            }
+            if (typeof cityRoot !== 'undefined' && typeof tp !== 'undefined') {
+                const sx=cityRoot.scale.x||1,sz=cityRoot.scale.z||1;
+                for(const t of tp){const wx=cityRoot.position.x+t[0]*sx,wz=cityRoot.position.z+t[2]*sz;if(Math.hypot(x-wx,z-wz)<radius+.65)return true;}
             }
             return false;
         }
