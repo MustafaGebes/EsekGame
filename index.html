@@ -1703,7 +1703,7 @@
             const farmMaterialCache=new Map(),farmGeometryCache=new Map();
             const mat=(color,roughness=.86,extra={})=>{const key=JSON.stringify([String(color),roughness,extra]);let value=farmMaterialCache.get(key);if(!value){value=new THREE.MeshStandardMaterial({color,roughness,...extra});farmMaterialCache.set(key,value)}return value};
             function farmGeometry(Type,...args){const key=Type.name+':'+JSON.stringify(args);let geometry=farmGeometryCache.get(key);if(!geometry){geometry=new Type(...args);farmGeometryCache.set(key,geometry)}return geometry}
-            const mats={grass:mat('#85a95f'),grass2:mat('#97b96d'),earth:mat('#876744'),wood:mat('#a96a43'),red:mat('#a94332'),redLight:mat('#c65a43'),roof:mat('#414b48'),roof2:mat('#545956'),cream:mat('#efe3c8'),stone:mat('#a99a7a'),fence:mat('#ded2ae'),metal:mat('#9ba7a3',.45,{metalness:.55}),glass:mat('#9ec4c4',.25,{metalness:.12}),leaf:mat('#49784a'),leaf2:mat('#71914d'),apple:mat('#bd4f37'),water:mat('#247fa4',.12,{metalness:.18,transparent:true,opacity:.92}),flower:mat('#e6d883'),hay:mat('#d8b95e'),white:mat('#eee9db'),black:mat('#343835'),pink:mat('#d58d78'),crop:mat('#669344'),crop2:mat('#8ab452'),soil:mat('#695039')};
+            const mats={grass:mat('#85a95f'),grass2:mat('#97b96d'),earth:mat('#876744'),wood:mat('#a96a43'),red:mat('#a94332'),redLight:mat('#c65a43'),roof:mat('#414b48'),roof2:mat('#545956'),cream:mat('#efe3c8'),stone:mat('#a99a7a'),fence:mat('#ded2ae'),metal:mat('#9ba7a3',.45,{metalness:.55}),glass:mat('#9ec4c4',.25,{metalness:.12}),leaf:mat('#49784a'),leaf2:mat('#71914d'),apple:mat('#bd4f37'),water:mat('#2a6f8a',.15,{metalness:.3,transparent:true,opacity:.85}),flower:mat('#e6d883'),hay:mat('#d8b95e'),white:mat('#eee9db'),black:mat('#343835'),pink:mat('#d58d78'),crop:mat('#669344'),crop2:mat('#8ab452'),soil:mat('#695039')};
             function box(parent,name,x,y,z,sx,sy,sz,material,cast=true,receive=true){const m=new THREE.Mesh(farmGeometry(THREE.BoxGeometry,sx,sy,sz),material);m.name=name;m.position.set(x,y,z);m.castShadow=cast;m.receiveShadow=receive;parent.add(m);return m}
             function cylinder(parent,name,x,y,z,r1,r2,h,material,seg=16){const m=new THREE.Mesh(farmGeometry(THREE.CylinderGeometry,r1,r2,h,seg),material);m.name=name;m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
             function sphere(parent,name,x,y,z,r,material,scale=[1,1,1],seg=10){const m=new THREE.Mesh(farmGeometry(THREE.SphereGeometry,r,seg,Math.max(6,seg-2)),material);m.name=name;m.position.set(x,y,z);m.scale.set(...scale);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
@@ -1713,36 +1713,35 @@
             const ground=new THREE.Mesh(farmGeometry(THREE.PlaneGeometry,100,100,40,40),mats.grass);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;ground.name='Arazi';ground.visible=false;farmRoot.add(ground); // The game already provides seamless terrain beneath the farm.
             // Meyilli, düşük poligonlu ufuk sırtları
             // The game already supplies a distant mountain ring; avoid a second artificial ridge inside this farm.
-            // Gölet çukuru (havuz iç yüzeyi): derinleştirilmiş daire, kenarları yamaçlı.
-            // Göl aynı alanda kalır; yalnızca tabanı aşağı indirilerek derinleştirilir.
-            // Böylece suyun dışarı taşacağı yeni bir yüzey alanı oluşturulmaz.
-            const pondOuterR = 5.5, pondInnerR = 3.5, pondDepth = 5.2;
-            const POND_X = 11.5, POND_Z = -11.0; // Dünya koordinatında biraz sağa; çitlerden güvenli mesafede.
+            // ===== GÖLET DÜZENLEMESİ BAŞLANGIÇ =====
+            // Aynı eski gölet. Konumu değiştirmiyoruz; yalnızca derinliği artırıyoruz.
+            // Bu bölüm gelecekteki düzeltmelerde sadece gölet için değiştirilecek.
+            const pondOuterR = 5.5, pondInnerR = 3.5, pondDepth = 4.2;
+            const POND_LOCAL_X = 16, POND_LOCAL_Z = -11;
             const pondGeo = new THREE.CylinderGeometry(pondInnerR, pondInnerR, 0.1, 32);
-            // Çukur yan duvarı: iç silindir şeklinde aşağı doğru iner
+
+            // Çukur duvarı: üst kenar aynı yerde kalır, taban aşağı iner.
             const pondWallGeo = new THREE.CylinderGeometry(pondOuterR, pondInnerR, pondDepth, 32, 1, true);
             const pondWallMat = mat('#6b5a3e', .95);
             const pondWall = new THREE.Mesh(pondWallGeo, pondWallMat);
             pondWall.name = 'Gölet çukuru';
-            pondWall.position.set(POND_X, -pondDepth/2 + 0.04, POND_Z);
+            pondWall.position.set(POND_LOCAL_X, -pondDepth / 2 + 0.04, POND_LOCAL_Z);
             pondWall.receiveShadow = true;
             farmRoot.add(pondWall);
 
-            // Çukur tabanı (dip)
+            // Derin gölet tabanı. Collider eklenmiyor.
             const pondFloorGeo = new THREE.CircleGeometry(pondInnerR, 32);
             const pondFloor = new THREE.Mesh(pondFloorGeo, mat('#4a3a25', .98));
             pondFloor.name = 'Gölet tabanı';
-            pondFloor.rotation.x = -Math.PI/2;
-            pondFloor.position.set(POND_X, -pondDepth + 0.04, POND_Z);
+            pondFloor.rotation.x = -Math.PI / 2;
+            pondFloor.position.set(POND_LOCAL_X, -pondDepth + 0.04, POND_LOCAL_Z);
             pondFloor.receiveShadow = true;
             farmRoot.add(pondFloor);
 
-            // Su yüzeyi (derin, koyu mavi, şeffaf)
-            const pondWaterMat = mat('#238fbd', .10, {metalness:.28, transparent:false, opacity:1.0, side:THREE.DoubleSide});
-            const pond = new THREE.Mesh(farmGeometry(THREE.CircleGeometry, pondInnerR, 32), pondWaterMat);
-            pond.rotation.x = -Math.PI/2;
-            pond.scale.set(1.0, 1.0, 1);
-            pond.position.set(POND_X, 0.20, POND_Z);
+            // Su yüzeyi zeminin hemen altında görünür; kenardan taşmaz.
+            const pond = new THREE.Mesh(farmGeometry(THREE.CircleGeometry, pondInnerR, 32), mats.water);
+            pond.rotation.x = -Math.PI / 2;
+            pond.position.set(POND_LOCAL_X, 0.055, POND_LOCAL_Z);
             pond.name = 'Gölet';
             pond.receiveShadow = true;
             pond.userData.waterSurfaceY = farmRoot.position.y + pond.position.y;
@@ -1750,26 +1749,28 @@
             pond.userData.outerRadiusWorld = pondOuterR * farmRoot.scale.x;
             pond.userData.depthWorld = pondDepth * farmRoot.scale.y;
             farmRoot.add(pond);
-            const pondHighlight = new THREE.Mesh(farmGeometry(THREE.RingGeometry, pondInnerR * .58, pondInnerR * .92, 32), mat('#58b9d3', .16, {transparent:true, opacity:.28, side:THREE.DoubleSide}));
-            pondHighlight.rotation.x = -Math.PI/2;
-            pondHighlight.position.set(POND_X, 0.215, POND_Z);
-            pondHighlight.name = 'Gölet su parıltısı';
-            farmRoot.add(pondHighlight);
-            // Derin su görünümü: su yüzeyinin altında koyu dip, collider yok.
-            const deepWater = new THREE.Mesh(farmGeometry(THREE.CircleGeometry, pondInnerR * .97, 32), mat('#15506a', .18, {transparent:true, opacity:.62}));
-            deepWater.rotation.x = -Math.PI/2;
-            deepWater.position.set(POND_X, -pondDepth * .58, POND_Z);
+
+            // Derinlik hissi: suyun altında koyu dip.
+            const deepWater = new THREE.Mesh(
+                farmGeometry(THREE.CircleGeometry, pondInnerR * .97, 32),
+                mat('#15506a', .18, { transparent: true, opacity: .62 })
+            );
+            deepWater.rotation.x = -Math.PI / 2;
+            deepWater.position.set(POND_LOCAL_X, -pondDepth * .58, POND_LOCAL_Z);
             deepWater.name = 'Gölet derin su';
             deepWater.renderOrder = -1;
             farmRoot.add(deepWater);
 
-            // Su kenarı (kum/çamur şerit)
-            const shore = new THREE.Mesh(farmGeometry(THREE.RingGeometry, pondInnerR, pondOuterR, 32), mat('#b2a275'));
-            shore.rotation.x = -Math.PI/2;
-            shore.scale.set(1.0, 1.0, 1);
-            shore.position.set(POND_X, 0.05, POND_Z);
+            // Kenar şeridi. Göletin dış sınırı büyütülmüyor.
+            const shore = new THREE.Mesh(
+                farmGeometry(THREE.RingGeometry, pondInnerR, pondOuterR, 32),
+                mat('#b2a275')
+            );
+            shore.rotation.x = -Math.PI / 2;
+            shore.position.set(POND_LOCAL_X, 0.05, POND_LOCAL_Z);
             shore.name = 'Gölet kenarı';
             farmRoot.add(shore);
+            // ===== GÖLET DÜZENLEMESİ BİTİŞ =====
             // Sıkıştırılmış avlu ve kare çiftlik parseli
             const yard=new THREE.Mesh(farmGeometry(THREE.CircleGeometry,12,48),mat('#b69b72'));yard.rotation.x=-Math.PI/2;yard.scale.set(1.08,.73,1);yard.position.set(0,.025,0);yard.receiveShadow=true;yard.name='Çalışma avlusu';farmRoot.add(yard);
             function path(points,width,material){for(let i=0;i<points.length-1;i++){const a=new THREE.Vector3(...points[i]),b=new THREE.Vector3(...points[i+1]);const d=b.clone().sub(a),mesh=new THREE.Mesh(farmGeometry(THREE.BoxGeometry,width,.055,d.length()+width*.45),material);mesh.position.copy(a.clone().add(b).multiplyScalar(.5));mesh.position.y=.045;mesh.rotation.y=Math.atan2(d.x,d.z);mesh.receiveShadow=true;farmRoot.add(mesh)}}
@@ -2136,7 +2137,7 @@
                 const w = barnToWorld(lx, lz);
                 buildings.push({ x: w.x, z: w.z, halfW: hw * bs, halfD: hd * bs });
             }
-            const walkablePattern = /(zemin|zemini|avlu|yol|iz|arazi|gölet|göl|gölet çukuru|çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere|saman zemin|orta geçit|merdiven|çiçek|çayır|yaprak|sebze yatağı|bostan|tarla|çim)/i;
+            const walkablePattern = /(zemin|zemini|avlu|yol|iz|arazi|gölet|göl|çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere|saman zemin|orta geçit|merdiven|çiçek|çayır|yaprak|sebze yatağı|bostan|tarla|çim)/i;
 
             // Ahır içi — bu grup içindeki HİÇBİR mesh collider olmaz
             const barnGroupNames = /^(Ahır|Barn)$/i;
@@ -3432,33 +3433,21 @@ function stepCar(c,dt){
 
         mobViewBtn.addEventListener('click', toggleCameraMode);
 
-        function snapCameraToPlayer() {
-            // Menü kamerasını anında bırak; oyun başlarken kamera oyuncuya bağlanır.
-            if (!playerDonkey) return;
-            const isCrouchNow = controlMode === 'pc' ? !!keys.c : !!isCouchingMobile;
-            if (cameraMode === 'third') {
-                const distance = 6;
-                const heightOffset = isCrouchNow ? 1.8 : 2.5;
-                const camX = playerDonkey.position.x - Math.sin(yaw) * distance;
-                const camY = Math.max(0.8, playerDonkey.position.y + heightOffset + (pitch * 2.5));
-                const camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
-                camera.position.set(camX, camY, camZ);
-                camera.lookAt(new THREE.Vector3(playerDonkey.position.x, playerDonkey.position.y + (isCrouchNow ? 1.0 : 1.5), playerDonkey.position.z));
-            } else {
-                const eyeHeight = isCrouchNow ? 1.2 : 2.0;
-                const eyeForward = 0.5;
-                const eyeX = playerDonkey.position.x + Math.sin(yaw) * eyeForward;
-                const eyeY = playerDonkey.position.y + eyeHeight;
-                const eyeZ = playerDonkey.position.z + Math.cos(yaw) * eyeForward;
-                camera.position.set(eyeX, eyeY, eyeZ);
-                camera.lookAt(new THREE.Vector3(
-                    eyeX + Math.sin(yaw) * Math.cos(pitch),
-                    eyeY + Math.sin(pitch),
-                    eyeZ + Math.cos(yaw) * Math.cos(pitch)
-                ));
-            }
-            stars.position.copy(camera.position);
+        // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
+        // Menü kamerasından oyun kamerasına geçişi ilk karede de zorlar.
+        function setGameplayCameraImmediate() {
+            const distance = 6;
+            const crouch = controlMode === 'pc' ? keys.c : isCouchingMobile;
+            const height = crouch ? 1.8 : 2.5;
+            const targetY = playerDonkey.position.y + (crouch ? 1.0 : 1.5);
+            const camX = playerDonkey.position.x - Math.sin(yaw) * distance;
+            const camY = Math.max(0.8, playerDonkey.position.y + height + pitch * 2.5);
+            const camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
+            camera.position.set(camX, camY, camZ);
+            camera.lookAt(new THREE.Vector3(playerDonkey.position.x, targetY, playerDonkey.position.z));
+            camera.updateProjectionMatrix();
         }
+        // ===== OYUN KAMERASI DÜZENLEMESİ BİTİŞ =====
 
         function startGame(mode) {
             controlMode = mode;
@@ -3467,12 +3456,11 @@ function stepCar(c,dt){
             const barnSpawnX=FARM_CX+1.2, barnSpawnZ=FARM_CZ+1.2;
             // Ahır içindeki saman zemin yüksekliği (farmRoot.y=0.08 + yerel zemin üstü)
             playerDonkey.position.set(barnSpawnX, 0.28, barnSpawnZ);
-            // Oyun açıldığı anda menü kamerasından oyuncu kamerasına geç.
+            gameStarted = true;
             cameraMode = 'third';
             yaw = 0;
-            pitch = -0.08;
-            gameStarted = true;
-            snapCameraToPlayer();
+            pitch = 0.12;
+            setGameplayCameraImmediate();
             hudCamEl.textContent = '3. Şahıs';
             crosshairEl.style.display = 'none';
             document.body.style.cursor = 'default';
@@ -3501,6 +3489,8 @@ function stepCar(c,dt){
         resumeBtn.addEventListener('click', () => {
             initWebSocket();
             gameStarted = true;
+            if (cameraMode !== 'first') { cameraMode = 'third'; hudCamEl.textContent = '3. Şahıs'; }
+            setGameplayCameraImmediate();
             menuEl.style.display = 'none';
             playerDonkey.visible = true;
             setDonkeyNameTag(playerDonkey, getPlayerName());
@@ -3980,17 +3970,18 @@ function stepCar(c,dt){
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
                 let baseSpeed = isCrouching ? 0.10 : 0.22;
                 if (isSprinting && !isCrouching) baseSpeed = 0.45;
-                // Çiftlik göleti: su yüzeyi aynı yerde kalır, fakat dip yaklaşık 5 dünya birimi derindir.
-                // Oyuncu gölete girince yürümek yerine yüzme fiziğine geçer.
-                const pondWX = FARM_CX - POND_X * 1.20;
-                const pondWZ = FARM_CZ + (-POND_Z) * 1.20;
+                // ===== GÖLET HAREKET/FİZİK DÜZENLEMESİ BAŞLANGIÇ =====
+                // farmRoot 180 derece döndüğü için local (16,-11), dünya (FARM_CX-19.2,FARM_CZ+13.2) olur.
+                const pondWX = FARM_CX - 16 * 1.20;
+                const pondWZ = FARM_CZ + 11 * 1.20;
                 const pondSwimR = 3.5 * 1.20;
-                const pondWaterY = 0.08 + 0.20;
                 const pondDist = Math.hypot(playerDonkey.position.x - pondWX, playerDonkey.position.z - pondWZ);
-                const inPondWater = pondDist < pondSwimR;
+                const inPond = pondDist < pondSwimR;
+                // Suya girince hareket yavaşlar; göletin fizik alanı görsel göletle aynı merkezdedir.
+                // ===== GÖLET HAREKET/FİZİK DÜZENLEMESİ BİTİŞ =====
 
                 let speed = baseSpeed;
-                if (inPondWater) speed *= isSprinting ? 0.72 : 0.58;
+                if (inPond) speed *= 0.55;
                 let moveX = 0, moveZ = 0, isMoving = false;
 
                 if (controlMode === 'pc') {
@@ -4023,16 +4014,14 @@ function stepCar(c,dt){
                     playerDonkey.position.z = newZ;
                 }
 
-                // Gölet su fiziği.
-                // Suya girince ağırlık azalır, yatay hız su direnciyle düşer ve karakter yüzeyde tutulur.
-                // Gölün çapı değiştirilmediği için su dışarı taşmaz; yalnızca dip derinleşmiştir.
-                if (inPondWater) {
-                    const swimTargetY = pondWaterY + 0.28;
-                    const bob = Math.sin(performance.now() * 0.004) * 0.035;
-                    const buoyancy = 0.16;
-                    playerDonkey.position.y += (swimTargetY + bob - playerDonkey.position.y) * buoyancy;
-                    velocityY *= 0.72;
-                    isGrounded = true;
+                // Gölet suyu üzerinde yüzme: su yüzeyinin 0.3 birim üstünde dur
+                const swimPondDist = Math.hypot(playerDonkey.position.x - pondWX, playerDonkey.position.z - pondWZ);
+                if (swimPondDist < pondSwimR) {
+                    // Su içinde: hafif aşağı çek (yüzme efekti)
+                    const waterY = 0.08 - 0.15;  // su yüzeyi yüksekliği (farmRoot.y + pond.y)
+                    playerDonkey.position.y = Math.max(playerDonkey.position.y, waterY + 0.3);
+                    velocityY = 0; // su içinde yerçekimi yok
+                    isGrounded = true; // zıplama devre dışı (yüzme modu)
                 }
 
                 const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
@@ -4046,21 +4035,15 @@ function stepCar(c,dt){
                 playerDonkey.scale.y += ((isCrouching ? 0.6 : 1.0) - playerDonkey.scale.y) * 0.5;
 
                 const groundY = terrainHeightAt(playerDonkey.position.x, playerDonkey.position.z);
-                if (!inPondWater) {
-                    // Karada normal yerçekimi; suda ise kaldırma kuvveti yukarıdaki blokta uygulanır.
-                    velocityY -= 0.015;
-                    playerDonkey.position.y += velocityY;
-                    if (playerDonkey.position.y <= groundY) {
-                        playerDonkey.position.y = groundY;
-                        velocityY = 0;
-                        isGrounded = true;
-                    }
-                } else {
-                    // Su içindeyken zıplama yerine yüzme animasyonu kullanılır.
+                velocityY -= 0.015;
+                playerDonkey.position.y += velocityY;
+                if (playerDonkey.position.y <= groundY) {
+                    playerDonkey.position.y = groundY;
                     velocityY = 0;
+                    isGrounded = true;
                 }
 
-                const isJumping = !isGrounded && !inPondWater;
+                const isJumping = !isGrounded;
                 updateDonkeyAnimation(playerDonkey, isMoving, isJumping, isCrouching, isSprinting ? 1.5 : 1);
 
                 if (playerDonkey.userData.neckHeadGroup) {
@@ -4091,15 +4074,21 @@ function stepCar(c,dt){
 
                 const isCrouchNow = isCrouching;
                 
+                // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
                 if (cameraMode === 'third') {
                     const distance = 6;
                     const heightOffset = isCrouchNow ? 1.8 : 2.5;
-                    let camX = playerDonkey.position.x - Math.sin(yaw) * distance;
-                    let camY = playerDonkey.position.y + heightOffset + (pitch * 2.5);
-                    let camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
-                    if (camY < 0.8) camY = 0.8;
+                    const camX = playerDonkey.position.x - Math.sin(yaw) * distance;
+                    const camY = Math.max(0.8, playerDonkey.position.y + heightOffset);
+                    const camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
                     camera.position.set(camX, camY, camZ);
-                    camera.lookAt(new THREE.Vector3(playerDonkey.position.x, playerDonkey.position.y + (isCrouchNow ? 1.0 : 1.5), playerDonkey.position.z));
+                    // Pitch artık yalnızca kamerayı yukarı/aşağı itmek yerine gerçek bakış noktasını da etkiler.
+                    const lookDistance = 6;
+                    const cp = Math.cos(pitch);
+                    const lookX = playerDonkey.position.x + Math.sin(yaw) * cp * lookDistance;
+                    const lookY = playerDonkey.position.y + (isCrouchNow ? 1.0 : 1.5) + Math.sin(pitch) * lookDistance;
+                    const lookZ = playerDonkey.position.z + Math.cos(yaw) * cp * lookDistance;
+                    camera.lookAt(new THREE.Vector3(lookX, lookY, lookZ));
                 } else {
                     const eyeHeight = isCrouchNow ? 1.2 : 2.0;
                     const eyeForward = 0.5;
@@ -4112,35 +4101,12 @@ function stepCar(c,dt){
                     const lookZ = eyeZ + Math.cos(yaw) * Math.cos(pitch);
                     camera.lookAt(new THREE.Vector3(lookX, lookY, lookZ));
                 }
+                // ===== OYUN KAMERASI DÜZENLEMESİ BİTİŞ =====
                 
                 if (cameraMode === 'first') {
                     playerDonkey.visible = false;
                 } else {
                     playerDonkey.visible = true;
-                }
-            }
-
-            // Oyun başladıysa menü kamerasının sonradan kamerayı ezmesini kesin olarak engelle.
-            if (gameStarted && playerDonkey) {
-                const crouchNow = controlMode === 'pc' ? !!keys.c : !!isCouchingMobile;
-                if (cameraMode === 'third') {
-                    const d = 6;
-                    const h = crouchNow ? 1.8 : 2.5;
-                    camera.position.set(
-                        playerDonkey.position.x - Math.sin(yaw) * d,
-                        Math.max(0.8, playerDonkey.position.y + h + pitch * 2.5),
-                        playerDonkey.position.z - Math.cos(yaw) * d
-                    );
-                    camera.lookAt(new THREE.Vector3(playerDonkey.position.x, playerDonkey.position.y + (crouchNow ? 1.0 : 1.5), playerDonkey.position.z));
-                    playerDonkey.visible = true;
-                } else {
-                    const eyeH = crouchNow ? 1.2 : 2.0;
-                    const ex = playerDonkey.position.x + Math.sin(yaw) * .5;
-                    const ey = playerDonkey.position.y + eyeH;
-                    const ez = playerDonkey.position.z + Math.cos(yaw) * .5;
-                    camera.position.set(ex, ey, ez);
-                    camera.lookAt(new THREE.Vector3(ex + Math.sin(yaw) * Math.cos(pitch), ey + Math.sin(pitch), ez + Math.cos(yaw) * Math.cos(pitch)));
-                    playerDonkey.visible = false;
                 }
             }
 
@@ -4221,8 +4187,6 @@ function stepCar(c,dt){
         function completeResume(mode) {
             controlMode = mode;
             gameStarted = true; playerIsDead = false; deathScreenShowing = false;
-            if (cameraMode !== 'first') cameraMode = 'third';
-            snapCameraToPlayer();
             deathOverlayEl.style.display = 'none'; menuEl.style.display = 'none';
             mainButtons.style.display = 'none'; pauseButtons.style.display = 'none';
             infoEl.style.display = 'block'; mobileControlsEl.style.display = mode === 'mobile' ? 'block' : 'none';
@@ -4340,7 +4304,6 @@ function stepCar(c,dt){
                 if(data.id===myId)showDeath(data.reason||`${data.killerName||'Bir tehlike'} seni yendi.`);
             } else if(data.type==='respawned'){
                 const p=data.spawn||{x:180,y:0,z:210};playerDonkey.position.set(p.x,p.y,p.z);playerDonkey.rotation.set(0,yaw,0);playerDonkey.scale.y=1;playerDonkey.visible=cameraMode!=='first';
-                snapCameraToPlayer();
                 playerIsDead=false;deathScreenShowing=false;gameStarted=true;deathOverlayEl.style.display='none';respawnBtnEl.disabled=false;respawnBtnEl.textContent='↻ Yeniden Doğ';
                 menuEl.style.display='none';infoEl.style.display='block';mobileControlsEl.style.display=controlMode==='mobile'?'block':'none';hudEl.style.display='block';crosshairEl.style.display=cameraMode==='first'?'block':'none';
                 applyNeeds(data.state||{health:9,hunger:9,thirst:9});setGameUiVisible(true);setChatVisible(!chatIsManuallyHidden);document.body.style.cursor='crosshair';
