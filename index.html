@@ -3255,10 +3255,13 @@ function stepCar(c,dt){
         let isMouseDown = false;
         let mouseX = 0, mouseY = 0;
         let cameraOrbitDistance = 6.0;
-        const CAMERA_MIN_PITCH = -0.28;
-        const CAMERA_MAX_PITCH = 1.05;
+        const CAMERA_MIN_PITCH = -0.42;
+        const CAMERA_MAX_PITCH = 1.28;
         const CAMERA_ROTATE_SPEED = 0.0045;
         const CAMERA_HEIGHT = 1.55;
+        const CAMERA_GROUND_CLEARANCE = 0.72;
+        const HEAD_LOOK_LIMIT = 0.82;
+        const HEAD_LOOK_SMOOTH = 0.18;
         // ===== OYUN KAMERASI DÜZENLEMESİ BİTİŞ =====
         const keys = { w: false, a: false, s: false, d: false, c: false, shift: false };
         let joystickActive = false;
@@ -3485,7 +3488,9 @@ function stepCar(c,dt){
                 const camX = playerDonkey.position.x - Math.sin(yaw) * horizontal;
                 const camY = playerDonkey.position.y + CAMERA_HEIGHT + sp * cameraOrbitDistance;
                 const camZ = playerDonkey.position.z - Math.cos(yaw) * horizontal;
-                camera.position.set(camX, Math.max(0.75, camY), camZ);
+                const groundBelowCamera = typeof terrainHeightAt === 'function' ? terrainHeightAt(camX, camZ) : 0;
+                const safeCamY = Math.max(camY, groundBelowCamera + CAMERA_GROUND_CLEARANCE, 0.75);
+                camera.position.set(camX, safeCamY, camZ);
                 camera.lookAt(new THREE.Vector3(playerDonkey.position.x, targetY, playerDonkey.position.z));
             } else {
                 const eyeHeight = crouch ? 1.2 : 2.0;
@@ -4105,9 +4110,14 @@ function stepCar(c,dt){
                 const isJumping = !isGrounded;
                 updateDonkeyAnimation(playerDonkey, isMoving, isJumping, isCrouching, isSprinting ? 1.5 : 1);
 
+                // ===== KAFA BAKIŞ ANİMASYONU BAŞLANGIÇ =====
+                // Kamera yukarı/aşağı hareket ederken kafa yumuşak ve ters yönde tepki verir.
                 if (playerDonkey.userData.neckHeadGroup) {
-                    playerDonkey.userData.neckHeadGroup.rotation.x = pitch;
+                    const headTargetPitch = THREE.MathUtils.clamp(-pitch * 0.72, -HEAD_LOOK_LIMIT, HEAD_LOOK_LIMIT);
+                    playerDonkey.userData.neckHeadGroup.rotation.x +=
+                        (headTargetPitch - playerDonkey.userData.neckHeadGroup.rotation.x) * HEAD_LOOK_SMOOTH;
                 }
+                // ===== KAFA BAKIŞ ANİMASYONU BİTİŞ =====
 
                 for (let id in otherPlayers) {
                     const other = otherPlayers[id];
@@ -4143,7 +4153,9 @@ function stepCar(c,dt){
                     const camX = playerDonkey.position.x - Math.sin(yaw) * horizontal;
                     const camY = playerDonkey.position.y + (isCrouchNow ? 1.35 : CAMERA_HEIGHT) + sp * cameraOrbitDistance;
                     const camZ = playerDonkey.position.z - Math.cos(yaw) * horizontal;
-                    camera.position.set(camX, Math.max(0.75, camY), camZ);
+                    const groundBelowCamera = typeof terrainHeightAt === 'function' ? terrainHeightAt(camX, camZ) : 0;
+                    const safeCamY = Math.max(camY, groundBelowCamera + CAMERA_GROUND_CLEARANCE, 0.75);
+                    camera.position.set(camX, safeCamY, camZ);
                     camera.lookAt(new THREE.Vector3(
                         playerDonkey.position.x,
                         playerDonkey.position.y + (isCrouchNow ? 0.9 : 1.25),
@@ -4553,8 +4565,21 @@ function stepCar(c,dt){
             pos.needsUpdate=true;waterGeo.computeVertexNormals();beachFoam.material.opacity=.48+Math.sin(now*.0018)*.12;
         }
         function animateNeedsAndInteraction(){const now=performance.now();const dt=Math.min(.07,Math.max(.001,(now-lastNpcUpdate)/1000));lastNpcUpdate=now;updateWater(now);updateTownNpcs(dt,now);updateWildlife(dt,now);updateCityModel(dt);scanInteraction(now);
-            if(gameStarted&&playerDonkey.userData.neckHeadGroup&&now<actionAnimationUntil){const pulse=Math.sin((now-(actionAnimationUntil-1100))*.012);if(actionAnimationType==='eat')playerDonkey.userData.neckHeadGroup.rotation.x=pitch+.55*Math.max(0,pulse);else if(actionAnimationType==='drink')playerDonkey.userData.neckHeadGroup.rotation.x=pitch-.3+.18*pulse;else if(actionAnimationType==='attack'){playerDonkey.userData.neckHeadGroup.rotation.x=pitch-.4*Math.max(0,pulse);playerDonkey.userData.legs[0].rotation.x=-.72*Math.max(0,pulse);}else if(actionAnimationType==='hurt')playerDonkey.rotation.z=.12*pulse;}
-            else if(playerDonkey.userData.neckHeadGroup&&gameStarted){playerDonkey.userData.neckHeadGroup.rotation.x=pitch;playerDonkey.rotation.z=0;}
+            if(gameStarted&&playerDonkey.userData.neckHeadGroup&&now<actionAnimationUntil){
+                const pulse=Math.sin((now-(actionAnimationUntil-1100))*.012);
+                const baseHeadPitch=THREE.MathUtils.clamp(-pitch*0.72,-HEAD_LOOK_LIMIT,HEAD_LOOK_LIMIT);
+                let actionOffset=0;
+                if(actionAnimationType==='eat') actionOffset=0.55*Math.max(0,pulse);
+                else if(actionAnimationType==='drink') actionOffset=-.3+.18*pulse;
+                else if(actionAnimationType==='attack'){ actionOffset=-.4*Math.max(0,pulse); playerDonkey.userData.legs[0].rotation.x=-.72*Math.max(0,pulse); }
+                else if(actionAnimationType==='hurt') playerDonkey.rotation.z=.12*pulse;
+                const targetHeadPitch=THREE.MathUtils.clamp(baseHeadPitch+actionOffset,-1.0,1.0);
+                playerDonkey.userData.neckHeadGroup.rotation.x += (targetHeadPitch-playerDonkey.userData.neckHeadGroup.rotation.x)*0.24;
+            } else if(playerDonkey.userData.neckHeadGroup&&gameStarted){
+                const targetHeadPitch=THREE.MathUtils.clamp(-pitch*0.72,-HEAD_LOOK_LIMIT,HEAD_LOOK_LIMIT);
+                playerDonkey.userData.neckHeadGroup.rotation.x += (targetHeadPitch-playerDonkey.userData.neckHeadGroup.rotation.x)*0.18;
+                playerDonkey.rotation.z=0;
+            }
         }
         const qualityPresetEl=document.getElementById('qualityPreset');
         qualityPresetEl.value=renderScaleTarget<=.65?'performance':renderScaleTarget<=.82?'balanced':renderScaleTarget>=.98?'visual':'custom';
