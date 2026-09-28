@@ -1717,7 +1717,7 @@
             // Göl aynı alanda kalır; yalnızca tabanı aşağı indirilerek derinleştirilir.
             // Böylece suyun dışarı taşacağı yeni bir yüzey alanı oluşturulmaz.
             const pondOuterR = 5.5, pondInnerR = 3.5, pondDepth = 5.2;
-            const POND_X = 15.0, POND_Z = -11.0; // Gölet biraz sağa alındı; çite girmiyor.
+            const POND_X = 11.5, POND_Z = -11.0; // Dünya koordinatında biraz sağa; çitlerden güvenli mesafede.
             const pondGeo = new THREE.CylinderGeometry(pondInnerR, pondInnerR, 0.1, 32);
             // Çukur yan duvarı: iç silindir şeklinde aşağı doğru iner
             const pondWallGeo = new THREE.CylinderGeometry(pondOuterR, pondInnerR, pondDepth, 32, 1, true);
@@ -1738,10 +1738,11 @@
             farmRoot.add(pondFloor);
 
             // Su yüzeyi (derin, koyu mavi, şeffaf)
-            const pond = new THREE.Mesh(farmGeometry(THREE.CircleGeometry, pondInnerR, 32), mats.water);
+            const pondWaterMat = mat('#238fbd', .10, {metalness:.28, transparent:false, opacity:1.0, side:THREE.DoubleSide});
+            const pond = new THREE.Mesh(farmGeometry(THREE.CircleGeometry, pondInnerR, 32), pondWaterMat);
             pond.rotation.x = -Math.PI/2;
             pond.scale.set(1.0, 1.0, 1);
-            pond.position.set(POND_X, 0.055, POND_Z);
+            pond.position.set(POND_X, 0.20, POND_Z);
             pond.name = 'Gölet';
             pond.receiveShadow = true;
             pond.userData.waterSurfaceY = farmRoot.position.y + pond.position.y;
@@ -1749,6 +1750,11 @@
             pond.userData.outerRadiusWorld = pondOuterR * farmRoot.scale.x;
             pond.userData.depthWorld = pondDepth * farmRoot.scale.y;
             farmRoot.add(pond);
+            const pondHighlight = new THREE.Mesh(farmGeometry(THREE.RingGeometry, pondInnerR * .58, pondInnerR * .92, 32), mat('#58b9d3', .16, {transparent:true, opacity:.28, side:THREE.DoubleSide}));
+            pondHighlight.rotation.x = -Math.PI/2;
+            pondHighlight.position.set(POND_X, 0.215, POND_Z);
+            pondHighlight.name = 'Gölet su parıltısı';
+            farmRoot.add(pondHighlight);
             // Derin su görünümü: su yüzeyinin altında koyu dip, collider yok.
             const deepWater = new THREE.Mesh(farmGeometry(THREE.CircleGeometry, pondInnerR * .97, 32), mat('#15506a', .18, {transparent:true, opacity:.62}));
             deepWater.rotation.x = -Math.PI/2;
@@ -3463,8 +3469,10 @@ function stepCar(c,dt){
             playerDonkey.position.set(barnSpawnX, 0.28, barnSpawnZ);
             // Oyun açıldığı anda menü kamerasından oyuncu kamerasına geç.
             cameraMode = 'third';
-            snapCameraToPlayer();
+            yaw = 0;
+            pitch = -0.08;
             gameStarted = true;
+            snapCameraToPlayer();
             hudCamEl.textContent = '3. Şahıs';
             crosshairEl.style.display = 'none';
             document.body.style.cursor = 'default';
@@ -3975,9 +3983,9 @@ function stepCar(c,dt){
                 // Çiftlik göleti: su yüzeyi aynı yerde kalır, fakat dip yaklaşık 5 dünya birimi derindir.
                 // Oyuncu gölete girince yürümek yerine yüzme fiziğine geçer.
                 const pondWX = FARM_CX - POND_X * 1.20;
-                const pondWZ = FARM_CZ + 11 * 1.20;
+                const pondWZ = FARM_CZ + (-POND_Z) * 1.20;
                 const pondSwimR = 3.5 * 1.20;
-                const pondWaterY = 0.08 + 0.055;
+                const pondWaterY = 0.08 + 0.20;
                 const pondDist = Math.hypot(playerDonkey.position.x - pondWX, playerDonkey.position.z - pondWZ);
                 const inPondWater = pondDist < pondSwimR;
 
@@ -4112,6 +4120,30 @@ function stepCar(c,dt){
                 }
             }
 
+            // Oyun başladıysa menü kamerasının sonradan kamerayı ezmesini kesin olarak engelle.
+            if (gameStarted && playerDonkey) {
+                const crouchNow = controlMode === 'pc' ? !!keys.c : !!isCouchingMobile;
+                if (cameraMode === 'third') {
+                    const d = 6;
+                    const h = crouchNow ? 1.8 : 2.5;
+                    camera.position.set(
+                        playerDonkey.position.x - Math.sin(yaw) * d,
+                        Math.max(0.8, playerDonkey.position.y + h + pitch * 2.5),
+                        playerDonkey.position.z - Math.cos(yaw) * d
+                    );
+                    camera.lookAt(new THREE.Vector3(playerDonkey.position.x, playerDonkey.position.y + (crouchNow ? 1.0 : 1.5), playerDonkey.position.z));
+                    playerDonkey.visible = true;
+                } else {
+                    const eyeH = crouchNow ? 1.2 : 2.0;
+                    const ex = playerDonkey.position.x + Math.sin(yaw) * .5;
+                    const ey = playerDonkey.position.y + eyeH;
+                    const ez = playerDonkey.position.z + Math.cos(yaw) * .5;
+                    camera.position.set(ex, ey, ez);
+                    camera.lookAt(new THREE.Vector3(ex + Math.sin(yaw) * Math.cos(pitch), ey + Math.sin(pitch), ez + Math.cos(yaw) * Math.cos(pitch)));
+                    playerDonkey.visible = false;
+                }
+            }
+
             renderer.render(scene, camera);
         }
 
@@ -4189,6 +4221,7 @@ function stepCar(c,dt){
         function completeResume(mode) {
             controlMode = mode;
             gameStarted = true; playerIsDead = false; deathScreenShowing = false;
+            if (cameraMode !== 'first') cameraMode = 'third';
             snapCameraToPlayer();
             deathOverlayEl.style.display = 'none'; menuEl.style.display = 'none';
             mainButtons.style.display = 'none'; pauseButtons.style.display = 'none';
