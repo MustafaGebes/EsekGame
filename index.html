@@ -670,16 +670,16 @@
             scene.add(barnGroup);
             
             // Çarpışma
-            buildings.push({ x: x - width / 2, z, halfW: 0.3, halfD: depth / 2 });
-            buildings.push({ x: x + width / 2, z, halfW: 0.3, halfD: depth / 2 });
-            buildings.push({ x, z: z - depth / 2, halfW: width / 2, halfD: 0.3 });
-            buildings.push({ x: x - (10 + sideWidth / 2), z: z + depth / 2, halfW: sideWidth / 2, halfD: 0.3 });
-            buildings.push({ x: x + (10 + sideWidth / 2), z: z + depth / 2, halfW: sideWidth / 2, halfD: 0.3 });
+            
+            
+            
+            
+            
             
             // Ön direkler
             for (let i = -width / 2 + 5; i <= width / 2 - 5; i += 8) {
-                buildings.push({ x: x + i, z: z + depth / 2, halfW: 0.35, halfD: 0.35 });
-                buildings.push({ x: x + i, z: z - depth / 2, halfW: 0.35, halfD: 0.35 });
+                
+                
             }
         }
 
@@ -755,11 +755,11 @@
             scene.add(barnGroup);
             
             // Çarpışma
-            buildings.push({ x: x - width / 2, z, halfW: 0.3, halfD: depth / 2 });
-            buildings.push({ x: x + width / 2, z, halfW: 0.3, halfD: depth / 2 });
-            buildings.push({ x, z: z - depth / 2, halfW: width / 2, halfD: 0.3 });
+            
+            
+            
             for (let i = -width / 2 + 4; i <= width / 2 - 4; i += 7) {
-                buildings.push({ x: x + i, z: z + depth / 2, halfW: 0.35, halfD: 0.35 });
+                
             }
         }
 
@@ -819,7 +819,7 @@
 
             houseGroup.position.set(x, 0, z);
             scene.add(houseGroup);
-            buildings.push({ x, z, halfW: houseW / 2 + 0.5, halfD: houseD / 2 + 0.5 });
+            
         }
 
         createFarmHouse(FARM_CX + 60, FARM_CZ - 55);
@@ -838,7 +838,7 @@
                     post.position.set(px, postHeight / 2, pz);
                     shadeGroup.add(post);
                     // Çarpışma
-                    buildings.push({ x: x + px, z: z + pz, halfW: 0.35, halfD: 0.35 });
+                    
                 }
             }
             
@@ -996,10 +996,10 @@
             scene.add(paddockGroup);
             
             // Çarpışma - çitin her kenarı için (basitleştirilmiş)
-            buildings.push({ x: x, z: z - d / 2, halfW: w / 2, halfD: 0.15 });
-            buildings.push({ x: x, z: z + d / 2, halfW: w / 2, halfD: 0.15 });
-            buildings.push({ x: x - w / 2, z, halfW: 0.15, halfD: d / 2 });
-            buildings.push({ x: x + w / 2, z, halfW: 0.15, halfD: d / 2 });
+            
+            
+            
+            
         }
 
         // Koyun padoku ve gölgelik-3 çakışmaması için biraz daha doğuya/güneye kaydırıldı
@@ -1081,7 +1081,7 @@
             
             siloGroup.position.set(x, 0, z);
             scene.add(siloGroup);
-            buildings.push({ x, z, halfW: siloR + 0.3, halfD: siloR + 0.3 });
+            
         }
 
         // 2 silo yan yana
@@ -1112,7 +1112,7 @@
             stackGroup.add(topBale);
             stackGroup.position.set(x, 0, z);
             scene.add(stackGroup);
-            buildings.push({ x, z, halfW: 3, halfD: 1 });
+            
         }
 
         createHayBaleStack(FARM_CX - 55, FARM_CZ + 45);
@@ -1156,7 +1156,7 @@
             
             storageGroup.position.set(x, 0, z);
             scene.add(storageGroup);
-            buildings.push({ x, z, halfW: w / 2 + 0.5, halfD: d / 2 + 3 });
+            
         }
 
         createFeedStorage(FARM_CX + 60, FARM_CZ + 45);
@@ -1215,7 +1215,7 @@
             
             storageGroup.position.set(x, 0, z);
             scene.add(storageGroup);
-            buildings.push({ x, z, halfW: w / 2 + 0.3, halfD: d / 2 + 0.3 });
+            
         }
 
         createEquipmentStorage(FARM_CX + 60, FARM_CZ + 65);
@@ -1271,9 +1271,9 @@
             areaGroup.position.set(x, 0, z);
             scene.add(areaGroup);
             
-            buildings.push({ x: x - 5, z, halfW: 3, halfD: 3 });
-            buildings.push({ x: x + 5, z, halfW: 1.5, halfD: 1.5 });
-            buildings.push({ x, z: z - 3, halfW: 0.3, halfD: 0.3 });
+            
+            
+            
         }
 
         // Mavi su deposu, teknik/depolama binasının hemen yanına alındı.
@@ -1353,10 +1353,10 @@
             scene.add(gateGroup);
             
             // Kapı çarpışma
-            buildings.push({ x: FARM_CX - 5, z: FARM_CZ + 50, halfW: 0.4, halfD: 0.4 });
-            buildings.push({ x: FARM_CX + 5, z: FARM_CZ + 50, halfW: 0.4, halfD: 0.4 });
-            buildings.push({ x: FARM_CX - 22.5, z: FARM_CZ + 50, halfW: 17.5, halfD: 0.15 });
-            buildings.push({ x: FARM_CX + 22.5, z: FARM_CZ + 50, halfW: 17.5, halfD: 0.15 });
+            
+            
+            
+            
         }
 
         createServiceRoadAndGate();
@@ -1386,7 +1386,7 @@
                 const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, postHeight, 0.3), postMat);
                 post.position.set(x, postHeight / 2, maxZ);
                 fenceGroup.add(post);
-                buildings.push({ x, z: maxZ, halfW: 0.3, halfD: 0.3 });
+                
             }
             // Ön ray
             for (const py of [0.6, 1.4]) {
@@ -1398,50 +1398,50 @@
                 fenceGroup.add(railR);
             }
             // Ön çit - tam kapsamlı çarpışma (post aralarındaki boşluklardan geçişi engeller)
-            buildings.push({ x: (minX + gateLeft) / 2, z: maxZ, halfW: (gateLeft - minX) / 2, halfD: 0.25 });
-            buildings.push({ x: (gateRight + maxX) / 2, z: maxZ, halfW: (maxX - gateRight) / 2, halfD: 0.25 });
+            
+            
             
             // Arka taraf
             for (let x = minX; x <= maxX; x += 3) {
                 const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, postHeight, 0.3), postMat);
                 post.position.set(x, postHeight / 2, minZ);
                 fenceGroup.add(post);
-                buildings.push({ x, z: minZ, halfW: 0.3, halfD: 0.3 });
+                
             }
             for (const py of [0.6, 1.4]) {
                 const rail = new THREE.Mesh(new THREE.BoxGeometry(maxX - minX, 0.15, 0.15), railMat);
                 rail.position.set(FARM_CX, py, minZ);
                 fenceGroup.add(rail);
             }
-            buildings.push({ x: FARM_CX, z: minZ, halfW: (maxX - minX) / 2, halfD: 0.25 });
+            
             
             // Sol taraf
             for (let z = minZ; z <= maxZ; z += 3) {
                 const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, postHeight, 0.3), postMat);
                 post.position.set(minX, postHeight / 2, z);
                 fenceGroup.add(post);
-                buildings.push({ x: minX, z, halfW: 0.3, halfD: 0.3 });
+                
             }
             for (const py of [0.6, 1.4]) {
                 const rail = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, maxZ - minZ), railMat);
                 rail.position.set(minX, py, FARM_CZ - 5);
                 fenceGroup.add(rail);
             }
-            buildings.push({ x: minX, z: FARM_CZ - 5, halfW: 0.25, halfD: (maxZ - minZ) / 2 });
+            
             
             // Sağ taraf
             for (let z = minZ; z <= maxZ; z += 3) {
                 const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, postHeight, 0.3), postMat);
                 post.position.set(maxX, postHeight / 2, z);
                 fenceGroup.add(post);
-                buildings.push({ x: maxX, z, halfW: 0.3, halfD: 0.3 });
+                
             }
             for (const py of [0.6, 1.4]) {
                 const rail = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, maxZ - minZ), railMat);
                 rail.position.set(maxX, py, FARM_CZ - 5);
                 fenceGroup.add(rail);
             }
-            buildings.push({ x: maxX, z: FARM_CZ - 5, halfW: 0.25, halfD: (maxZ - minZ) / 2 });
+            
             
             scene.add(fenceGroup);
         }
@@ -1582,13 +1582,13 @@
             scene.add(barnGroup);
 
             // Çarpışma (duvarlar + kapı direkleri, kapı boşluğu açık)
-            buildings.push({ x: x - width / 2, z, halfW: 0.3, halfD: depth / 2 });
-            buildings.push({ x: x + width / 2, z, halfW: 0.3, halfD: depth / 2 });
-            buildings.push({ x, z: z - depth / 2, halfW: width / 2, halfD: 0.3 });
-            buildings.push({ x: x - (doorWidth / 2 + frontSideW / 2), z: z + depth / 2, halfW: frontSideW / 2, halfD: 0.3 });
-            buildings.push({ x: x + (doorWidth / 2 + frontSideW / 2), z: z + depth / 2, halfW: frontSideW / 2, halfD: 0.3 });
-            buildings.push({ x: x - doorWidth / 2, z: z + depth / 2 + 0.2, halfW: 0.35, halfD: 0.35 });
-            buildings.push({ x: x + doorWidth / 2, z: z + depth / 2 + 0.2, halfW: 0.35, halfD: 0.35 });
+            
+            
+            
+            
+            
+            
+            
         }
 
         createDetailedBarn3(BARN3_X, BARN3_Z);
@@ -1674,7 +1674,7 @@
             treeGroup.add(leaf);
             treeGroup.position.set(x, 0, z);
             scene.add(treeGroup);
-            buildings.push({ x, z, halfW: 0.6 * scale, halfD: 0.6 * scale });
+            
         }
 
         // Çiftlik içi ağaçlar (yollara uzak, binalara uzak)
@@ -2050,87 +2050,144 @@
             for(const box of suppliedFarmColliders){
                 buildings.push({x:box.x,z:box.z,halfW:box.halfW,halfD:box.halfD});
             }
-            // Çiftlik collider'ları: sadece gerçek engel olan nesneler.
-            // Ahır iç mekanı yürünebilir, kapı boşlukları açık bırakılır.
-            const farmColliderSkip=/^(Arazi|Çalışma avlusu|Gölet|Toprak yoldaki tekerlek izi|Ahır çatısı|Çatı mahyası|Saçak çıtası|Ahır üçgen alınlığı|Ahır içi saman zemin|Ahır orta geçit|Ahır tavan kirişi|Ahır samanlık merdiveni|Ahır lambası|Üst kapak|Üst kapak çerçevesi|Yan ahır penceresi)$/i;
-            const farmIsWalkableMesh=(obj)=>{
-                const n=String(obj.name||'').toLocaleLowerCase('tr-TR');
-                if(farmColliderSkip.test(String(obj.name||'')))return true;
-                if(/yol|iz|avlu|tarla|bostan|sebze yatağı|çim|arazi|zemin|göl/.test(n))return true;
-                if(/çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere|çiçek|çayır|yaprak/.test(n))return true;
-                return false;
-            };
-            const farmExtraColliderKeys=new Set();
-            const isDynamicFarmMesh=(mesh)=>{let p=mesh.parent;while(p&&p!==farmRoot){if(p.userData?.isFarmWorker||p.userData?.walkAgent||p.userData?.isBarnDoorPivot)return true;p=p.parent}return false};
-            const farmColliderBuildingStart=buildings.length;
-            // Ahır içindeki nesnelerin collider olmaması için ahır referansı
-            const barnInteriorNames=/Ahır|Barn/i;
-            farmRoot.traverse(object=>{
-                if(!object.isMesh||!object.geometry||!object.material)return;
-                if(farmIsWalkableMesh(object)||isDynamicFarmMesh(object))return;
-                // Ahır içindeki nesneleri atla (inekler, bölmeler, saman vb. yürünebilir olmalı)
-                let par=object.parent;
-                while(par&&par!==farmRoot){
-                    if(par.name&&barnInteriorNames.test(par.name))return;
-                    par=par.parent;
-                }
-                const bounds=new THREE.Box3().setFromObject(object);if(bounds.isEmpty())return;
-                const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
-                // Çok küçük veya çok büyük nesneleri atla
-                if(size.x<.35||size.z<.35)return;
-                if(size.x>60||size.z>60)return;
-                // Sadece belirgin yükseklikteki nesneler collider olsun (yerdeki düz şeyler değil)
-                if(size.y<.4)return;
-                const key=[center.x.toFixed(2),center.z.toFixed(2),size.x.toFixed(2),size.z.toFixed(2)].join('|');
-                if(farmExtraColliderKeys.has(key))return;farmExtraColliderKeys.add(key);
-                buildings.push({x:center.x,z:center.z,halfW:size.x*.5+.25,halfD:size.z*.5+.25});
-            });
-            const staticBatches=new Map();
-            farmRoot.traverse(object=>{
-                if(!object.isMesh||!object.geometry||!object.material||Array.isArray(object.material)||isDynamicFarmMesh(object))return;
-                const key=[object.geometry.uuid,object.material.uuid,object.castShadow?1:0,object.receiveShadow?1:0].join('|');
-                if(!staticBatches.has(key))staticBatches.set(key,{geometry:object.geometry,material:object.material,castShadow:object.castShadow,receiveShadow:object.receiveShadow,meshes:[]});
-                staticBatches.get(key).meshes.push(object);
-            });
-            for(const batch of staticBatches.values()){
-                if(batch.meshes.length<3)continue;
-                const instances=new THREE.InstancedMesh(batch.geometry,batch.material,batch.meshes.length);
-                instances.name='Çiftlik detayları · optimize edilmiş instans';
-                instances.castShadow=batch.castShadow;instances.receiveShadow=batch.receiveShadow;
-                batch.meshes.forEach((mesh,index)=>instances.setMatrixAt(index,mesh.matrixWorld));
-                instances.instanceMatrix.needsUpdate=true;farmRoot.add(instances);
-                for(const mesh of batch.meshes)mesh.parent.remove(mesh);
-            }
-            // Rotate the farm entrance toward the straight north-south city road. The new
-            // scene remains more than 100 m inside the inner mountain ring.
-            const modelMountainSafe=mountains.every(m=>Math.hypot(FARM_CX-m.x,FARM_CZ-m.z)>m.radius+74);
-            if(!modelMountainSafe)console.warn('Farm model placement is too close to a mountain ring.');
-            farmRoot.scale.setScalar(1.20);
-            farmRoot.position.set(FARM_CX,.08,FARM_CZ);
-            farmRoot.rotation.y=Math.PI;
+            // ============================================================
+            // ÇİFTLİK COLLIDER SİSTEMİ (NESNEYE GÖRE, DOĞRU DÜNYA KOORDİNATI)
+            // Sadece gerçekten görünen ve geçişi engellemesi gereken mesh'ler collider olur.
+            // Ahır içi yürünebilir; kapı boşluğu açık kalır.
+            // ============================================================
             farmRoot.updateMatrixWorld(true);
-            // Collider kutuları modelin yerel koordinatlarında oluşturuldu; farmRoot ölçek/konumundan
-            // sonra bunları dünya koordinatına taşı. Böylece çiftlik objelerinin collider'ları kaymaz.
-            const farmScale=farmRoot.scale.x||1;
-            // Ahır: sadece yan ve arka duvarlar + ön duvarın kapı dışı kısımları.
-            // Kapı direkleri ve lento collider değil (içeride doğuyoruz, kapıdan geçebilelim).
-            const barnWallColliders=[
-                [-4.41,0,.18,6.0], [4.41,0,.18,6.0], [0,-2.91,9.0,.18],
-                [-4.50,2.91,1.30,.18], [4.50,2.91,1.30,.18]
+            const farmColliderStart = buildings.length;
+            const farmColliderKeys = new Set();
+
+            // Yürünebilir / dekoratif mesh isimleri — collider OLMAYACAK
+            const walkablePattern = /(zemin|zemini|avlu|yol|iz|arazi|gölet|göl|çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere|saman zemin|orta geçit|merdiven|çiçek|çayır|yaprak|sebze yatağı|bostan|tarla|çim)/i;
+
+            // Ahır içi — bu grup içindeki HİÇBİR mesh collider olmaz
+            const barnGroupNames = /^(Ahır|Barn)$/i;
+
+            const tempBox = new THREE.Box3();
+            const tempVec = new THREE.Vector3();
+            const tempSize = new THREE.Vector3();
+            const tempCenter = new THREE.Vector3();
+
+            farmRoot.traverse(object => {
+                if (!object.isMesh || !object.geometry) return;
+
+                // Dinamik nesneler (işçiler, hayvanlar, açılır kapılar) collider değil
+                let p = object.parent;
+                while (p && p !== farmRoot) {
+                    if (p.userData?.isFarmWorker || p.userData?.walkAgent || p.userData?.isBarnDoorPivot) return;
+                    p = p.parent;
+                }
+
+                // Ahır grubunun içindeki mesh'ler collider değil (içeride doğuyoruz + yürüyoruz)
+                p = object.parent;
+                while (p && p !== farmRoot) {
+                    if (p.name && barnGroupNames.test(p.name)) return;
+                    p = p.parent;
+                }
+
+                // Yürünebilir / dekoratif mesh'ler collider değil
+                const meshName = String(object.name || '');
+                if (walkablePattern.test(meshName)) return;
+
+                // Mesh'in GERÇEK dünya bounding box'ını al (farmRoot scale/rotation dahil)
+                tempBox.setFromObject(object);
+                if (tempBox.isEmpty()) return;
+                tempBox.getSize(tempSize);
+                tempBox.getCenter(tempCenter);
+
+                // Çok küçük detayları atla (30 cm'den küçük)
+                if (tempSize.x < 0.30 || tempSize.z < 0.30) return;
+
+                // Çok büyük (zemin benzeri) şeyleri atla
+                if (tempSize.x > 40 || tempSize.z > 40) return;
+
+                // Yerdeki ince düz şeyleri atla (yüksekliği 40 cm'den az)
+                if (tempSize.y < 0.40) return;
+
+                // Aynı konumdaki tekrarlı collider'ları engelle
+                const key = `${tempCenter.x.toFixed(2)}|${tempCenter.z.toFixed(2)}|${tempSize.x.toFixed(2)}|${tempSize.z.toFixed(2)}`;
+                if (farmColliderKeys.has(key)) return;
+                farmColliderKeys.add(key);
+
+                // Küçük padding — kapı geçişlerini kapatmasın
+                buildings.push({
+                    x: tempCenter.x,
+                    z: tempCenter.z,
+                    halfW: tempSize.x * 0.5 + 0.15,
+                    halfD: tempSize.z * 0.5 + 0.15
+                });
+            });
+
+            // Ahır duvarları için manuel collider (kapı boşluğu hariç)
+            // farmRoot: position=(FARM_CX, .08, FARM_CZ), scale=1.20, rotation.y=PI
+            // Ahır yerel konumu: (-1, 0, -1), boyutlar: 9 x 3.36 x 6, ön kapı genişlik 6.4
+            const barnLocalX = -1, barnLocalZ = -1;
+            const s = farmRoot.scale.x;
+            const rY = farmRoot.rotation.y; // PI
+            const cosR = Math.cos(rY), sinR = Math.sin(rY);
+            // Yerel (lx, lz) → dünya (wx, wz)
+            const toWorld = (lx, lz) => {
+                const sx = lx * s, sz = lz * s;
+                return {
+                    x: farmRoot.position.x + (sx * cosR + sz * sinR),
+                    z: farmRoot.position.z + (-sx * sinR + sz * cosR)
+                };
+            };
+            // Ahır duvarları (yerel koordinatlar): [lx, lz, halfW, halfD]
+            // Kapı boşluğu ön duvarda ortada — ön duvarın sadece kenarları collider
+            const barnWalls = [
+                [-4.41, 0, 0.10, 3.0],     // sol yan duvar
+                [ 4.41, 0, 0.10, 3.0],     // sağ yan duvar
+                [ 0, -2.91, 4.5, 0.10],    // arka duvar
+                [-3.85, 2.91, 0.65, 0.10], // ön sol duvar (kapı dışı)
+                [ 3.85, 2.91, 0.65, 0.10]  // ön sağ duvar (kapı dışı)
+                // Ön lento ve kapı direkleri collider DEĞİL — içeride doğuyoruz
             ];
-            for(const [lx,lz,hw,hd] of barnWallColliders){
-                const wx=farmRoot.position.x-lx*farmScale, wz=farmRoot.position.z-lz*farmScale;
-                buildings.push({x:wx,z:wz,halfW:hw*farmScale*.5+.10,halfD:hd*farmScale*.5+.10});
+            for (const [lx, lz, hw, hd] of barnWalls) {
+                const w = toWorld(lx, lz);
+                buildings.push({
+                    x: w.x,
+                    z: w.z,
+                    halfW: hw * s + 0.10,
+                    halfD: hd * s + 0.10
+                });
             }
-            // Çatı fiziksel olarak oyuncunun baş üstündedir; 2D yatay collider ile eklenirse
-            // ahırın bütün içini kapatır. Bu nedenle çatı görsel/üst sınır olarak kalır.
-            for(let i=farmColliderBuildingStart;i<buildings.length;i++){
-                const b=buildings[i];
-                b.x=farmRoot.position.x + b.x*farmScale;
-                b.z=farmRoot.position.z + b.z*farmScale;
-                b.halfW*=farmScale;
-                b.halfD*=farmScale;
-            }
+
+            // Çiftlik dış çitleri (kare çit) — kapı boşluğu batıda (yerel x=-28 civarı)
+            // Çit sınırları: plot = { left:-28, right:24, back:-24, front:28 } (yerel)
+            // Kapı: yerel x=-28, z 7.5–10.5 arası açık
+            const plot = { left: -28, right: 24, back: -24, front: 28 };
+            const gateZMin = 7.5, gateZMax = 10.5;
+            const addFenceSeg = (lx1, lz1, lx2, lz2) => {
+                const w1 = toWorld(lx1, lz1);
+                const w2 = toWorld(lx2, lz2);
+                const cx = (w1.x + w2.x) * 0.5;
+                const cz = (w1.z + w2.z) * 0.5;
+                const dx = Math.abs(w2.x - w1.x);
+                const dz = Math.abs(w2.z - w1.z);
+                buildings.push({
+                    x: cx, z: cz,
+                    halfW: Math.max(dx, 0.3) * 0.5 + 0.15,
+                    halfD: Math.max(dz, 0.3) * 0.5 + 0.15
+                });
+            };
+
+            // Güney çit (front, z=28) — tam
+            addFenceSeg(plot.left, plot.front, plot.right, plot.front);
+            // Kuzey çit (back, z=-24) — tam
+            addFenceSeg(plot.left, plot.back, plot.right, plot.back);
+            // Doğu çit (right, x=24) — tam
+            addFenceSeg(plot.right, plot.back, plot.right, plot.front);
+            // Batı çit (left, x=-28) — kapı boşluklu
+            addFenceSeg(plot.left, plot.back, plot.left, gateZMin);
+            addFenceSeg(plot.left, gateZMax, plot.left, plot.front);
+
+            // NOT: farmColliderStart kullanılmadı; farmRoot zaten doğru dünya koordinatında.
+            // Eski kodda collider'lar yerel koordinatta oluşturulup sonra kaydırılıyordu — bu artık gereksiz.
+            void farmColliderStart;
+
             farmRoot.userData.updateWalkers=updateFarmWalkers;
             window.__farmReplacement={root:farmRoot,workers:farmWorkers,animals:farmWorkers.length,mountainSafe:modelMountainSafe,center:{x:FARM_CX,z:FARM_CZ}};
         })(farmModelRoot);
@@ -3370,7 +3427,8 @@ function stepCar(c,dt){
             initWebSocket();
             // Başlangıç noktası doğrudan yeni çiftlik modelindeki ahırın içi.
             const barnSpawnX=FARM_CX+1.2, barnSpawnZ=FARM_CZ+1.2;
-            playerDonkey.position.set(barnSpawnX, 0.25, barnSpawnZ);
+            // Ahır içindeki saman zemin yüksekliği (farmRoot.y=0.08 + yerel zemin üstü)
+            playerDonkey.position.set(barnSpawnX, 0.28, barnSpawnZ);
             gameStarted = true;
             cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
