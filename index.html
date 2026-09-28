@@ -1713,43 +1713,59 @@
             const ground=new THREE.Mesh(farmGeometry(THREE.PlaneGeometry,100,100,40,40),mats.grass);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;ground.name='Arazi';ground.visible=false;farmRoot.add(ground); // The game already provides seamless terrain beneath the farm.
             // Meyilli, düşük poligonlu ufuk sırtları
             // The game already supplies a distant mountain ring; avoid a second artificial ridge inside this farm.
-            // Gölet çukuru (havuz iç yüzeyi): derinleştirilmiş daire, kenarları yamaçlı.
-            const pondOuterR = 5.5, pondInnerR = 3.5, pondDepth = 2.2;
-            const pondGeo = new THREE.CylinderGeometry(pondInnerR, pondInnerR, 0.1, 32);
-            // Çukur yan duvarı: iç silindir şeklinde aşağı doğru iner
-            const pondWallGeo = new THREE.CylinderGeometry(pondOuterR, pondInnerR, pondDepth, 32, 1, true);
-            const pondWallMat = mat('#6b5a3e', .95);
+            // ============================================================
+            // GÖLET: çukur + su + kenar
+            // Yerel merkez: (16, -11). Çukur yarıçapı: 5.5 birim.
+            // Çukur derinliği: 2.5 birim. Su yüzeyi: -0.5 birim.
+            // ============================================================
+            const POND_LOCAL_X = 16;
+            const POND_LOCAL_Z = -11;
+            const POND_RADIUS = 5.5;
+            const POND_DEPTH = 2.5;
+            const POND_WATER_LEVEL = -0.5;
+
+            // 1) Çukur yan duvarları (ters koni: üstte geniş, altta dar)
+            const pondWallGeo = new THREE.CylinderGeometry(POND_RADIUS, POND_RADIUS * 0.85, POND_DEPTH, 40, 1, true);
+            const pondWallMat = mat('#5a4a35', .98);
             const pondWall = new THREE.Mesh(pondWallGeo, pondWallMat);
             pondWall.name = 'Gölet çukuru';
-            pondWall.position.set(16, -pondDepth/2 + 0.04, -11);
-            pondWall.receiveShadow = true;
+            pondWall.position.set(POND_LOCAL_X, -POND_DEPTH/2, POND_LOCAL_Z);
             farmRoot.add(pondWall);
 
-            // Çukur tabanı (dip)
-            const pondFloorGeo = new THREE.CircleGeometry(pondInnerR, 32);
-            const pondFloor = new THREE.Mesh(pondFloorGeo, mat('#4a3a25', .98));
+            // 2) Çukur tabanı (dip)
+            const pondFloorGeo = new THREE.CircleGeometry(POND_RADIUS * 0.85, 40);
+            const pondFloorMat = mat('#3a2e1e', 1.0);
+            const pondFloor = new THREE.Mesh(pondFloorGeo, pondFloorMat);
             pondFloor.name = 'Gölet tabanı';
             pondFloor.rotation.x = -Math.PI/2;
-            pondFloor.position.set(16, -pondDepth + 0.04, -11);
-            pondFloor.receiveShadow = true;
+            pondFloor.position.set(POND_LOCAL_X, -POND_DEPTH, POND_LOCAL_Z);
             farmRoot.add(pondFloor);
 
-            // Su yüzeyi (derin, koyu mavi, şeffaf)
-            const pond = new THREE.Mesh(farmGeometry(THREE.CircleGeometry, pondInnerR, 32), mats.water);
-            pond.rotation.x = -Math.PI/2;
-            pond.scale.set(1.0, 1.0, 1);
-            pond.position.set(16, -0.15, -11);
-            pond.name = 'Gölet';
-            pond.receiveShadow = true;
-            farmRoot.add(pond);
+            // 3) Su yüzeyi (koyu mavi, şeffaf)
+            const pondWaterGeo = new THREE.CircleGeometry(POND_RADIUS * 0.98, 40);
+            const pondWaterMat = new THREE.MeshStandardMaterial({
+                color: '#1e5a7a',
+                roughness: 0.15,
+                metalness: 0.4,
+                transparent: true,
+                opacity: 0.82,
+                side: THREE.DoubleSide
+            });
+            const pondWater = new THREE.Mesh(pondWaterGeo, pondWaterMat);
+            pondWater.name = 'GÖLET SU';
+            pondWater.rotation.x = -Math.PI/2;
+            pondWater.position.set(POND_LOCAL_X, POND_WATER_LEVEL, POND_LOCAL_Z);
+            farmRoot.add(pondWater);
 
-            // Su kenarı (kum/çamur şerit)
-            const shore = new THREE.Mesh(farmGeometry(THREE.RingGeometry, pondInnerR, pondOuterR, 32), mat('#b2a275'));
-            shore.rotation.x = -Math.PI/2;
-            shore.scale.set(1.0, 1.0, 1);
-            shore.position.set(16, 0.05, -11);
-            shore.name = 'Gölet kenarı';
-            farmRoot.add(shore);
+            // 4) Gölet kenarı (kum şerit)
+            const pondShoreGeo = new THREE.RingGeometry(POND_RADIUS * 0.98, POND_RADIUS + 0.6, 40);
+            const pondShoreMat = mat('#b2a275', .95);
+            const pondShore = new THREE.Mesh(pondShoreGeo, pondShoreMat);
+            pondShore.name = 'Gölet kenarı';
+            pondShore.rotation.x = -Math.PI/2;
+            pondShore.position.set(POND_LOCAL_X, 0.05, POND_LOCAL_Z);
+            farmRoot.add(pondShore);
+
             // Sıkıştırılmış avlu ve kare çiftlik parseli
             const yard=new THREE.Mesh(farmGeometry(THREE.CircleGeometry,12,48),mat('#b69b72'));yard.rotation.x=-Math.PI/2;yard.scale.set(1.08,.73,1);yard.position.set(0,.025,0);yard.receiveShadow=true;yard.name='Çalışma avlusu';farmRoot.add(yard);
             function path(points,width,material){for(let i=0;i<points.length-1;i++){const a=new THREE.Vector3(...points[i]),b=new THREE.Vector3(...points[i+1]);const d=b.clone().sub(a),mesh=new THREE.Mesh(farmGeometry(THREE.BoxGeometry,width,.055,d.length()+width*.45),material);mesh.position.copy(a.clone().add(b).multiplyScalar(.5));mesh.position.y=.045;mesh.rotation.y=Math.atan2(d.x,d.z);mesh.receiveShadow=true;farmRoot.add(mesh)}}
@@ -2116,7 +2132,7 @@
                 const w = barnToWorld(lx, lz);
                 buildings.push({ x: w.x, z: w.z, halfW: hw * bs, halfD: hd * bs });
             }
-            const walkablePattern = /(zemin|zemini|avlu|yol|iz|arazi|gölet|göl|çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere|saman zemin|orta geçit|merdiven|çiçek|çayır|yaprak|sebze yatağı|bostan|tarla|çim)/i;
+            const walkablePattern = /(zemin|zemini|avlu|yol|iz|arazi|gölet|göl|Gölet|GÖLET|su|SU|çukur|havuz|çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere|saman zemin|orta geçit|merdiven|çiçek|çayır|yaprak|sebze yatağı|bostan|tarla|çim)/i;
 
             // Ahır içi — bu grup içindeki HİÇBİR mesh collider olmaz
             const barnGroupNames = /^(Ahır|Barn)$/i;
@@ -3928,13 +3944,8 @@ function stepCar(c,dt){
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
                 let baseSpeed = isCrouching ? 0.10 : 0.22;
                 if (isSprinting && !isCrouching) baseSpeed = 0.45;
-                const pondWX = FARM_CX - 16 * 1.20;
-                const pondWZ = FARM_CZ + 11 * 1.20;
-                const pondSwimR = 3.5 * 1.20;
-                const pondDist = Math.hypot(playerDonkey.position.x - pondWX, playerDonkey.position.z - pondWZ);
-
                 let speed = baseSpeed;
-                if (pondDist < pondSwimR) speed *= 0.6;
+                if (playerDonkey.userData.inWater) speed *= 0.35; // suda %65 yavaş
                 let moveX = 0, moveZ = 0, isMoving = false;
 
                 if (controlMode === 'pc') {
@@ -3967,14 +3978,29 @@ function stepCar(c,dt){
                     playerDonkey.position.z = newZ;
                 }
 
-                // Gölet suyu üzerinde yüzme: su yüzeyinin 0.3 birim üstünde dur
-                const swimPondDist = Math.hypot(playerDonkey.position.x - pondWX, playerDonkey.position.z - pondWZ);
-                if (swimPondDist < pondSwimR) {
-                    // Su içinde: hafif aşağı çek (yüzme efekti)
-                    const waterY = 0.08 - 0.15;  // su yüzeyi yüksekliği (farmRoot.y + pond.y)
-                    playerDonkey.position.y = Math.max(playerDonkey.position.y, waterY + 0.3);
-                    velocityY = 0; // su içinde yerçekimi yok
-                    isGrounded = true; // zıplama devre dışı (yüzme modu)
+                // ---- GÖLET SU FİZİĞİ ----
+                // Dünya koordinatında gölet merkezini hesapla
+                const pondWorldCenterX = FARM_CX - POND_LOCAL_X * 1.20;
+                const pondWorldCenterZ = FARM_CZ + POND_LOCAL_Z * 1.20;
+                const pondWorldR = POND_RADIUS * 1.20;
+                const pondWaterWorldY = FARM_CZ * 0 + 0.08 + POND_WATER_LEVEL * 1.20; // farmRoot.y + su seviyesi
+                const dxPond = playerDonkey.position.x - pondWorldCenterX;
+                const dzPond = playerDonkey.position.z - pondWorldCenterZ;
+                const distPond = Math.hypot(dxPond, dzPond);
+
+                if (distPond < pondWorldR) {
+                    // Su içinde: yüzme modu
+                    playerDonkey.userData.inWater = true;
+                    // Eşek su yüzeyinde yüzsün (biraz batmış halde)
+                    const targetY = pondWaterWorldY + 0.2;
+                    if (playerDonkey.position.y < targetY) {
+                        playerDonkey.position.y = targetY;
+                    }
+                    // Su içinde zıplayamaz
+                    velocityY = 0;
+                    isGrounded = true;
+                } else {
+                    playerDonkey.userData.inWater = false;
                 }
 
                 const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
