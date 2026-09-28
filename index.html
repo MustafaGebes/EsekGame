@@ -3449,6 +3449,7 @@ function stepCar(c,dt){
             crosshairEl.style.display = 'none';
             document.body.style.cursor = 'default';
             menuEl.style.display = 'none';
+            document.getElementById('nameCard').style.display = 'none';
             playerDonkey.visible = true;
             hudEl.style.display = 'block';
             setDonkeyNameTag(playerDonkey, getPlayerName());
@@ -3533,6 +3534,7 @@ function stepCar(c,dt){
             sendPresence(false);
             menuEl.style.display = 'flex';
             mainButtons.style.display = 'block';
+            document.getElementById('nameCard').style.display = 'block';
             document.getElementById('onlineBadge').style.display = 'block';
             chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
             togglePlayerList(false);
@@ -3643,6 +3645,7 @@ function stepCar(c,dt){
                 togglePlayerList(false);
                 menuEl.style.display = 'flex';
                 mainButtons.style.display = 'none';
+                document.getElementById('nameCard').style.display = 'none';
                 pauseButtons.style.display = 'flex';
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
@@ -4204,11 +4207,24 @@ function stepCar(c,dt){
             gameStarted = true; playerIsDead = false; deathScreenShowing = false;
             deathOverlayEl.style.display = 'none'; menuEl.style.display = 'none';
             mainButtons.style.display = 'none'; pauseButtons.style.display = 'none';
+            document.getElementById('nameCard').style.display = 'none';
             infoEl.style.display = 'block'; mobileControlsEl.style.display = mode === 'mobile' ? 'block' : 'none';
             hudEl.style.display = 'block'; crosshairEl.style.display = cameraMode === 'first' ? 'block' : 'none';
             playerDonkey.visible = cameraMode !== 'first'; playerDonkey.rotation.z = 0;
             playerDonkey.scale.y = 1; document.body.style.cursor = 'crosshair';
             for (const other of Object.values(otherPlayers)) other.visible = true;
+            // Kamerayı eşeğin 3. şahıs arkasına konumlandır
+            cameraMode = 'third';
+            hudCamEl.textContent = '3. Şahıs';
+            (function() {
+                const camDistance = 6, camHeight = 2.5;
+                const camX = playerDonkey.position.x - Math.sin(yaw) * camDistance;
+                const camY = playerDonkey.position.y + camHeight + (pitch * 2.5);
+                const camZ = playerDonkey.position.z - Math.cos(yaw) * camDistance;
+                camera.position.set(camX, camY, camZ);
+                camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 1.5, playerDonkey.position.z);
+                camera.updateMatrixWorld(true);
+            })();
             sendPresence(true); setGameUiVisible(true); setChatVisible(!chatIsManuallyHidden);
             sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
         }
