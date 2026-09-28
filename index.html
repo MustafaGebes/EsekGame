@@ -2041,7 +2041,7 @@
                 if(bounds.isEmpty())return;
                 const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
                 if(size.x<.08||size.z<.08)return;
-                suppliedFarmColliders.push({x:center.x,z:center.z,halfW:size.x*.5,halfD:size.z*.5});
+                suppliedFarmColliders.push({x:center.x,z:center.z,halfW:size.x*.5+.45,halfD:size.z*.5+.45});
             };
             farmRoot.traverse(object=>{
                 if(object.isGroup&&navGroupBlockers.has(object.name))recordModelCollider(object);
@@ -2074,7 +2074,7 @@
             const modelMountainSafe=mountains.every(m=>Math.hypot(FARM_CX-m.x,FARM_CZ-m.z)>m.radius+74);
             if(!modelMountainSafe)console.warn('Farm model placement is too close to a mountain ring.');
             farmRoot.scale.setScalar(1.20);
-            farmRoot.position.set(FARM_CX,.025,FARM_CZ);
+            farmRoot.position.set(FARM_CX,.08,FARM_CZ);
             farmRoot.rotation.y=Math.PI;
             farmRoot.updateMatrixWorld(true);
             farmRoot.userData.updateWalkers=updateFarmWalkers;
@@ -2114,7 +2114,7 @@
         const GRID_STEP = BLOCK_TOTAL + ROAD_WIDTH;
         const gridCount = 5;
         const cityWidth = gridCount * BLOCK_TOTAL + (gridCount + 1) * ROAD_WIDTH;
-        const CITY_RADIUS = cityWidth / 2 + 30;
+        const CITY_RADIUS = 255;
         // Dik açılı güzergâh: çiftliğin kuzeyinden ve doğusundan dolaşır, çit sınırını geçmez.
         const ROAD_PATH = [
             { x: -47, z: CITY_CENTER_Z }, // mevcut şehrin doğu-kuzey-güney caddesine bağlanır
@@ -2643,7 +2643,7 @@
         const cl = (v,a,b) => Math.min(b, Math.max(a,v));
 
         const cityRoot = new THREE.Group();
-        cityRoot.position.set(CITY_CENTER_X, terrainHeightAt(CITY_CENTER_X, CITY_CENTER_Z) + 0.2, CITY_CENTER_Z);
+        cityRoot.position.set(CITY_CENTER_X, 0.28, CITY_CENTER_Z);
         cityRoot.scale.setScalar(CITY_MODEL_SCALE);
         scene.add(cityRoot);
 
