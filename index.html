@@ -2041,16 +2041,14 @@
                 if(bounds.isEmpty())return;
                 const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
                 if(size.x<.08||size.z<.08)return;
-                suppliedFarmColliders.push({x:center.x,z:center.z,halfW:size.x*.5+.45,halfD:size.z*.5+.45});
+                suppliedFarmColliders.push({x:center.x,z:center.z,halfW:size.x*.5+.60,halfD:size.z*.5+.60});
             };
             farmRoot.traverse(object=>{
                 if(object.isGroup&&navGroupBlockers.has(object.name))recordModelCollider(object);
                 else if(object.isMesh&&navMeshBlockers.has(object.name)&&!navHasBlockerAncestor(object))recordModelCollider(object);
             });
-            const axisY=new THREE.Vector3(0,1,0);
             for(const box of suppliedFarmColliders){
-                const center=new THREE.Vector3(box.x,0,box.z).applyAxisAngle(axisY,Math.PI);
-                buildings.push({x:FARM_CX+center.x,z:FARM_CZ+center.z,halfW:box.halfW,halfD:box.halfD});
+                buildings.push({x:box.x,z:box.z,halfW:box.halfW,halfD:box.halfD});
             }
             const isDynamicFarmMesh=(mesh)=>{let p=mesh.parent;while(p&&p!==farmRoot){if(p.userData?.isFarmWorker||p.userData?.walkAgent||p.userData?.isBarnDoorPivot)return true;p=p.parent}return false};
             const staticBatches=new Map();
@@ -2104,8 +2102,8 @@
         // ŞEHİR
         // ==========================================
         const legacyPreCityScene = new Set(scene.children);
-        const CITY_CENTER_X = -140;
-        const CITY_CENTER_Z = -140;
+        const CITY_CENTER_X = -105;
+        const CITY_CENTER_Z = -105;
         const CITY_MODEL_SCALE = 1.12;
         const ROAD_WIDTH = 12;
         const BLOCK_INNER = 35;
@@ -2157,7 +2155,8 @@
         function terrainHeightAt(x, z) {
             const radial = Math.hypot(x, z);
             const farmFlat = smoothStep(120, 172, Math.hypot(x - FARM_CX, z - FARM_CZ));
-            const cityFlat = smoothStep(CITY_RADIUS + 5, CITY_RADIUS + 48, Math.hypot(x - CITY_CENTER_X, z - CITY_CENTER_Z));
+            const cityLocalX=Math.abs(x-CITY_CENTER_X), cityLocalZ=Math.abs(z-CITY_CENTER_Z);
+            const cityFlat = 1 - smoothStep(155, 205, Math.max(cityLocalX, cityLocalZ));
             const roadFlat = smoothStep(13, 31, distanceToRoadAxis(x, z));
             const parkingDx = Math.max(0, Math.abs(x - PARKING_CENTER.x) - 17);
             const parkingDz = Math.max(0, Math.abs(z - PARKING_CENTER.z) - 12);
