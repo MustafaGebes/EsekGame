@@ -2120,73 +2120,7 @@
                 });
             });
 
-            // Ahır duvarları için manuel collider (kapı boşluğu hariç)
-            // farmRoot: position=(FARM_CX, .08, FARM_CZ), scale=1.20, rotation.y=PI
-            // Ahır yerel konumu: (-1, 0, -1), boyutlar: 9 x 3.36 x 6, ön kapı genişlik 6.4
-            const barnLocalX = -1, barnLocalZ = -1;
-            const s = farmRoot.scale.x;
-            const rY = farmRoot.rotation.y; // PI
-            const cosR = Math.cos(rY), sinR = Math.sin(rY);
-            // Yerel (lx, lz) → dünya (wx, wz)
-            const toWorld = (lx, lz) => {
-                const sx = lx * s, sz = lz * s;
-                return {
-                    x: farmRoot.position.x + (sx * cosR + sz * sinR),
-                    z: farmRoot.position.z + (-sx * sinR + sz * cosR)
-                };
-            };
-            // Ahır duvarları (yerel koordinatlar): [lx, lz, halfW, halfD]
-            // Kapı boşluğu ön duvarda ortada — ön duvarın sadece kenarları collider
-            const barnWalls = [
-                [-4.41, 0, 0.10, 3.0],     // sol yan duvar
-                [ 4.41, 0, 0.10, 3.0],     // sağ yan duvar
-                [ 0, -2.91, 4.5, 0.10],    // arka duvar
-                [-3.85, 2.91, 0.65, 0.10], // ön sol duvar (kapı dışı)
-                [ 3.85, 2.91, 0.65, 0.10]  // ön sağ duvar (kapı dışı)
-                // Ön lento ve kapı direkleri collider DEĞİL — içeride doğuyoruz
-            ];
-            for (const [lx, lz, hw, hd] of barnWalls) {
-                const w = toWorld(lx, lz);
-                buildings.push({
-                    x: w.x,
-                    z: w.z,
-                    halfW: hw * s + 0.10,
-                    halfD: hd * s + 0.10
-                });
-            }
 
-            // Çiftlik dış çitleri (kare çit) — kapı boşluğu batıda (yerel x=-28 civarı)
-            // Çit sınırları: plot = { left:-28, right:24, back:-24, front:28 } (yerel)
-            // Kapı: yerel x=-28, z 7.5–10.5 arası açık
-            const colliderPlot = { left: -28, right: 24, back: -24, front: 28 };
-            const gateZMin = 7.5, gateZMax = 10.5;
-            const addFenceSeg = (lx1, lz1, lx2, lz2) => {
-                const w1 = toWorld(lx1, lz1);
-                const w2 = toWorld(lx2, lz2);
-                const cx = (w1.x + w2.x) * 0.5;
-                const cz = (w1.z + w2.z) * 0.5;
-                const dx = Math.abs(w2.x - w1.x);
-                const dz = Math.abs(w2.z - w1.z);
-                buildings.push({
-                    x: cx, z: cz,
-                    halfW: Math.max(dx, 0.3) * 0.5 + 0.15,
-                    halfD: Math.max(dz, 0.3) * 0.5 + 0.15
-                });
-            };
-
-            // Güney çit (front, z=28) — tam
-            addFenceSeg(colliderPlot.left, colliderPlot.front, colliderPlot.right, colliderPlot.front);
-            // Kuzey çit (back, z=-24) — tam
-            addFenceSeg(colliderPlot.left, colliderPlot.back, colliderPlot.right, colliderPlot.back);
-            // Doğu çit (right, x=24) — tam
-            addFenceSeg(colliderPlot.right, colliderPlot.back, colliderPlot.right, colliderPlot.front);
-            // Batı çit (left, x=-28) — kapı boşluklu
-            addFenceSeg(colliderPlot.left, colliderPlot.back, colliderPlot.left, gateZMin);
-            addFenceSeg(colliderPlot.left, gateZMax, colliderPlot.left, colliderPlot.front);
-
-            // NOT: farmColliderStart kullanılmadı; farmRoot zaten doğru dünya koordinatında.
-            // Eski kodda collider'lar yerel koordinatta oluşturulup sonra kaydırılıyordu — bu artık gereksiz.
-            void farmColliderStart;
 
             farmRoot.userData.updateWalkers=updateFarmWalkers;
             window.__farmReplacement={root:farmRoot,workers:farmWorkers,animals:farmWorkers.length,mountainSafe:modelMountainSafe,center:{x:FARM_CX,z:FARM_CZ}};
