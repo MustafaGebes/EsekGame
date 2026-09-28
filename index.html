@@ -2633,6 +2633,14 @@
         // Dağlara ve çiftliğe dokunulmaz.
         // ==========================================
         const cityModelController = (() => {
+        // Şehir Maketi 3D.html içindeki yardımcı rastgele/limit fonksiyonları
+        // ana oyunun scope'unda olmadığı için burada yerel olarak tanımlanır.
+        let citySeed = 11;
+        const rnd = () => { citySeed = (citySeed * 16807) % 2147483647; return (citySeed - 1) / 2147483646; };
+        const R = (a,b) => a + rnd() * (b-a);
+        const pick = a => a[Math.floor(rnd() * a.length)];
+        const cl = (v,a,b) => Math.min(b, Math.max(a,v));
+
         const cityRoot = new THREE.Group();
         cityRoot.position.set(CITY_CENTER_X, terrainHeightAt(CITY_CENTER_X, CITY_CENTER_Z) + 0.2, CITY_CENTER_Z);
         cityRoot.scale.setScalar(CITY_MODEL_SCALE);
