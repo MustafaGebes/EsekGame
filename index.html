@@ -3429,6 +3429,7 @@ function stepCar(c,dt){
         mobViewBtn.addEventListener('click', toggleCameraMode);
 
         function startGame(mode) {
+            menuCameraAngle = 0; // Oyun başlarken menü kamera açısını sıfırla
             controlMode = mode;
             initWebSocket();
             // Başlangıç noktası doğrudan yeni çiftlik modelindeki ahırın içi.
@@ -3465,41 +3466,20 @@ function stepCar(c,dt){
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'block';
             }
-            (function positionCameraBehindDonkey() {
-                const camDistance = 6;
-                const camHeight = 2.5;
-                const camX = playerDonkey.position.x - Math.sin(yaw) * camDistance;
-                const camY = playerDonkey.position.y + camHeight + (pitch * 2.5);
-                const camZ = playerDonkey.position.z - Math.cos(yaw) * camDistance;
-                camera.position.set(camX, camY, camZ);
-                camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 1.5, playerDonkey.position.z);
-                camera.updateMatrixWorld(true);
-            })();
+            // Kamerayı oyun başlar başlamaz doğrudan eşeğin arkasına yerleştir.
+            // Menü kamerası ilk frame'e sızmasın; yaw/pitch başlangıç değerleri yukarıda ayarlandı.
+            cameraMode = 'third';
+            hudCamEl.textContent = '3. Şahıs';
+            const camDistance = 6;
+            const camHeight = 2.5;
+            const camX = playerDonkey.position.x - Math.sin(yaw) * camDistance;
+            const camY = playerDonkey.position.y + camHeight + (pitch * 2.5);
+            const camZ = playerDonkey.position.z - Math.cos(yaw) * camDistance;
+            camera.position.set(camX, camY, camZ);
+            camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 1.5, playerDonkey.position.z);
+            camera.updateMatrixWorld(true);
+
             window.__spawnTime = performance.now();
-            // Kamerayı spawn noktasına hemen yerleştir (ilk frame'de doğru görünsün)
-            if (cameraMode === 'third') {
-                const camDistance = 6;
-                const camHeight = 2.5;
-                camera.position.set(
-                    playerDonkey.position.x - Math.sin(yaw) * camDistance,
-                    playerDonkey.position.y + camHeight,
-                    playerDonkey.position.z - Math.cos(yaw) * camDistance
-                );
-                camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 1.5, playerDonkey.position.z);
-            } else {
-                camera.position.set(playerDonkey.position.x, playerDonkey.position.y + 2.0, playerDonkey.position.z);
-                camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 2.0, playerDonkey.position.z - 1);
-            }
-                  (function positionCameraBehindDonkey() {
-                const camDistance = 6;
-                const camHeight = 2.5;
-                const camX = playerDonkey.position.x - Math.sin(yaw) * camDistance;
-                const camY = playerDonkey.position.y + camHeight + (pitch * 2.5);
-                const camZ = playerDonkey.position.z - Math.cos(yaw) * camDistance;
-                camera.position.set(camX, camY, camZ);
-                camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 1.5, playerDonkey.position.z);
-                camera.updateMatrixWorld(true);
-            })();
         }
 
         initWebSocket();
@@ -4203,6 +4183,7 @@ function stepCar(c,dt){
             mobChatBtnEl.title = show ? 'Sohbeti kapat' : 'Sohbeti aç';
         }
         function completeResume(mode) {
+            menuCameraAngle = 0; // Menü kamera açısını sıfırla
             controlMode = mode;
             gameStarted = true; playerIsDead = false; deathScreenShowing = false;
             deathOverlayEl.style.display = 'none'; menuEl.style.display = 'none';
