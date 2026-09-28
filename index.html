@@ -3429,29 +3429,18 @@ function stepCar(c,dt){
         mobViewBtn.addEventListener('click', toggleCameraMode);
 
         function startGame(mode) {
-            menuCameraAngle = 0; // Oyun başlarken menü kamera açısını sıfırla
             controlMode = mode;
             initWebSocket();
-            // KIRMIZI AHIRIN İÇİNDE doğ.
-            // createBarn(BARN_X, BARN_Z) ile oluşturulan ahır 40x12 boyutunda;
-            // ön açıklığı +Z tarafında. Eşek +Z yönüne baksın ki kamera arkasında,
-            // yani ahırın içinde kalsın.
-            const barnSpawnX = BARN_X;
-            const barnSpawnZ = BARN_Z - 1.5;
+            // Başlangıç noktası doğrudan yeni çiftlik modelindeki ahırın içi.
+            const barnSpawnX=FARM_CX+1.2, barnSpawnZ=FARM_CZ+1.2;
+            // Ahır içindeki saman zemin yüksekliği (farmRoot.y=0.08 + yerel zemin üstü)
             playerDonkey.position.set(barnSpawnX, 0.28, barnSpawnZ);
-            playerDonkey.rotation.set(0, 0, 0);
-            playerDonkey.scale.y = 1;
-            velocityY = 0;
-            isGrounded = true;
-            yaw = 0;
-            pitch = 0.3;
             gameStarted = true;
             cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
             crosshairEl.style.display = 'none';
             document.body.style.cursor = 'default';
             menuEl.style.display = 'none';
-            document.getElementById('nameCard').style.display = 'none';
             playerDonkey.visible = true;
             hudEl.style.display = 'block';
             setDonkeyNameTag(playerDonkey, getPlayerName());
@@ -3467,21 +3456,6 @@ function stepCar(c,dt){
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'block';
             }
-            // Kamerayı oyun başlar başlamaz doğrudan eşeğin arkasına yerleştir.
-            // Menü kamerası ilk frame'e sızmasın; yaw/pitch başlangıç değerleri yukarıda ayarlandı.
-            cameraMode = 'third';
-            hudCamEl.textContent = '3. Şahıs';
-            // Eşeğin arkasındaki kamera da AHIRIN İÇİNDE kalsın.
-            const camDistance = 3.8;
-            const camHeight = 2.1;
-            const camX = playerDonkey.position.x - Math.sin(yaw) * camDistance;
-            const camY = playerDonkey.position.y + camHeight + (pitch * 2.0);
-            const camZ = playerDonkey.position.z - Math.cos(yaw) * camDistance;
-            camera.position.set(camX, camY, camZ);
-            camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 1.5, playerDonkey.position.z);
-            camera.updateMatrixWorld(true);
-
-            window.__spawnTime = performance.now();
         }
 
         initWebSocket();
@@ -3516,7 +3490,6 @@ function stepCar(c,dt){
             sendPresence(false);
             menuEl.style.display = 'flex';
             mainButtons.style.display = 'block';
-            document.getElementById('nameCard').style.display = 'block';
             document.getElementById('onlineBadge').style.display = 'block';
             chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
             togglePlayerList(false);
@@ -3627,7 +3600,6 @@ function stepCar(c,dt){
                 togglePlayerList(false);
                 menuEl.style.display = 'flex';
                 mainButtons.style.display = 'none';
-                document.getElementById('nameCard').style.display = 'none';
                 pauseButtons.style.display = 'flex';
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
@@ -4185,33 +4157,15 @@ function stepCar(c,dt){
             mobChatBtnEl.title = show ? 'Sohbeti kapat' : 'Sohbeti aç';
         }
         function completeResume(mode) {
-            menuCameraAngle = 0; // Menü kamera açısını sıfırla
             controlMode = mode;
             gameStarted = true; playerIsDead = false; deathScreenShowing = false;
             deathOverlayEl.style.display = 'none'; menuEl.style.display = 'none';
             mainButtons.style.display = 'none'; pauseButtons.style.display = 'none';
-            document.getElementById('nameCard').style.display = 'none';
             infoEl.style.display = 'block'; mobileControlsEl.style.display = mode === 'mobile' ? 'block' : 'none';
             hudEl.style.display = 'block'; crosshairEl.style.display = cameraMode === 'first' ? 'block' : 'none';
             playerDonkey.visible = cameraMode !== 'first'; playerDonkey.rotation.z = 0;
             playerDonkey.scale.y = 1; document.body.style.cursor = 'crosshair';
             for (const other of Object.values(otherPlayers)) other.visible = true;
-            // Devam ederken de kamera 3. şahıs olsun.
-            cameraMode = 'third';
-            hudCamEl.textContent = '3. Şahıs';
-            yaw = 0;
-            pitch = 0.3;
-            playerDonkey.visible = true;
-            document.body.style.cursor = 'default';
-            (function() {
-                const camDistance = 6, camHeight = 2.5;
-                const camX = playerDonkey.position.x - Math.sin(yaw) * camDistance;
-                const camY = playerDonkey.position.y + camHeight + (pitch * 2.5);
-                const camZ = playerDonkey.position.z - Math.cos(yaw) * camDistance;
-                camera.position.set(camX, camY, camZ);
-                camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 1.5, playerDonkey.position.z);
-                camera.updateMatrixWorld(true);
-            })();
             sendPresence(true); setGameUiVisible(true); setChatVisible(!chatIsManuallyHidden);
             sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
         }
