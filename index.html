@@ -2156,7 +2156,11 @@
             const radial = Math.hypot(x, z);
             const farmFlat = smoothStep(120, 172, Math.hypot(x - FARM_CX, z - FARM_CZ));
             const cityLocalX=Math.abs(x-CITY_CENTER_X), cityLocalZ=Math.abs(z-CITY_CENTER_Z);
-            const cityFlat = 1 - smoothStep(155, 205, Math.max(cityLocalX, cityLocalZ));
+            // Şehir maketinin yolları/slabları şehir root'u ile birlikte y=0.28'e oturuyor.
+            // Oyuncu/eşek ayakları bu düz şehir zeminine otursun ve eski dalgalı araziye gömülmesin.
+            const cityModelHalf=242;
+            const cityFlat = 1 - smoothStep(cityModelHalf-12, cityModelHalf+12, Math.max(cityLocalX, cityLocalZ));
+            const cityGroundY = 0.28;
             const roadFlat = smoothStep(13, 31, distanceToRoadAxis(x, z));
             const parkingDx = Math.max(0, Math.abs(x - PARKING_CENTER.x) - 17);
             const parkingDz = Math.max(0, Math.abs(z - PARKING_CENTER.z) - 12);
@@ -2168,6 +2172,8 @@
             const beachLandDz = Math.max(0, Math.abs(z + 420) - 42);
             const beachFlat = smoothStep(2, 20, Math.hypot(beachLandDx, beachLandDz));
             const pondFlat = smoothStep(10, 22, Math.hypot(x - FOREST_POND_CENTER.x, z - FOREST_POND_CENTER.z));
+            const cityDist = Math.max(cityLocalX, cityLocalZ);
+            if (cityDist <= cityModelHalf-12) return cityGroundY;
             const edgeFade = 1 - smoothStep(310, 350, radial);
             const broadHills = (Math.sin(x * 0.027) * 1.15 + Math.cos(z * 0.023) * 1.05 + Math.sin((x + z) * 0.041) * 0.65);
             const smallUndulation = Math.sin(x * 0.11 + z * 0.07) * 0.22;
@@ -3307,7 +3313,7 @@ function stepCar(c,dt){
             controlMode = mode;
             initWebSocket();
             // Eşek çiftlik girişinin uzağında spawn olsun
-            playerDonkey.position.set(SPAWN_X, terrainHeightAt(SPAWN_X, SPAWN_Z + 30), SPAWN_Z + 30);
+            playerDonkey.position.set(FARM_CX, terrainHeightAt(FARM_CX, FARM_CZ), FARM_CZ);
             gameStarted = true;
             cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
