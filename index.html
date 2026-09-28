@@ -2158,7 +2158,7 @@
             // Çiftlik dış çitleri (kare çit) — kapı boşluğu batıda (yerel x=-28 civarı)
             // Çit sınırları: plot = { left:-28, right:24, back:-24, front:28 } (yerel)
             // Kapı: yerel x=-28, z 7.5–10.5 arası açık
-            const plot = { left: -28, right: 24, back: -24, front: 28 };
+            const colliderPlot = { left: -28, right: 24, back: -24, front: 28 };
             const gateZMin = 7.5, gateZMax = 10.5;
             const addFenceSeg = (lx1, lz1, lx2, lz2) => {
                 const w1 = toWorld(lx1, lz1);
@@ -2175,14 +2175,14 @@
             };
 
             // Güney çit (front, z=28) — tam
-            addFenceSeg(plot.left, plot.front, plot.right, plot.front);
+            addFenceSeg(colliderPlot.left, colliderPlot.front, colliderPlot.right, colliderPlot.front);
             // Kuzey çit (back, z=-24) — tam
-            addFenceSeg(plot.left, plot.back, plot.right, plot.back);
+            addFenceSeg(colliderPlot.left, colliderPlot.back, colliderPlot.right, colliderPlot.back);
             // Doğu çit (right, x=24) — tam
-            addFenceSeg(plot.right, plot.back, plot.right, plot.front);
+            addFenceSeg(colliderPlot.right, colliderPlot.back, colliderPlot.right, colliderPlot.front);
             // Batı çit (left, x=-28) — kapı boşluklu
-            addFenceSeg(plot.left, plot.back, plot.left, gateZMin);
-            addFenceSeg(plot.left, gateZMax, plot.left, plot.front);
+            addFenceSeg(colliderPlot.left, colliderPlot.back, colliderPlot.left, gateZMin);
+            addFenceSeg(colliderPlot.left, gateZMax, colliderPlot.left, colliderPlot.front);
 
             // NOT: farmColliderStart kullanılmadı; farmRoot zaten doğru dünya koordinatında.
             // Eski kodda collider'lar yerel koordinatta oluşturulup sonra kaydırılıyordu — bu artık gereksiz.
