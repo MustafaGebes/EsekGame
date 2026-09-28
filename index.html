@@ -3432,11 +3432,12 @@ function stepCar(c,dt){
             menuCameraAngle = 0; // Oyun başlarken menü kamera açısını sıfırla
             controlMode = mode;
             initWebSocket();
-            // Başlangıç noktası doğrudan yeni çiftlik modelindeki ahırın içi.
-            // farmRoot.position=(FARM_CX,.08,FARM_CZ), rotation.y=PI, scale=1.20
-            // Ahır yerel: (-1, 0, -1). Dünya koordinatı:
-            const barnSpawnX = FARM_CX + 1.2;  // -(-1)*1.2 = +1.2
-            const barnSpawnZ = FARM_CZ + 1.2;  // -(-1)*1.2 = +1.2
+            // KIRMIZI AHIRIN İÇİNDE doğ.
+            // createBarn(BARN_X, BARN_Z) ile oluşturulan ahır 40x12 boyutunda;
+            // ön açıklığı +Z tarafında. Eşek +Z yönüne baksın ki kamera arkasında,
+            // yani ahırın içinde kalsın.
+            const barnSpawnX = BARN_X;
+            const barnSpawnZ = BARN_Z - 1.5;
             playerDonkey.position.set(barnSpawnX, 0.28, barnSpawnZ);
             playerDonkey.rotation.set(0, 0, 0);
             playerDonkey.scale.y = 1;
@@ -3470,10 +3471,11 @@ function stepCar(c,dt){
             // Menü kamerası ilk frame'e sızmasın; yaw/pitch başlangıç değerleri yukarıda ayarlandı.
             cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
-            const camDistance = 6;
-            const camHeight = 2.5;
+            // Eşeğin arkasındaki kamera da AHIRIN İÇİNDE kalsın.
+            const camDistance = 3.8;
+            const camHeight = 2.1;
             const camX = playerDonkey.position.x - Math.sin(yaw) * camDistance;
-            const camY = playerDonkey.position.y + camHeight + (pitch * 2.5);
+            const camY = playerDonkey.position.y + camHeight + (pitch * 2.0);
             const camZ = playerDonkey.position.z - Math.cos(yaw) * camDistance;
             camera.position.set(camX, camY, camZ);
             camera.lookAt(playerDonkey.position.x, playerDonkey.position.y + 1.5, playerDonkey.position.z);
@@ -4194,9 +4196,13 @@ function stepCar(c,dt){
             playerDonkey.visible = cameraMode !== 'first'; playerDonkey.rotation.z = 0;
             playerDonkey.scale.y = 1; document.body.style.cursor = 'crosshair';
             for (const other of Object.values(otherPlayers)) other.visible = true;
-            // Kamerayı eşeğin 3. şahıs arkasına konumlandır
+            // Devam ederken de kamera 3. şahıs olsun.
             cameraMode = 'third';
             hudCamEl.textContent = '3. Şahıs';
+            yaw = 0;
+            pitch = 0.3;
+            playerDonkey.visible = true;
+            document.body.style.cursor = 'default';
             (function() {
                 const camDistance = 6, camHeight = 2.5;
                 const camX = playerDonkey.position.x - Math.sin(yaw) * camDistance;
