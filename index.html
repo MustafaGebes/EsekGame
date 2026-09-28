@@ -3426,6 +3426,34 @@ function stepCar(c,dt){
 
         mobViewBtn.addEventListener('click', toggleCameraMode);
 
+        function snapCameraToPlayer() {
+            // Menü kamerasını anında bırak; oyun başlarken kamera oyuncuya bağlanır.
+            if (!playerDonkey) return;
+            const isCrouchNow = controlMode === 'pc' ? !!keys.c : !!isCouchingMobile;
+            if (cameraMode === 'third') {
+                const distance = 6;
+                const heightOffset = isCrouchNow ? 1.8 : 2.5;
+                const camX = playerDonkey.position.x - Math.sin(yaw) * distance;
+                const camY = Math.max(0.8, playerDonkey.position.y + heightOffset + (pitch * 2.5));
+                const camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
+                camera.position.set(camX, camY, camZ);
+                camera.lookAt(new THREE.Vector3(playerDonkey.position.x, playerDonkey.position.y + (isCrouchNow ? 1.0 : 1.5), playerDonkey.position.z));
+            } else {
+                const eyeHeight = isCrouchNow ? 1.2 : 2.0;
+                const eyeForward = 0.5;
+                const eyeX = playerDonkey.position.x + Math.sin(yaw) * eyeForward;
+                const eyeY = playerDonkey.position.y + eyeHeight;
+                const eyeZ = playerDonkey.position.z + Math.cos(yaw) * eyeForward;
+                camera.position.set(eyeX, eyeY, eyeZ);
+                camera.lookAt(new THREE.Vector3(
+                    eyeX + Math.sin(yaw) * Math.cos(pitch),
+                    eyeY + Math.sin(pitch),
+                    eyeZ + Math.cos(yaw) * Math.cos(pitch)
+                ));
+            }
+            stars.position.copy(camera.position);
+        }
+
         function startGame(mode) {
             controlMode = mode;
             initWebSocket();
@@ -3433,8 +3461,10 @@ function stepCar(c,dt){
             const barnSpawnX=FARM_CX+1.2, barnSpawnZ=FARM_CZ+1.2;
             // Ahır içindeki saman zemin yüksekliği (farmRoot.y=0.08 + yerel zemin üstü)
             playerDonkey.position.set(barnSpawnX, 0.28, barnSpawnZ);
-            gameStarted = true;
+            // Oyun açıldığı anda menü kamerasından oyuncu kamerasına geç.
             cameraMode = 'third';
+            snapCameraToPlayer();
+            gameStarted = true;
             hudCamEl.textContent = '3. Şahıs';
             crosshairEl.style.display = 'none';
             document.body.style.cursor = 'default';
@@ -4159,6 +4189,7 @@ function stepCar(c,dt){
         function completeResume(mode) {
             controlMode = mode;
             gameStarted = true; playerIsDead = false; deathScreenShowing = false;
+            snapCameraToPlayer();
             deathOverlayEl.style.display = 'none'; menuEl.style.display = 'none';
             mainButtons.style.display = 'none'; pauseButtons.style.display = 'none';
             infoEl.style.display = 'block'; mobileControlsEl.style.display = mode === 'mobile' ? 'block' : 'none';
@@ -4276,6 +4307,7 @@ function stepCar(c,dt){
                 if(data.id===myId)showDeath(data.reason||`${data.killerName||'Bir tehlike'} seni yendi.`);
             } else if(data.type==='respawned'){
                 const p=data.spawn||{x:180,y:0,z:210};playerDonkey.position.set(p.x,p.y,p.z);playerDonkey.rotation.set(0,yaw,0);playerDonkey.scale.y=1;playerDonkey.visible=cameraMode!=='first';
+                snapCameraToPlayer();
                 playerIsDead=false;deathScreenShowing=false;gameStarted=true;deathOverlayEl.style.display='none';respawnBtnEl.disabled=false;respawnBtnEl.textContent='↻ Yeniden Doğ';
                 menuEl.style.display='none';infoEl.style.display='block';mobileControlsEl.style.display=controlMode==='mobile'?'block':'none';hudEl.style.display='block';crosshairEl.style.display=cameraMode==='first'?'block':'none';
                 applyNeeds(data.state||{health:9,hunger:9,thirst:9});setGameUiVisible(true);setChatVisible(!chatIsManuallyHidden);document.body.style.cursor='crosshair';
