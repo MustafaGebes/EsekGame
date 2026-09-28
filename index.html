@@ -1696,6 +1696,10 @@
         farmModelRoot.name = 'Çiftlik Atlası · sağlanan model';
         scene.add(farmModelRoot);
         (function installSuppliedFarmModel(farmRoot) {
+            farmRoot.scale.setScalar(1.20);
+            farmRoot.position.set(FARM_CX, .08, FARM_CZ);
+            farmRoot.rotation.y = Math.PI;
+            farmRoot.updateMatrixWorld(true);
             const farmMaterialCache=new Map(),farmGeometryCache=new Map();
             const mat=(color,roughness=.86,extra={})=>{const key=JSON.stringify([String(color),roughness,extra]);let value=farmMaterialCache.get(key);if(!value){value=new THREE.MeshStandardMaterial({color,roughness,...extra});farmMaterialCache.set(key,value)}return value};
             function farmGeometry(Type,...args){const key=Type.name+':'+JSON.stringify(args);let geometry=farmGeometryCache.get(key);if(!geometry){geometry=new Type(...args);farmGeometryCache.set(key,geometry)}return geometry}
@@ -2123,7 +2127,7 @@
 
 
             farmRoot.userData.updateWalkers=updateFarmWalkers;
-            window.__farmReplacement={root:farmRoot,workers:farmWorkers,animals:farmWorkers.length,mountainSafe:modelMountainSafe,center:{x:FARM_CX,z:FARM_CZ}};
+            window.__farmReplacement={root:farmRoot,workers:farmWorkers,animals:farmWorkers.length,center:{x:FARM_CX,z:FARM_CZ}};
         })(farmModelRoot);
 
         // Straight 6 m access road: it continues the supplied farm lane through its gate
