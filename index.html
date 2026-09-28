@@ -1714,8 +1714,8 @@
             // Meyilli, düşük poligonlu ufuk sırtları
             // The game already supplies a distant mountain ring; avoid a second artificial ridge inside this farm.
             // Gölet
-            const pond=new THREE.Mesh(farmGeometry(THREE.CircleGeometry,5,32),mats.water);pond.rotation.x=-Math.PI/2;pond.scale.set(1.18,.72,1);pond.position.set(16,.035,-11);pond.name='Gölet';pond.receiveShadow=true;farmRoot.add(pond);
-            const shore=new THREE.Mesh(farmGeometry(THREE.RingGeometry,4.7,5.45,32),mat('#b2a275'));shore.rotation.x=-Math.PI/2;shore.scale.set(1.18,.72,1);shore.position.set(16,.03,-11);farmRoot.add(shore);
+            const pond=new THREE.Mesh(farmGeometry(THREE.CircleGeometry,9,40),mats.water);pond.rotation.x=-Math.PI/2;pond.scale.set(1.25,.85,1);pond.position.set(16,-0.25,-11);pond.name='Gölet';pond.receiveShadow=true;farmRoot.add(pond);
+            const shore=new THREE.Mesh(farmGeometry(THREE.RingGeometry,8.4,9.6,40),mat('#b2a275'));shore.rotation.x=-Math.PI/2;shore.scale.set(1.25,.85,1);shore.position.set(16,.03,-11);farmRoot.add(shore);
             // Sıkıştırılmış avlu ve kare çiftlik parseli
             const yard=new THREE.Mesh(farmGeometry(THREE.CircleGeometry,12,48),mat('#b69b72'));yard.rotation.x=-Math.PI/2;yard.scale.set(1.08,.73,1);yard.position.set(0,.025,0);yard.receiveShadow=true;yard.name='Çalışma avlusu';farmRoot.add(yard);
             function path(points,width,material){for(let i=0;i<points.length-1;i++){const a=new THREE.Vector3(...points[i]),b=new THREE.Vector3(...points[i+1]);const d=b.clone().sub(a),mesh=new THREE.Mesh(farmGeometry(THREE.BoxGeometry,width,.055,d.length()+width*.45),material);mesh.position.copy(a.clone().add(b).multiplyScalar(.5));mesh.position.y=.045;mesh.rotation.y=Math.atan2(d.x,d.z);mesh.receiveShadow=true;farmRoot.add(mesh)}}
@@ -1832,7 +1832,7 @@
             // Geniş 22 m x 9 m tarla; uzun ekim sıraları, araçların ulaşacağı açık kapı ve çit.
             for(let r=0;r<7;r++){const z=r*1.35;box(garden,'Sebze yatağı',0,.2,z,22.4,.34,1.05,mats.soil);for(let c=0;c<29;c++){const x=-10.5+c*.75;const vegmat=(r%2)?mats.crop2:mats.crop;for(let k=-1;k<=1;k++)sphere(garden,'Sebze yaprağı',x,.55,z+k*.19,.19,vegmat,[.65,1.25,.65],7);if(r===2&&c%3===0)cylinder(garden,'Havuç',x,.41,z,.1,.045,.38,mat('#dd8b36'),7)}}
             fenceRun(-23.7,14.3,-13.2,14.3);fenceRun(-10.8,14.3,-.3,14.3);fenceRun(-23.7,14.3,-23.7,24.9);fenceRun(-23.7,24.9,-.3,24.9);fenceRun(-.3,24.9,-.3,14.3);
-            box(farmRoot,'Tarla giriş direği',-13.2,.82,14.3,.2,1.55,.2,mats.wood);box(farmRoot,'Tarla giriş direği',-10.8,.82,14.3,.2,1.55,.2,mats.wood);
+            
             // Saman balyaları, istif ve küçük depo
             function hayBale(x,y,z,r=.72){const b=new THREE.Mesh(farmGeometry(THREE.CylinderGeometry,r,r,r*1.2,12),mats.hay);b.rotation.z=Math.PI/2;b.position.set(x,y,z);b.name='Saman balyası';b.castShadow=true;b.receiveShadow=true;farmRoot.add(b);for(let i=0;i<5;i++){const ring=new THREE.Mesh(farmGeometry(THREE.TorusGeometry,r*.91,.025,4,14),mat('#b99845'));ring.rotation.y=Math.PI/2;ring.position.set(x-r*.6+i*r*.3,y,z);farmRoot.add(ring)}}
             hayBale(4.3,.7,-6,.68);hayBale(5.8,.7,-6,.68);hayBale(4.3,1.55,-6,.62);
@@ -2011,7 +2011,7 @@
             function navPoint(id){const ix=id%farmNav.cols,iz=Math.floor(id/farmNav.cols);return {x:farmNav.minX+ix*farmNav.cell,z:farmNav.minZ+iz*farmNav.cell}}
             function navBlockBox(box,pad=.55){if(box.isEmpty())return;const a=navWorldCell(box.min.x-pad,box.min.z-pad),b=navWorldCell(box.max.x+pad,box.max.z+pad);for(let iz=a.iz;iz<=b.iz;iz++)for(let ix=a.ix;ix<=b.ix;ix++){const p=navPoint(navCell(ix,iz));if(p.x>=box.min.x-pad&&p.x<=box.max.x+pad&&p.z>=box.min.z-pad&&p.z<=box.max.z+pad)farmNav.blocked[navCell(ix,iz)]=1}}
             function navHasBlockerAncestor(o){let p=o.parent;while(p&&p!==farmRoot){if(navGroupBlockers.has(p.name))return true;p=p.parent}return false}
-            farmRoot.updateMatrixWorld(true);farmRoot.traverse(o=>{if(o.isGroup&&navGroupBlockers.has(o.name))navBlockBox(new THREE.Box3().setFromObject(o),.72)});farmRoot.traverse(o=>{if(o.isMesh&&navMeshBlockers.has(o.name)&&!navHasBlockerAncestor(o))navBlockBox(new THREE.Box3().setFromObject(o),.42)});
+            farmRoot.updateMatrixWorld(true);farmRoot.traverse(o=>{if(o.isGroup&&navGroupBlockers.has(o.name))navBlockBox(new THREE.Box3().setFromObject(o),.30)});farmRoot.traverse(o=>{if(o.isMesh&&navMeshBlockers.has(o.name)&&!navHasBlockerAncestor(o))navBlockBox(new THREE.Box3().setFromObject(o),.12)});
             const navFree=[];for(let i=0;i<farmNav.blocked.length;i++)if(!farmNav.blocked[i])navFree.push(i);
             let navRandomSeed=0x6d2b79f5;function navRandom(){navRandomSeed^=navRandomSeed<<13;navRandomSeed^=navRandomSeed>>>17;navRandomSeed^=navRandomSeed<<5;return (navRandomSeed>>>0)/4294967296}
             function navNearestFree(x,z,radius=8){const c=navWorldCell(x,z);if(!farmNav.blocked[navCell(c.ix,c.iz)])return navCell(c.ix,c.iz);for(let r=1;r<=radius;r++)for(let dz=-r;dz<=r;dz++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dz))!==r)continue;const ix=c.ix+dx,iz=c.iz+dz;if(ix<0||iz<0||ix>=farmNav.cols||iz>=farmNav.rows)continue;const id=navCell(ix,iz);if(!farmNav.blocked[id])return id}return -1}
@@ -2045,7 +2045,7 @@
                 if(bounds.isEmpty())return;
                 const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
                 if(size.x<.08||size.z<.08)return;
-                suppliedFarmColliders.push({x:center.x,z:center.z,halfW:size.x*.5+.60,halfD:size.z*.5+.60});
+                suppliedFarmColliders.push({x:center.x,z:center.z,halfW:size.x*.5+.05,halfD:size.z*.5+.05});
             };
             farmRoot.traverse(object=>{
                 if(object.isGroup&&navGroupBlockers.has(object.name))recordModelCollider(object);
@@ -2064,6 +2064,24 @@
             const farmColliderKeys = new Set();
 
             // Yürünebilir / dekoratif mesh isimleri — collider OLMAYACAK
+            const barnLocal = { x: -1, z: -1, w: 9, d: 6, doorW: 6.4 };
+            const bs = 1.20, brY = Math.PI;
+            const bcos = Math.cos(brY), bsin = Math.sin(brY);
+            const barnToWorld = (lx, lz) => ({
+                x: FARM_CX + (lx * bs * bcos + lz * bs * bsin),
+                z: FARM_CZ + (-lx * bs * bsin + lz * bs * bcos)
+            });
+            const barnWallDefs = [
+                [barnLocal.x - barnLocal.w/2, barnLocal.z, 0.15, barnLocal.d/2],
+                [barnLocal.x + barnLocal.w/2, barnLocal.z, 0.15, barnLocal.d/2],
+                [barnLocal.x, barnLocal.z - barnLocal.d/2, barnLocal.w/2, 0.15],
+                [barnLocal.x - (barnLocal.doorW/2 + (barnLocal.w-barnLocal.doorW)/4), barnLocal.z + barnLocal.d/2, (barnLocal.w-barnLocal.doorW)/4, 0.15],
+                [barnLocal.x + (barnLocal.doorW/2 + (barnLocal.w-barnLocal.doorW)/4), barnLocal.z + barnLocal.d/2, (barnLocal.w-barnLocal.doorW)/4, 0.15]
+            ];
+            for (const [lx, lz, hw, hd] of barnWallDefs) {
+                const w = barnToWorld(lx, lz);
+                buildings.push({ x: w.x, z: w.z, halfW: hw * bs, halfD: hd * bs });
+            }
             const walkablePattern = /(zemin|zemini|avlu|yol|iz|arazi|gölet|göl|çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere|saman zemin|orta geçit|merdiven|çiçek|çayır|yaprak|sebze yatağı|bostan|tarla|çim)/i;
 
             // Ahır içi — bu grup içindeki HİÇBİR mesh collider olmaz
@@ -2102,7 +2120,7 @@
                 tempBox.getCenter(tempCenter);
 
                 // Çok küçük detayları atla (30 cm'den küçük)
-                if (tempSize.x < 0.30 || tempSize.z < 0.30) return;
+                if (tempSize.x < 0.35 || tempSize.z < 0.35) return;
 
                 // Çok büyük (zemin benzeri) şeyleri atla
                 if (tempSize.x > 40 || tempSize.z > 40) return;
@@ -2119,8 +2137,8 @@
                 buildings.push({
                     x: tempCenter.x,
                     z: tempCenter.z,
-                    halfW: tempSize.x * 0.5 + 0.15,
-                    halfD: tempSize.z * 0.5 + 0.15
+                    halfW: tempSize.x * 0.5 + 0.02,
+                    halfD: tempSize.z * 0.5 + 0.02
                 });
             });
 
@@ -3876,7 +3894,7 @@ function stepCar(c,dt){
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
                 let baseSpeed = isCrouching ? 0.10 : 0.22;
                 if (isSprinting && !isCrouching) baseSpeed = 0.45;
-                const speed = baseSpeed;
+                let speed = baseSpeed; if (playerDonkey.userData.inWater) speed *= 0.4;
                 let moveX = 0, moveZ = 0, isMoving = false;
 
                 if (controlMode === 'pc') {
@@ -3896,6 +3914,18 @@ function stepCar(c,dt){
 
                 const newX = playerDonkey.position.x + moveX;
                 const newZ = playerDonkey.position.z + moveZ;
+                const pondWX2 = FARM_CX - 16 * 1.20;
+                const pondWZ2 = FARM_CZ + 11 * 1.20;
+                const pondR2 = 9 * 1.25 * 1.20;
+                const pondDist = Math.hypot(playerDonkey.position.x - pondWX2, playerDonkey.position.z - pondWZ2);
+                if (pondDist < pondR2) {
+                    const depthFactor = 1 - (pondDist / pondR2);
+                    const sinkY = depthFactor * 1.1;
+                    playerDonkey.position.y = Math.max(groundY - sinkY, -0.5);
+                    playerDonkey.userData.inWater = true;
+                } else {
+                    playerDonkey.userData.inWater = false;
+                }
                 let canMoveX = !checkMountainCollision(newX, playerDonkey.position.z, 1.0);
                 let canMoveZ = !checkMountainCollision(playerDonkey.position.x, newZ, 1.0);
                 let canMoveBoth = !checkMountainCollision(newX, newZ, 1.0);
