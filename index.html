@@ -1714,8 +1714,8 @@
             // Meyilli, düşük poligonlu ufuk sırtları
             // The game already supplies a distant mountain ring; avoid a second artificial ridge inside this farm.
             // Gölet
-            const pond=new THREE.Mesh(farmGeometry(THREE.CircleGeometry,9,40),mats.water);pond.rotation.x=-Math.PI/2;pond.scale.set(1.25,.85,1);pond.position.set(16,.04,-11);pond.name='Gölet';pond.receiveShadow=true;farmRoot.add(pond);
-            const shore=new THREE.Mesh(farmGeometry(THREE.RingGeometry,8.4,9.6,40),mat('#b2a275'));shore.rotation.x=-Math.PI/2;shore.scale.set(1.25,.85,1);shore.position.set(16,.055,-11);farmRoot.add(shore);
+            const pond=new THREE.Mesh(farmGeometry(THREE.CircleGeometry,5.5,32),mats.water);pond.rotation.x=-Math.PI/2;pond.scale.set(1.15,.75,1);pond.position.set(16,.04,-11);pond.name='Gölet';pond.receiveShadow=true;farmRoot.add(pond);
+            const shore=new THREE.Mesh(farmGeometry(THREE.RingGeometry,5.1,5.95,32),mat('#b2a275'));shore.rotation.x=-Math.PI/2;shore.scale.set(1.15,.75,1);shore.position.set(16,.055,-11);shore.name='Gölet kenarı';farmRoot.add(shore);
             // Sıkıştırılmış avlu ve kare çiftlik parseli
             const yard=new THREE.Mesh(farmGeometry(THREE.CircleGeometry,12,48),mat('#b69b72'));yard.rotation.x=-Math.PI/2;yard.scale.set(1.08,.73,1);yard.position.set(0,.025,0);yard.receiveShadow=true;yard.name='Çalışma avlusu';farmRoot.add(yard);
             function path(points,width,material){for(let i=0;i<points.length-1;i++){const a=new THREE.Vector3(...points[i]),b=new THREE.Vector3(...points[i+1]);const d=b.clone().sub(a),mesh=new THREE.Mesh(farmGeometry(THREE.BoxGeometry,width,.055,d.length()+width*.45),material);mesh.position.copy(a.clone().add(b).multiplyScalar(.5));mesh.position.y=.045;mesh.rotation.y=Math.atan2(d.x,d.z);mesh.receiveShadow=true;farmRoot.add(mesh)}}
@@ -2082,7 +2082,7 @@
                 const w = barnToWorld(lx, lz);
                 buildings.push({ x: w.x, z: w.z, halfW: hw * bs, halfD: hd * bs });
             }
-            const walkablePattern = /(zemin|zemini|avlu|yol|iz|arazi|gölet|göl|çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere|saman zemin|orta geçit|merdiven|çiçek|çayır|yaprak|sebze yatağı|bostan|tarla|çim)/i;
+            const walkablePattern = /(zemin|zemini|avlu|yol|iz|arazi|gölet|göl|Gölet|su|çatı|roof|mahya|saçak|alınlık|kiriş|lamba|ışık|pencere|saman zemin|orta geçit|merdiven|çiçek|çayır|yaprak|sebze yatağı|bostan|tarla|çim)/i;
 
             // Ahır içi — bu grup içindeki HİÇBİR mesh collider olmaz
             const barnGroupNames = /^(Ahır|Barn)$/i;
