@@ -2100,31 +2100,22 @@
         // Oyuncu çiftlik girişinin biraz uzağında başlar
 
         // ==========================================
-        // ŞEHİR
+        // ŞEHİR ALANI / DÜNYA ZEMİNİ
+        // Eski şehir ve plaj objeleri kaldırıldı; çiftlik, orman ve dağlar korunuyor.
         // ==========================================
         const CITY_CENTER_X = -180;
         const CITY_CENTER_Z = -180;
-        const ROAD_WIDTH = 12;
-        const BLOCK_INNER = 35;
-        const SIDEWALK_WIDTH = 3;
-        const BLOCK_TOTAL = BLOCK_INNER + SIDEWALK_WIDTH * 2;
-        const GRID_STEP = BLOCK_TOTAL + ROAD_WIDTH;
-        const gridCount = 5;
-        const cityWidth = gridCount * BLOCK_TOTAL + (gridCount + 1) * ROAD_WIDTH;
-        const CITY_RADIUS = cityWidth / 2 + 30;
-        // Dik açılı güzergâh: çiftliğin kuzeyinden ve doğusundan dolaşır, çit sınırını geçmez.
+        const CITY_MODEL_SCALE = 0.78;
         const ROAD_PATH = [
-            { x: -47, z: CITY_CENTER_Z }, // mevcut şehrin doğu-kuzey-güney caddesine bağlanır
+            { x: -47, z: CITY_CENTER_Z },
             { x: -30, z: CITY_CENTER_Z },
-            { x: -30, z: 70 },             // çiftliğin kuzey sınırı z=95'in dışında
+            { x: -30, z: 70 },
             { x: 210, z: 70 },
-            { x: 210, z: 220 }             // doğu çitinin (x=200) dışında
+            { x: 210, z: 220 }
         ];
-        // Şehrin kuzey caddesinden sahil otoparkına kadar dümdüz, simetrik bağlanan yol.
-        const BEACH_ROAD_PATH = [{ x: -153.5, z: -312.5 }, { x: -153.5, z: -366.5 }];
-        const BEACH_PARKING_CENTER = { x: -153.5, z: -377 };
-        const BEACH_WATER_EDGE = -452.5;
+        const CITY_RADIUS = 145;
         const FOREST_POND_CENTER = { x: 300, z: -8 };
+        const townNpcs = [];
 
         function smoothStep(edge0, edge1, value) {
             const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
@@ -2136,14 +2127,8 @@
                 const a = ROAD_PATH[i], b = ROAD_PATH[i + 1];
                 const dx = b.x - a.x, dz = b.z - a.z;
                 const lengthSq = dx * dx + dz * dz;
-                const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / lengthSq));
+                const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / Math.max(1, lengthSq)));
                 nearest = Math.min(nearest, Math.hypot(x - (a.x + t * dx), z - (a.z + t * dz)));
-            }
-            for (let i = 0; i < BEACH_ROAD_PATH.length - 1; i++) {
-                const ba = BEACH_ROAD_PATH[i], bb = BEACH_ROAD_PATH[i + 1];
-                const bdx = bb.x - ba.x, bdz = bb.z - ba.z;
-                const bt = Math.max(0, Math.min(1, ((x - ba.x) * bdx + (z - ba.z) * bdz) / Math.max(1, bdx * bdx + bdz * bdz)));
-                nearest = Math.min(nearest, Math.hypot(x - (ba.x + bt * bdx), z - (ba.z + bt * bdz)));
             }
             const a = { x: 210, z: 175 }, b = { x: PARKING_CENTER.x - 17, z: 175 };
             const dx = b.x - a.x, dz = b.z - a.z;
@@ -2159,17 +2144,11 @@
             const parkingDx = Math.max(0, Math.abs(x - PARKING_CENTER.x) - 17);
             const parkingDz = Math.max(0, Math.abs(z - PARKING_CENTER.z) - 12);
             const parkingFlat = smoothStep(2, 16, Math.hypot(parkingDx, parkingDz));
-            const beachDx = Math.max(0, Math.abs(x - BEACH_PARKING_CENTER.x) - 21);
-            const beachDz = Math.max(0, Math.abs(z - BEACH_PARKING_CENTER.z) - 14);
-            const beachParkingFlat = smoothStep(2, 15, Math.hypot(beachDx, beachDz));
-            const beachLandDx = Math.max(0, Math.abs(x - BEACH_PARKING_CENTER.x) - 128);
-            const beachLandDz = Math.max(0, Math.abs(z + 420) - 42);
-            const beachFlat = smoothStep(2, 20, Math.hypot(beachLandDx, beachLandDz));
             const pondFlat = smoothStep(10, 22, Math.hypot(x - FOREST_POND_CENTER.x, z - FOREST_POND_CENTER.z));
             const edgeFade = 1 - smoothStep(310, 350, radial);
             const broadHills = (Math.sin(x * 0.027) * 1.15 + Math.cos(z * 0.023) * 1.05 + Math.sin((x + z) * 0.041) * 0.65);
             const smallUndulation = Math.sin(x * 0.11 + z * 0.07) * 0.22;
-            return (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * parkingFlat * beachParkingFlat * beachFlat * pondFlat * edgeFade;
+            return (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * parkingFlat * pondFlat * edgeFade;
         }
         const terrainPositions = terrainGeo.attributes.position;
         for (let i = 0; i < terrainPositions.count; i++) {
@@ -2178,7 +2157,7 @@
         terrainPositions.needsUpdate = true;
         terrainGeo.computeVertexNormals();
 
-        // 3 çim türü, binlerce sap: yalnızca üç InstancedMesh/draw call.
+        // Mevcut dünya çimleri korunuyor.
         const grassMaterials = [grassMat1, grassMat2, grassMat3];
         const grassBatches = grassMaterials.map(mat => new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, 1, 0.06), mat, grassSpots.length * 3));
         const grassCounts = [0, 0, 0];
@@ -2201,7 +2180,7 @@
             scene.add(batch);
         });
 
-        // Engebeli kırlara yayılmış kayalar; çiftlik, şehir, yol ve dağ tabanlarından uzak tutulur.
+        // Dünya kayaları korunuyor; eski şehir filtresi kaldırıldı.
         const rockCapacity = 210;
         const rockMesh = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ vertexColors: true }), rockCapacity);
         const rockDummy = new THREE.Object3D();
@@ -2212,7 +2191,6 @@
             const radius = 95 + Math.random() * 235;
             const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
             if (Math.hypot(x - FARM_CX, z - FARM_CZ) < 178) continue;
-            if (Math.hypot(x - CITY_CENTER_X, z - CITY_CENTER_Z) < CITY_RADIUS + 20) continue;
             if (distanceToRoadAxis(x, z) < 18) continue;
             if (Math.abs(x - PARKING_CENTER.x) < 27 && Math.abs(z - PARKING_CENTER.z) < 17) continue;
             let nearMountain = false;
@@ -2227,7 +2205,6 @@
             const tint = 0.72 + Math.random() * 0.4;
             rockColor.setRGB(tint, tint * (0.98 + Math.random() * 0.04), tint * (0.92 + Math.random() * 0.12));
             rockMesh.setColorAt(rockCount, rockColor);
-            buildings.push({ x, z, halfW: Math.max(sx, sz) * 0.72, halfD: Math.max(sx, sz) * 0.72 });
             rockCount++;
         }
         rockMesh.count = rockCount;
@@ -2235,363 +2212,186 @@
         if (rockMesh.instanceColor) rockMesh.instanceColor.needsUpdate = true;
         scene.add(rockMesh);
 
-        const firstBlockCenterX = CITY_CENTER_X - cityWidth / 2 + ROAD_WIDTH + BLOCK_TOTAL / 2;
-        const firstBlockCenterZ = CITY_CENTER_Z - cityWidth / 2 + ROAD_WIDTH + BLOCK_TOTAL / 2;
+        // ==========================================
+        // YENİ ŞEHİR MAKETİ
+        // Şehir Maketi 3D.html içindeki model, mevcut oyun sahnesine aktarılıyor.
+        // Dağlara ve çiftliğe dokunulmaz.
+        // ==========================================
+        const cityRoot = new THREE.Group();
+        cityRoot.position.set(CITY_CENTER_X, terrainHeightAt(CITY_CENTER_X, CITY_CENTER_Z) + 0.2, CITY_CENTER_Z);
+        cityRoot.scale.setScalar(CITY_MODEL_SCALE);
+        scene.add(cityRoot);
 
-        const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
-        const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
-        const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+// ---------- Procedural textures ----------
+function cvs(s,fn,rx,ry){var c=document.createElement('canvas');c.width=c.height=s;fn(c.getContext('2d'),s);var t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=4;t.repeat.set(rx||1,ry||1);return t}
+function speck(g,s,n,cols,z){for(var i=0;i<n;i++){g.fillStyle=pick(cols);g.fillRect(rnd()*s,rnd()*s,z||1.5,z||1.5)}}
+function asphalt(rx,ry){return cvs(256,function(g,s){g.fillStyle='#34373c';g.fillRect(0,0,s,s);speck(g,s,9000,['#4b4e53','#27292d','#5d6064','#3d4045'],2);g.strokeStyle='#22242a';g.lineWidth=1;for(var i=0;i<5;i++){g.beginPath();var x=rnd()*s,y=rnd()*s;g.moveTo(x,y);for(var k=0;k<6;k++){x+=R(-20,20);y+=R(-20,20);g.lineTo(x,y)}g.stroke()}},rx,ry)}
+var grassT=cvs(256,function(g,s){g.fillStyle='#5d8c40';g.fillRect(0,0,s,s);speck(g,s,14000,['#4d7a35','#6e9c4c','#3f6b2d','#7aa857'],2)},320,320);
+var walkT=cvs(256,function(g,s){g.fillStyle='#bab7af';g.fillRect(0,0,s,s);speck(g,s,5000,['#a9a69e','#c9c6be','#9c9990'],2);g.strokeStyle='#8a877f';g.lineWidth=2;for(var i=0;i<=s;i+=64){g.beginPath();g.moveTo(i,0);g.lineTo(i,s);g.moveTo(0,i);g.lineTo(s,i);g.stroke()}},4,4);
+var roofT=cvs(128,function(g,s){g.fillStyle='#74777c';g.fillRect(0,0,s,s);speck(g,s,3000,['#5f6266','#8a8d92','#6a6d71'],2)},3,3);
+var barkT=cvs(64,function(g,s){g.fillStyle='#5a4132';g.fillRect(0,0,s,s);for(var i=0;i<40;i++){g.fillStyle=pick(['#3f2c20','#6d5040','#4a3428']);g.fillRect(rnd()*s,0,R(1,3),s)}});
+var leafT=cvs(128,function(g,s){g.fillStyle='#4c8a3c';g.fillRect(0,0,s,s);speck(g,s,2500,['#3a7030','#5fa04a','#2f5e28','#78b45a'],3)});
+var fabT=cvs(64,function(g,s){g.fillStyle='#fff';g.fillRect(0,0,s,s);g.strokeStyle='rgba(0,0,0,.12)';for(var i=0;i<s;i+=2){g.beginPath();g.moveTo(i,0);g.lineTo(i,s);g.moveTo(0,i);g.lineTo(s,i);g.stroke()}},2,2);
+var paintT=cvs(64,function(g,s){g.fillStyle='#fff';g.fillRect(0,0,s,s);speck(g,s,500,['#e6e6e6','#f4f4f4'],2)});
+function facade(lit,brick){return cvs(256,function(g,s){
+  if(lit)g.fillStyle='#000';else if(brick)g.fillStyle='#8f5240';else g.fillStyle='#dcd8cf';g.fillRect(0,0,s,s);
+  if(!lit){if(brick){for(var y=0;y<s;y+=8)for(var x=-8*((y/8)&1);x<s;x+=16){g.fillStyle=pick(['#a4614b','#93523f','#b06e55','#864a39']);g.fillRect(x+1,y+1,14,6)}}
+    else{speck(g,s,3500,['#c9c5bb','#e8e4db','#b8b4aa'],2);g.fillStyle='rgba(0,0,0,.18)';for(var f=0;f<s;f+=64)g.fillRect(0,f,s,2)}}
+  for(var y=0;y<4;y++)for(var x=0;x<4;x++){var X=x*64+10,Y=y*64+14;
+    if(lit){if(rnd()<.55){g.fillStyle=rnd()<.8?'#ffd88a':'#bfe3ff';g.fillRect(X,Y,44,36)}}
+    else{g.fillStyle='#2b3138';g.fillRect(X-3,Y-3,50,42);var gr=g.createLinearGradient(0,Y,0,Y+36);gr.addColorStop(0,'#86aac8');gr.addColorStop(1,'#2f4a63');g.fillStyle=gr;g.fillRect(X,Y,44,36);
+      g.fillStyle='#2b3138';g.fillRect(X+21,Y,2,36);g.fillStyle='#cfcac0';g.fillRect(X-4,Y+38,52,3)}}
+})}
+var mapC=facade(0,0),mapB=facade(0,1),emiT=facade(1,0);
+function wm(t,c){return new THREE.MeshStandardMaterial({color:c,map:t,emissive:0xffffff,emissiveMap:emiT,emissiveIntensity:0,roughness:.7,metalness:.05})}
+var wallMats=[0xffffff,0xf0d9c0,0xc9d6e3,0xd9c6b8,0xb9c4c9].map(function(c){return wm(mapC,c)}).concat([wm(mapB,0xffffff),wm(mapB,0xe8d0c4)]);
+var roofMat=new THREE.MeshStandardMaterial({map:roofT,roughness:.95});
+function tower(w,h,d,x,y,z,mat){var g=new THREE.BoxGeometry(w,h,d),uv=g.attributes.uv,fw=Math.max(1,Math.round(w/12)),fd=Math.max(1,Math.round(d/12)),fh=Math.max(1,Math.round(h/16));
+  for(var i=0;i<uv.count;i++){var f=Math.floor(i/4),u=uv.getX(i),v=uv.getY(i);if(f<2)uv.setXY(i,u*fd,v*fh);else if(f>=4)uv.setXY(i,u*fw,v*fh);else uv.setXY(i,u*3,v*3)}
+  var m=new THREE.Mesh(g,[mat,mat,roofMat,roofMat,mat,mat]);m.position.set(x,y+h/2,z);m.castShadow=m.receiveShadow=true;cityRoot.add(m);buildings.push({x:CITY_CENTER_X+x*CITY_MODEL_SCALE,z:CITY_CENTER_Z+z*CITY_MODEL_SCALE,halfW:w*CITY_MODEL_SCALE/2+.55,halfD:d*CITY_MODEL_SCALE/2+.55})}
+function inst(g,m,list,cast){var im=new THREE.InstancedMesh(g,m,list.length),o=new THREE.Object3D();
+  list.forEach(function(a,i){o.position.set(a[0],a[1],a[2]);o.rotation.set(0,a[3]||0,0);var s=a[4]||1;o.scale.set(s,a[5]||s,s);o.updateMatrix();im.setMatrixAt(i,o.matrix);if(a[6]!=null)im.setColorAt(i,new THREE.Color(a[6]))});
+  im.castShadow=!!cast;im.receiveShadow=true;cityRoot.add(im);return im}
 
-        for (let i = 0; i <= gridCount; i++) {
-            const roadZ = CITY_CENTER_Z - cityWidth / 2 + ROAD_WIDTH / 2 + i * (ROAD_WIDTH + BLOCK_TOTAL);
-            const roadGeo = new THREE.PlaneGeometry(cityWidth, ROAD_WIDTH);
-            roadGeo.rotateX(-Math.PI / 2);
-            const road = new THREE.Mesh(roadGeo, roadMat);
-            road.position.set(CITY_CENTER_X, 0.03, roadZ);
-            scene.add(road);
-            const dashCount = Math.floor(cityWidth / 12);
-            for (let d = 0; d < dashCount; d++) {
-                const dashGeo = new THREE.PlaneGeometry(3, 0.4);
-                dashGeo.rotateX(-Math.PI / 2);
-                const dash = new THREE.Mesh(dashGeo, lineMat);
-                dash.position.set(CITY_CENTER_X - cityWidth / 2 + d * 12 + 6, 0.04, roadZ);
-                scene.add(dash);
-            }
-        }
-        for (let i = 0; i <= gridCount; i++) {
-            const roadX = CITY_CENTER_X - cityWidth / 2 + ROAD_WIDTH / 2 + i * (ROAD_WIDTH + BLOCK_TOTAL);
-            const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, cityWidth);
-            roadGeo.rotateX(-Math.PI / 2);
-            const road = new THREE.Mesh(roadGeo, roadMat);
-            road.position.set(roadX, 0.03, CITY_CENTER_Z);
-            scene.add(road);
-            const dashCount = Math.floor(cityWidth / 12);
-            for (let d = 0; d < dashCount; d++) {
-                const dashGeo = new THREE.PlaneGeometry(0.4, 3);
-                dashGeo.rotateX(-Math.PI / 2);
-                const dash = new THREE.Mesh(dashGeo, lineMat);
-                dash.position.set(roadX, 0.04, CITY_CENTER_Z - cityWidth / 2 + d * 12 + 6);
-                scene.add(dash);
-            }
-        }
-        for (let bx = 0; bx < gridCount; bx++) {
-            for (let bz = 0; bz < gridCount; bz++) {
-                const blockCenterX = firstBlockCenterX + bx * GRID_STEP;
-                const blockCenterZ = firstBlockCenterZ + bz * GRID_STEP;
-                const sideGeoH = new THREE.PlaneGeometry(BLOCK_TOTAL, SIDEWALK_WIDTH);
-                sideGeoH.rotateX(-Math.PI / 2);
-                const sideN = new THREE.Mesh(sideGeoH, sidewalkMat);
-                sideN.position.set(blockCenterX, 0.05, blockCenterZ - BLOCK_INNER / 2 - SIDEWALK_WIDTH / 2);
-                scene.add(sideN);
-                const sideS = new THREE.Mesh(sideGeoH, sidewalkMat);
-                sideS.position.set(blockCenterX, 0.05, blockCenterZ + BLOCK_INNER / 2 + SIDEWALK_WIDTH / 2);
-                scene.add(sideS);
-                const sideGeoV = new THREE.PlaneGeometry(SIDEWALK_WIDTH, BLOCK_INNER);
-                sideGeoV.rotateX(-Math.PI / 2);
-                const sideW = new THREE.Mesh(sideGeoV, sidewalkMat);
-                sideW.position.set(blockCenterX - BLOCK_INNER / 2 - SIDEWALK_WIDTH / 2, 0.05, blockCenterZ);
-                scene.add(sideW);
-                const sideE = new THREE.Mesh(sideGeoV, sidewalkMat);
-                sideE.position.set(blockCenterX + BLOCK_INNER / 2 + SIDEWALK_WIDTH / 2, 0.05, blockCenterZ);
-                scene.add(sideE);
-            }
-        }
+// ---------- Ground, roads, sidewalks ----------
+var N=8,B=34,RD=10,P=B+RD,SZ=N*P,pk=function(k){return (k-N/2)*P};
+var ground=new THREE.Mesh(new THREE.PlaneGeometry(430,430),new THREE.MeshStandardMaterial({map:grassT,roughness:1}));
+ground.rotation.x=-Math.PI/2;ground.position.y=-.2;ground.receiveShadow=true;cityRoot.add(ground);
+function roadMat(rx,ry){var t=asphalt(rx,ry);return new THREE.MeshStandardMaterial({map:t,bumpMap:t,bumpScale:.6,roughness:.95})}
+var mA=roadMat(2,72),mB=roadMat(72,2);
+for(var k=0;k<=N;k++){var a=new THREE.Mesh(new THREE.BoxGeometry(RD,.2,SZ+RD),mA);a.position.set(pk(k),0,0);a.receiveShadow=true;cityRoot.add(a);
+  var b=new THREE.Mesh(new THREE.BoxGeometry(SZ+RD,.2,RD),mB);b.position.set(0,0,pk(k));b.receiveShadow=true;cityRoot.add(b)}
+var dl=[];for(var k2=0;k2<=N;k2++)for(var s=-SZ/2+4;s<SZ/2-2;s+=7){if(Math.abs(((s+SZ/2)%P)-0)<9||Math.abs(((s+SZ/2)%P)-P)<9)continue;dl.push([pk(k2),.13,s,0]);dl.push([s,.13,pk(k2),Math.PI/2])}
+inst(new THREE.BoxGeometry(.4,.04,3),new THREE.MeshBasicMaterial({color:0xf2e6a0}),dl);
 
-        function createSegmentRoad(x1, z1, x2, z2, width, material, y = 0.085) {
-            const dx = x2 - x1, dz = z2 - z1;
-            const length = Math.hypot(dx, dz);
-            const rotation = Math.atan2(dx, dz);
-            const roadGeo = new THREE.PlaneGeometry(width, length);
-            roadGeo.rotateX(-Math.PI / 2);
-            const road = new THREE.Mesh(roadGeo, material);
-            road.position.set((x1 + x2) / 2, y, (z1 + z2) / 2);
-            road.rotation.y = rotation;
-            scene.add(road);
-            const stripeMat = new THREE.MeshBasicMaterial({ color: 0xe5dfbf });
-            for (let t = 0.08; t < 0.96; t += 0.065) {
-                const dashGeo = new THREE.PlaneGeometry(3.3, 0.28);
-                dashGeo.rotateX(-Math.PI / 2);
-                const dash = new THREE.Mesh(dashGeo, stripeMat);
-                dash.position.set(x1 + dx * t, y + 0.012, z1 + dz * t);
-                dash.rotation.y = rotation;
-                scene.add(dash);
-            }
-        }
-        const connectorShoulderMat = new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0x97876c });
-        for (let i = 0; i < ROAD_PATH.length - 1; i++) {
-            const a = ROAD_PATH[i], b = ROAD_PATH[i + 1];
-            createSegmentRoad(a.x, a.z, b.x, b.z, 13, connectorShoulderMat, 0.065);
-            createSegmentRoad(a.x, a.z, b.x, b.z, 8.5, connectorRoadMat, 0.085);
-        }
-        // Doğu tarafındaki dış otoparka kısa ve düz giriş bağlantısı.
-        createSegmentRoad(210, 175, 221, 175, 8, connectorRoadMat, 0.085);
-        for (let i = 0; i < BEACH_ROAD_PATH.length - 1; i++) {
-            const a = BEACH_ROAD_PATH[i], b = BEACH_ROAD_PATH[i + 1];
-            createSegmentRoad(a.x, a.z, b.x, b.z, 13, connectorShoulderMat, 0.065);
-            createSegmentRoad(a.x, a.z, b.x, b.z, 8.5, connectorRoadMat, 0.085);
-        }
+// ---------- Blocks, buildings, trees ----------
+var slabMat=new THREE.MeshStandardMaterial({map:walkT,roughness:.9}),tl=[],trees=0,bldg=0,maxH=0;
+function addTree(x,z){var s=R(.8,1.4),i=rnd()<.5?0:1;tl.push([x,z,s,i,pick([0xffffff,0xd8f0c0,0xb8d89a])]);trees++}
+for(var i=0;i<N;i++)for(var j=0;j<N;j++){
+  var cx=(i-(N-1)/2)*P,cz=(j-(N-1)/2)*P,d=Math.hypot(i-3.5,j-3.5);
+  var slab=new THREE.Mesh(new THREE.BoxGeometry(B,.4,B),slabMat);slab.position.set(cx,.1,cz);slab.receiveShadow=true;cityRoot.add(slab);
+  var park=(i+j*3)%7===2||(i===4&&j===3);
+  if(park){var gr=new THREE.Mesh(new THREE.BoxGeometry(B-6,.3,B-6),new THREE.MeshStandardMaterial({map:grassT.clone(),roughness:1}));gr.material.map.repeat.set(6,6);gr.material.map.needsUpdate=true;gr.position.set(cx,.3,cz);gr.receiveShadow=true;cityRoot.add(gr);
+    if(j%2){var pd=new THREE.Mesh(new THREE.CylinderGeometry(6,6,.2,28),new THREE.MeshStandardMaterial({color:0x3c8fc4,roughness:.1,metalness:.4}));pd.position.set(cx,.5,cz);cityRoot.add(pd)}
+    for(var t=0;t<16;t++){var tx=R(-11,11),tz=R(-11,11);if(j%2&&Math.hypot(tx,tz)<8)continue;addTree(cx+tx,cz+tz)}}
+  else for(var a2=0;a2<2;a2++)for(var b2=0;b2<2;b2++){
+    var lx=cx+(a2?1:-1)*7.4,lz=cz+(b2?1:-1)*7.4,w=R(9,12.6),dd=R(9,12.6),f=Math.max(0,1-d/5.6),h=9+Math.pow(rnd(),1.4)*f*62+R(0,10),mat=pick(wallMats),ty=Math.floor(rnd()*3),top=.3+h;
+    if(ty===1&&h>25){var h1=h*.6;tower(w,h1,dd,lx,.3,lz,mat);tower(w*.68,h*.4,dd*.68,lx,.3+h1,lz,mat)}
+    else{tower(w,h,dd,lx,.3,lz,mat);if(ty===2){var cap=new THREE.Mesh(new THREE.BoxGeometry(w*.5,2,dd*.5),roofMat);cap.position.set(lx,top+1,lz);cap.castShadow=true;cityRoot.add(cap)}}
+    if(h>50){var an=new THREE.Mesh(new THREE.CylinderGeometry(.12,.2,9,5),new THREE.MeshStandardMaterial({color:0xcc3333,emissive:0xff2200,emissiveIntensity:.6}));an.position.set(lx,top+4.5,lz);cityRoot.add(an)}
+    if(h>maxH)maxH=h;bldg++}
+  for(var s2=-B/2+4;s2<B/2;s2+=8){addTree(cx+s2,cz-16.4);addTree(cx+s2,cz+16.4)}
+}
+inst(new THREE.CylinderGeometry(.35,.45,2.4,6),new THREE.MeshStandardMaterial({map:barkT}),tl.map(function(a){return [a[0],1.2,a[1]]}),true);
+var leafM=new THREE.MeshStandardMaterial({map:leafT,roughness:.9});
+[0,1].forEach(function(ty){inst(ty?new THREE.SphereGeometry(2.3,9,7):new THREE.ConeGeometry(2.2,5,8),leafM,tl.filter(function(a){return a[3]===ty}).map(function(a){return [a[0],ty?4.6*a[2]:5.2*a[2],a[1],0,a[2],a[2],a[4]]}),true)});
 
-        const windowMat = new THREE.MeshBasicMaterial({ color: 0xffff99 });
+// ---------- Street lamps & traffic lights ----------
+var poleM=new THREE.MeshStandardMaterial({color:0x444a52,metalness:.5,roughness:.5}),lampM=new THREE.MeshStandardMaterial({color:0xfff2b0,emissive:0xffe08a,emissiveIntensity:0});
+var lp=[];for(var k3=0;k3<=N;k3++)for(var s3=-SZ/2;s3<SZ/2;s3+=22){var m=(s3+SZ/2)%P;if(m<11||m>P-11)continue;lp.push([pk(k3)+5.6,3.5,s3],[s3,3.5,pk(k3)-5.6])}
+inst(new THREE.CylinderGeometry(.15,.18,7,6),poleM,lp);inst(new THREE.SphereGeometry(.6,8,6),lampM,lp.map(function(a){return [a[0],7.2,a[2]]}));
+var tp=[],hd=[],cs={rA:[],gA:[],rB:[],gB:[]};
+for(var a3=0;a3<=N;a3++)for(var b3=0;b3<=N;b3++)[-1,1].forEach(function(sa){[-1,1].forEach(function(sb){
+  var x=pk(a3)+sa*5.6,z=pk(b3)+sb*5.6;tp.push([x,2.6,z]);
+  hd.push([x,5.2,z+sb*.35,0]);hd.push([x+sa*.35,5.2,z,Math.PI/2]);
+  cs.rA.push([x,5.55,z+sb*.8]);cs.gA.push([x,4.85,z+sb*.8]);cs.rB.push([x+sa*.8,5.55,z]);cs.gB.push([x+sa*.8,4.85,z])})});
+inst(new THREE.CylinderGeometry(.12,.14,5.2,6),poleM,tp);
+inst(new THREE.BoxGeometry(.7,1.7,.5),new THREE.MeshStandardMaterial({color:0x1a1d21}),hd);
+var lsG=new THREE.SphereGeometry(.24,8,6),lm={};
+function lmat(c){return new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:1})}
+['rA','gA','rB','gB'].forEach(function(n){lm[n]=lmat(n[0]==='r'?0xff2a1a:0x22e05a);inst(lsG,lm[n],cs[n])});
 
-        function createSkyscraper(x, z, width, depth, height, color) {
-            const group = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), new THREE.MeshLambertMaterial({ color: color }));
-            body.position.y = height / 2;
-            group.add(body);
-            const floors = Math.floor(height / 6);
-            const colsX = Math.floor(width / 5);
-            for (let f = 1; f < floors; f++) {
-                const y = f * 6;
-                for (let c = 0; c < colsX; c++) {
-                    const wx = -width / 2 + 2 + c * 5;
-                    const winGeo = new THREE.PlaneGeometry(2, 3);
-                    const win = new THREE.Mesh(winGeo, windowMat);
-                    win.position.set(wx, y, depth / 2 + 0.01);
-                    group.add(win);
-                    const win2 = new THREE.Mesh(winGeo, windowMat);
-                    win2.position.set(wx, y, -depth / 2 - 0.01);
-                    win2.rotation.y = Math.PI;
-                    group.add(win2);
-                }
-            }
-            group.position.set(x, 0, z);
-            scene.add(group);
-            buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
-        }
+// ---------- Pedestrian graph (sidewalk ring of every block + crosswalks) ----------
+var nodes={},nlist=[];
+function ok(a,sa,b,sb){var i=a+(sa>0?0:-1),j=b+(sb>0?0:-1);return a>=0&&a<=N&&b>=0&&b<=N&&i>=0&&i<N&&j>=0&&j<N}
+function nk(a,sa,b,sb){return a+','+sa+','+b+','+sb}
+for(var a4=0;a4<=N;a4++)for(var b4=0;b4<=N;b4++)[-1,1].forEach(function(sa){[-1,1].forEach(function(sb){if(ok(a4,sa,b4,sb)){var n={x:pk(a4)+sa*7,z:pk(b4)+sb*7,nb:[],a:a4,sa:sa,b:b4,sb:sb};nodes[nk(a4,sa,b4,sb)]=n;nlist.push(n)}})});
+var zl=[];
+nlist.forEach(function(n){
+  function link(a,sa,b,sb,type){if(!ok(a,sa,b,sb))return;var o=nodes[nk(a,sa,b,sb)];n.nb.push({n:o,type:type,len:Math.hypot(o.x-n.x,o.z-n.z)});
+    if(type&&(n.x<o.x||n.z<o.z)){var mx=(n.x+o.x)/2,mz=(n.z+o.z)/2;for(var q=-4.2;q<=4.2;q+=1.2)zl.push(type==='X'?[mx+q,.12,mz,0]:[mx,.12,mz+q,Math.PI/2])}}
+  link(n.sa>0?n.a+1:n.a-1,-n.sa,n.b,n.sb,0);link(n.a,n.sa,n.sb>0?n.b+1:n.b-1,-n.sb,0);
+  link(n.a,-n.sa,n.b,n.sb,'X');link(n.a,n.sa,n.b,-n.sb,'Z')});
+inst(new THREE.BoxGeometry(.6,.04,3),new THREE.MeshBasicMaterial({color:0xf4f4f4}),zl);
 
-        function createHouse(x, z, width, depth, color) {
-            const group = new THREE.Group();
-            const height = 8;
-            const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), new THREE.MeshLambertMaterial({ color: color }));
-            body.position.y = height / 2;
-            group.add(body);
-            const roofGeo = new THREE.ConeGeometry(Math.sqrt(width * width + depth * depth) / 2, 4, 4);
-            const roof = new THREE.Mesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0x8b3a3a }));
-            roof.position.y = height + 2;
-            roof.rotation.y = Math.PI / 4;
-            group.add(roof);
-            const door = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3), new THREE.MeshLambertMaterial({ color: 0x4a2f1a }));
-            door.position.set(0, 1.5, depth / 2 + 0.01);
-            group.add(door);
-            const winGeo = new THREE.PlaneGeometry(1.2, 1.2);
-            const win1 = new THREE.Mesh(winGeo, windowMat);
-            win1.position.set(-width / 2 + 1.5, 5, depth / 2 + 0.01);
-            group.add(win1);
-            const win2 = new THREE.Mesh(winGeo, windowMat);
-            win2.position.set(width / 2 - 1.5, 5, depth / 2 + 0.01);
-            group.add(win2);
-            // Gerçek ev oranlarını koruyan saçak, pencere çerçevesi, kepenk, kapı kasası ve baca.
-            const roofMat = new THREE.MeshLambertMaterial({ color: 0x703a32 });
-            const roofLeft = new THREE.Mesh(new THREE.BoxGeometry(width * 0.58, 0.42, depth + 1.3), roofMat);
-            roofLeft.position.set(-width * 0.23, height + 1.05, 0); roofLeft.rotation.z = -0.38; group.add(roofLeft);
-            const roofRight = new THREE.Mesh(new THREE.BoxGeometry(width * 0.58, 0.42, depth + 1.3), roofMat);
-            roofRight.position.set(width * 0.23, height + 1.05, 0); roofRight.rotation.z = 0.38; group.add(roofRight);
-            const trimMat = new THREE.MeshLambertMaterial({ color: 0xf3dfbe });
-            for (const wx of [-width / 2 + 1.5, width / 2 - 1.5]) {
-                const frame = new THREE.Mesh(new THREE.BoxGeometry(1.55, 1.55, 0.12), trimMat);
-                frame.position.set(wx, 5, depth / 2 + 0.07); group.add(frame);
-                const shutterMat = new THREE.MeshLambertMaterial({ color: 0x426852 });
-                for (const side of [-1, 1]) {
-                    const shutter = new THREE.Mesh(new THREE.BoxGeometry(0.38, 1.5, 0.12), shutterMat);
-                    shutter.position.set(wx + side * 1.02, 5, depth / 2 + 0.11); group.add(shutter);
-                }
-            }
-            const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(1.82, 3.35, 0.18), trimMat);
-            doorFrame.position.set(0, 1.68, depth / 2 + 0.03); group.add(doorFrame);
-            const doorKnob = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshLambertMaterial({ color: 0xd7b24b }));
-            doorKnob.position.set(0.48, 1.55, depth / 2 + 0.16); group.add(doorKnob);
-            const step = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.24, 0.8), new THREE.MeshLambertMaterial({ color: 0x9b907e }));
-            step.position.set(0, 0.12, depth / 2 + 0.45); group.add(step);
-            const chimney = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.6, 1.2), new THREE.MeshLambertMaterial({ color: 0x87463a }));
-            chimney.position.set(width * 0.28, height + 2.1, -depth * 0.18); group.add(chimney);
-            group.position.set(x, 0, z);
-            scene.add(group);
-            buildings.push({ x, z, halfW: width / 2, halfD: depth / 2 });
-        }
+// ---------- Signals: 30s cycle. Axis0 (cars along z) green 0-12, axis1 (cars along x) green 15-27 ----------
+var clock=0,tt=0;
+var red0=function(){return tt>=12},red1=function(){return tt<15||tt>=27};
+function canCross(t){return t==='X'?(tt>=13&&tt<=21):(tt>=28||tt<=6)}
+function lights(){lm.gA.emissiveIntensity=red0()?.05:1.6;lm.rA.emissiveIntensity=red0()?1.6:.05;lm.gB.emissiveIntensity=red1()?.05:1.6;lm.rB.emissiveIntensity=red1()?1.6:.05}
 
-        const blockTypes = [
-            ['S', 'H', 'H', 'H', 'S'],
-            ['H', 'H', 'H', 'H', 'H'],
-            ['H', 'H', 'P', 'H', 'H'],
-            ['H', 'H', 'H', 'H', 'H'],
-            ['S', 'H', 'H', 'H', 'S']
-        ];
+// ---------- Cars ----------
+var carG=new THREE.BoxGeometry(2,.9,4.2),cabG=new THREE.BoxGeometry(1.75,.75,2.2),whG=new THREE.CylinderGeometry(.38,.38,.3,12),whM=new THREE.MeshStandardMaterial({color:0x151515,roughness:.9}),glM=new THREE.MeshStandardMaterial({color:0x223344,roughness:.1,metalness:.6}),cars=[];
+var cc=[0xd64545,0xf2b632,0x3b7fd6,0xf5f5f5,0x2a2f36,0x3fae6a,0x9aa3ad];
+for(var n=0;n<80;n++){
+  var g=new THREE.Group(),bd=new THREE.Mesh(carG,new THREE.MeshStandardMaterial({color:cc[n%cc.length],map:paintT,roughness:.3,metalness:.6}));bd.position.y=.85;bd.castShadow=true;
+  var cb=new THREE.Mesh(cabG,glM);cb.position.set(0,1.65,-.2);cb.castShadow=true;g.add(bd,cb);
+  [[-1,1.3],[1,1.3],[-1,-1.3],[1,-1.3]].forEach(function(w){var wh=new THREE.Mesh(whG,whM);wh.rotation.z=Math.PI/2;wh.position.set(w[0]*.95,.38,w[1]);g.add(wh)});
+  [-.65,.65].forEach(function(x){var h=new THREE.Mesh(new THREE.BoxGeometry(.5,.25,.1),new THREE.MeshBasicMaterial({color:0xfff6c8}));h.position.set(x,.95,2.12);g.add(h);var t=new THREE.Mesh(new THREE.BoxGeometry(.5,.2,.1),new THREE.MeshBasicMaterial({color:0xaa1111}));t.position.set(x,.95,-2.12);g.add(t)});
+  var ax=n%2,dir=rnd()<.5?1:-1;cityRoot.add(g);
+  cars.push({g:g,axis:ax,dir:dir,base:pk(Math.floor(rnd()*(N+1))),pos:R(-165,165),v:0,sp:R(9,15),off:(ax?dir:-dir)*2.6})}
 
-        for (let bx = 0; bx < gridCount; bx++) {
-            for (let bz = 0; bz < gridCount; bz++) {
-                const blockCenterX = firstBlockCenterX + bx * GRID_STEP;
-                const blockCenterZ = firstBlockCenterZ + bz * GRID_STEP;
-                const type = blockTypes[bz][bx];
-                const usableW = BLOCK_INNER - 12;
-                const usableD = BLOCK_INNER - 12;
-                if (type === 'S') {
-                    createSkyscraper(blockCenterX, blockCenterZ, usableW, usableD, 50 + Math.random() * 30, 0x4477bb);
-                } else if (type === 'H') {
-                    const colors = [0xddaa77, 0xcc8855, 0xbb9966, 0xaaccaa];
-                    createHouse(blockCenterX, blockCenterZ, usableW, usableD, colors[Math.floor(Math.random() * colors.length)]);
-                } else if (type === 'P') {
-                    const park = new THREE.Mesh(new THREE.PlaneGeometry(BLOCK_INNER - 6, BLOCK_INNER - 6), new THREE.MeshLambertMaterial({ color: 0x3d8c28 }));
-                    park.rotation.x = -Math.PI / 2;
-                    park.position.set(blockCenterX, 0.04, blockCenterZ);
-                    scene.add(park);
-                }
-            }
-        }
-
-        // Ağaçlar (çiftlik ve şehir dışı)
-        function createTreeOutside(x, z) {
-            const treeGroup = new THREE.Group();
-            const scale = 0.8 + Math.random() * 0.65;
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * scale, 0.55 * scale, 5 * scale, 6), new THREE.MeshLambertMaterial({ color: 0x4a2f1a }));
-            trunk.position.y = 2.5 * scale;
-            treeGroup.add(trunk);
-            const leafMat = new THREE.MeshLambertMaterial({ color: Math.random() > 0.5 ? 0x286b24 : 0x397a31 });
-            for (const [ox, oy, oz, radius] of [[0, 6, 0, 2.5], [-1.25, 5.5, 0.15, 1.7], [1.15, 5.7, -0.2, 1.8]]) {
-                const leaf = new THREE.Mesh(new THREE.SphereGeometry(radius * scale, 7, 6), leafMat);
-                leaf.position.set(ox * scale, oy * scale, oz * scale);
-                treeGroup.add(leaf);
-            }
-            treeGroup.position.set(x, terrainHeightAt(x, z), z);
-            scene.add(treeGroup);
-            buildings.push({ x, z, halfW: 0.85 * scale, halfD: 0.85 * scale });
-        }
-
-        for (let i = 0; i < 82; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const radius = CITY_RADIUS + Math.random() * 100;
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
-            const distToCity = Math.sqrt((x - CITY_CENTER_X) ** 2 + (z - CITY_CENTER_Z) ** 2);
-            if (distToCity < CITY_RADIUS) continue;
-            const distToFarm = Math.sqrt((x - FARM_CX) ** 2 + (z - FARM_CZ) ** 2);
-            if (distToFarm < 150 || distanceToRoadAxis(x, z) < 20) continue;
-            if (Math.abs(x - PARKING_CENTER.x) < 27 && Math.abs(z - PARKING_CENTER.z) < 17) continue;
-            let tooCloseToMountain = false;
-            for (let m of mountains) {
-                const dx = x - m.x;
-                const dz = z - m.z;
-                if (Math.sqrt(dx * dx + dz * dz) < m.radius + 5) { tooCloseToMountain = true; break; }
-            }
-            if (tooCloseToMountain) continue;
-            createTreeOutside(x, z);
-        }
+// ---------- Pedestrians ----------
+function fab(c){return new THREE.MeshStandardMaterial({color:c,map:fabT,roughness:.9})}
+function sk(c){return new THREE.MeshStandardMaterial({color:c,roughness:.7})}
+var shirts=[0xc0392b,0x2e86c1,0xf1c40f,0x27ae60,0xecf0f1,0x8e44ad,0x1abc9c,0xe67e22].map(fab),pants=[0x2c3e50,0x1b2631,0x5d6d7e,0x6e4b2f,0x34495e].map(fab),
+skins=[0xf1c9a5,0xd9a37a,0xa87552,0x7a4f35,0xf7d9c0].map(sk),hairs=[0x1c1410,0x4a3122,0x8c6a3f,0xb9b9b9,0x2b2b2b].map(sk),shoeM=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.6});
+var GC=function(a,b,h,s){return new THREE.CylinderGeometry(a,b,h,s||10)},gThigh=GC(.075,.058,.46),gShin=GC(.055,.04,.44),gShoe=new THREE.BoxGeometry(.1,.07,.25),gUA=GC(.048,.04,.3),gFA=GC(.038,.032,.27),gHand=new THREE.SphereGeometry(.04,8,6),gTorso=GC(.19,.16,.56),gHead=new THREE.SphereGeometry(.105,12,10),gHair=new THREE.SphereGeometry(.113,12,8,0,Math.PI*2,0,Math.PI*.6),gEye=new THREE.SphereGeometry(.012,6,4),eyeM=new THREE.MeshBasicMaterial({color:0x111111});
+function M(g,m,x,y,z,par,cast){var o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=!!cast;par.add(o);return o}
+function person(){
+  var r=new THREE.Group(),sh=pick(shirts),pa=pick(pants),sn=pick(skins),hr=pick(hairs),h=1+R(-.05,.06);r.scale.set(1,h,1);
+  var pel=M(new THREE.BoxGeometry(.32,.16,.2),pa,0,.95,0,r);
+  var to=M(gTorso,sh,0,1.26,0,r,true);to.scale.z=.62;
+  M(GC(.05,.055,.09),sn,0,1.58,0,r);var hd=M(gHead,sn,0,1.69,0,r);hd.scale.y=1.15;M(gHair,hr,0,1.71,-.005,r).scale.y=1.15;
+  [-.04,.04].forEach(function(x){M(gEye,eyeM,x,1.7,.096,r)});
+  var P2={hip:[],knee:[],sho:[],elb:[]};
+  [-1,1].forEach(function(s){
+    var hp=new THREE.Group();hp.position.set(s*.09,.92,0);r.add(hp);M(gThigh,pa,0,-.23,0,hp);
+    var kn=new THREE.Group();kn.position.y=-.46;hp.add(kn);M(gShin,pa,0,-.22,0,kn);M(gShoe,shoeM,0,-.45,.05,kn);
+    var so=new THREE.Group();so.position.set(s*.235,1.5,0);r.add(so);M(new THREE.SphereGeometry(.055,8,6),sh,0,0,0,so);M(gUA,sh,0,-.15,0,so);
+    var el=new THREE.Group();el.position.y=-.3;so.add(el);M(gFA,sn,0,-.135,0,el);M(gHand,sn,0,-.29,0,el);
+    P2.hip.push(hp);P2.knee.push(kn);P2.sho.push(so);P2.elb.push(el)});
+  cityRoot.add(r);return {g:r,p:P2}}
+var peds=[];
+for(var q=0;q<80;q++){var nd=pick(nlist),md=person();peds.push({m:md,n:nd,prev:null,e:null,pend:null,t:0,sp:R(1.2,1.7),ph:R(0,6),lat:R(.15,.5),jx:R(-.5,.5),jz:R(-.5,.5),x:nd.x,z:nd.z,hx:0,hz:1,slow:1})}
+function stepPed(p,dt){
+  var walking=false;
+  if(!p.e){if(!p.pend){var o=p.n.nb.filter(function(x){return x.n!==p.prev});if(!o.length)o=p.n.nb;p.pend=pick(o)}
+    if(p.pend.type&&!canCross(p.pend.type)){p.x=p.n.x+p.jx;p.z=p.n.z+p.jz;p.g=0}else{p.e=p.pend;p.pend=null;p.t=0}}
+  if(p.e){var e=p.e,dx=e.n.x-p.n.x,dz=e.n.z-p.n.z,L=e.len;p.hx=dx/L;p.hz=dz/L;walking=true;
+    p.slow=1;for(var i=0;i<peds.length;i++){var o2=peds[i];if(o2===p||!o2.e)continue;var rx=o2.x-p.x,rz=o2.z-p.z,ds=rx*rx+rz*rz;if(ds<.8&&rx*p.hx+rz*p.hz>0&&o2.hx*p.hx+o2.hz*p.hz>.5){p.slow=.25;break}}
+    p.t+=p.sp*(e.type?1.15:1)*p.slow*dt/L;var t=Math.min(p.t,1),w=Math.sin(Math.PI*t)*p.lat;
+    p.x=p.n.x+dx*t+p.hz*w;p.z=p.n.z+dz*t-p.hx*w;
+    var ed=Math.min(t,1-t)*L;p.y=e.type?.1+.2*cl(1-ed/1,0,1):.3;
+    if(p.t>=1){p.prev=p.n;p.n=e.n;p.e=null}}
+  else p.y=.3;
+  var g=p.m.g,P3=p.m.p;g.position.set(p.x,p.y+(walking?Math.abs(Math.sin(p.ph))*.03:0),p.z);
+  var ang=Math.atan2(p.hx,p.hz),da=ang-g.rotation.y;da=Math.atan2(Math.sin(da),Math.cos(da));g.rotation.y+=da*Math.min(1,dt*8);
+  if(walking)p.ph+=dt*p.sp*p.slow*4.6;var k=walking?1:0,s=Math.sin(p.ph),c=Math.cos(p.ph);
+  var f=function(cur,tg){return cur+(tg-cur)*Math.min(1,dt*10)};
+  P3.hip[0].rotation.x=f(P3.hip[0].rotation.x,-s*.55*k);P3.hip[1].rotation.x=f(P3.hip[1].rotation.x,s*.55*k);
+  P3.knee[0].rotation.x=f(P3.knee[0].rotation.x,k*(.1+.7*Math.max(0,c)));P3.knee[1].rotation.x=f(P3.knee[1].rotation.x,k*(.1+.7*Math.max(0,-c)));
+  P3.sho[0].rotation.x=f(P3.sho[0].rotation.x,s*.5*k);P3.sho[1].rotation.x=f(P3.sho[1].rotation.x,-s*.5*k);
+  P3.elb[0].rotation.x=P3.elb[1].rotation.x=-.3*k}
+function stepCar(c,dt){
+  var lim=c.sp,red=c.axis?red1():red0();
+  if(red){var best=1e9;for(var k=0;k<=N;k++){var d=c.dir*(pk(k)-c.pos);if(d>=11.2&&d<best)best=d}if(best<70)lim=Math.min(lim,Math.max(0,best-11.5)*2.2)}
+  for(var i=0;i<cars.length;i++){var o=cars[i];if(o===c||o.axis!==c.axis||o.base!==c.base||o.dir!==c.dir)continue;var g=c.dir*(o.pos-c.pos);if(g>0&&g<16)lim=Math.min(lim,Math.max(0,g-6.5)*2.2)}
+  c.v+=cl(lim-c.v,-18*dt,5*dt);c.pos+=c.dir*c.v*dt;
+  if(c.pos*c.dir>177)c.dir*=-1;
+  c.off+=((c.axis?c.dir:-c.dir)*2.6-c.off)*Math.min(1,dt*1.6);
+  var g2=c.g;if(c.axis===0){g2.position.set(c.base+c.off,.1,c.pos);g2.rotation.y=c.dir>0?0:Math.PI}else{g2.position.set(c.pos,.1,c.base+c.off);g2.rotation.y=c.dir>0?Math.PI/2:-Math.PI/2}}
 
 
-        // Sahil: şehirden gelen düz yolun sonunda kare çizgili otopark, kum ve sığ deniz.
-        const sandMat = new THREE.MeshLambertMaterial({ map: sandTexture, color: 0xe7c78d });
-        const beachSand = new THREE.Mesh(new THREE.PlaneGeometry(250, 65), sandMat);
-        beachSand.rotation.x = -Math.PI / 2;
-        beachSand.position.set(BEACH_PARKING_CENTER.x, 0.018, -420);
-        scene.add(beachSand);
-        const beachCarPark = new THREE.Mesh(new THREE.PlaneGeometry(38, 22), new THREE.MeshLambertMaterial({ color: 0x35393b }));
-        beachCarPark.rotation.x = -Math.PI / 2;
-        beachCarPark.position.set(BEACH_PARKING_CENTER.x, 0.078, BEACH_PARKING_CENTER.z);
-        scene.add(beachCarPark);
-        const parkLineMat = new THREE.MeshBasicMaterial({ color: 0xf1e6c9 });
-        for (let i = 0; i < 5; i++) {
-            const line = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 8), parkLineMat);
-            line.rotation.x = -Math.PI / 2;
-            line.position.set(BEACH_PARKING_CENTER.x - 12 + i * 6, 0.088, BEACH_PARKING_CENTER.z);
-            scene.add(line);
+        // Modelin kendi animasyonları ana oyun döngüsüne bağlanır.
+        let cityClock = 0, cityTt = 0;
+        function updateCityModel(dt) {
+            cityClock += dt;
+            cityTt = cityClock % 30;
+            if (typeof lights === 'function') lights();
+            if (typeof cars !== 'undefined') cars.forEach(c => stepCar(c, dt));
+            if (typeof peds !== 'undefined') peds.forEach(p => stepPed(p, dt));
         }
-        const beachCarMaterials = [0x4477a8, 0xb54436, 0xe3d7ae, 0x43554d];
-        for (let i = 0; i < 4; i++) {
-            const cx = BEACH_PARKING_CENTER.x - 9 + (i % 2) * 18;
-            const cz = BEACH_PARKING_CENTER.z - 5 + Math.floor(i / 2) * 10;
-            const car = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.15, 2.05), new THREE.MeshLambertMaterial({ color: beachCarMaterials[i] }));
-            body.position.y = 0.9; car.add(body);
-            const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.9, 1.75), new THREE.MeshLambertMaterial({ color: 0x9db6bb }));
-            cabin.position.set(0, 1.78, -0.08); car.add(cabin);
-            const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.22, 10);
-            const wheelMat = new THREE.MeshLambertMaterial({ color: 0x161819 });
-            for (const wx of [-1.5, 1.5]) for (const wz of [-0.86, 0.86]) {
-                const wheel = new THREE.Mesh(wheelGeo, wheelMat); wheel.rotation.z = Math.PI / 2; wheel.position.set(wx, 0.45, wz); car.add(wheel);
-            }
-            car.position.set(cx, 0.08, cz); scene.add(car);
-            buildings.push({ x: cx, z: cz, halfW: 2.5, halfD: 1.45 });
-        }
-        const waterGeo = new THREE.PlaneGeometry(280, 53, 48, 16);
-        waterGeo.rotateX(-Math.PI / 2);
-        const waterColors = [];
-        const waterPos = waterGeo.attributes.position;
-        for (let i = 0; i < waterPos.count; i++) {
-            const edge = Math.max(0, Math.min(1, (waterPos.getZ(i) + 26.5) / 53));
-            waterColors.push(0.10 + edge * 0.02, 0.58 - edge * 0.12, 0.68 + edge * 0.12);
-        }
-        waterGeo.setAttribute('color', new THREE.Float32BufferAttribute(waterColors, 3));
-        const waterMat = new THREE.MeshPhongMaterial({ vertexColors: true, transparent: true, opacity: 0.91, shininess: 70, side: THREE.DoubleSide });
-        const seaMesh = new THREE.Mesh(waterGeo, waterMat);
-        seaMesh.position.set(BEACH_PARKING_CENTER.x, -0.16, BEACH_WATER_EDGE - 26.5);
-        scene.add(seaMesh);
-        const waterBaseY = waterGeo.attributes.position.array.slice();
-        const beachFoam = new THREE.Mesh(new THREE.PlaneGeometry(248, 1.2), new THREE.MeshBasicMaterial({ color: 0xe8f4eb, transparent: true, opacity: 0.63 }));
-        beachFoam.rotation.x = -Math.PI / 2;
-        beachFoam.position.set(BEACH_PARKING_CENTER.x, 0.005, BEACH_WATER_EDGE + 0.3);
-        scene.add(beachFoam);
-        const pondShore = new THREE.Mesh(new THREE.RingGeometry(11.5, 15.5, 32), new THREE.MeshLambertMaterial({ color: 0x8b896b }));
-        pondShore.rotation.x = -Math.PI / 2; pondShore.position.set(FOREST_POND_CENTER.x, 0.012, FOREST_POND_CENTER.z); scene.add(pondShore);
-        const pondSurface = new THREE.Mesh(new THREE.CircleGeometry(12, 32), new THREE.MeshPhongMaterial({ color: 0x347f8c, transparent: true, opacity: 0.88, shininess: 55, side: THREE.DoubleSide }));
-        pondSurface.rotation.x = -Math.PI / 2; pondSurface.position.set(FOREST_POND_CENTER.x, -0.08, FOREST_POND_CENTER.z); scene.add(pondSurface);
-        const beachRockMesh = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ vertexColors: true }), 58);
-        const beachRockDummy = new THREE.Object3D(), beachRockColor = new THREE.Color(); let beachRockCount = 0;
-        for (let i = 0; i < 58; i++) {
-            const x = BEACH_PARKING_CENTER.x - 118 + i * 4.1;
-            const z = (i % 2 ? -450.7 : -451.8);
-            const sx = 0.35 + (i % 4) * 0.12, sy = 0.25 + (i % 3) * 0.09;
-            beachRockDummy.position.set(x, sy * 0.45, z); beachRockDummy.rotation.set(0.1, i * 0.7, 0.08); beachRockDummy.scale.set(sx, sy, 0.45 + sx * 0.4); beachRockDummy.updateMatrix();
-            beachRockMesh.setMatrixAt(beachRockCount, beachRockDummy.matrix);
-            beachRockColor.setHex([0x887d69,0x9e9279,0x6f756f][i % 3]); beachRockMesh.setColorAt(beachRockCount, beachRockColor); beachRockCount++;
-        }
-        beachRockMesh.count = beachRockCount; beachRockMesh.instanceMatrix.needsUpdate = true; if (beachRockMesh.instanceColor) beachRockMesh.instanceColor.needsUpdate = true; scene.add(beachRockMesh);
-        const umbrellaMats = [new THREE.MeshLambertMaterial({ color: 0xd64c3d }), new THREE.MeshLambertMaterial({ color: 0xf1d16c }), new THREE.MeshLambertMaterial({ color: 0x327ba0 })];
-        for (let i = 0; i < 5; i++) {
-            const x = BEACH_PARKING_CENTER.x - 95 + i * 46, z = -414 - (i % 2) * 10;
-            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,2.8,6), new THREE.MeshLambertMaterial({ color: 0xe9e1cb })); pole.position.set(x,1.4,z); scene.add(pole);
-            const canopy = new THREE.Mesh(new THREE.ConeGeometry(2.2,0.8,8), umbrellaMats[i%umbrellaMats.length]); canopy.position.set(x,2.9,z); scene.add(canopy);
-            const towel = new THREE.Mesh(new THREE.BoxGeometry(3.4,0.04,5), new THREE.MeshLambertMaterial({ color: i%2 ? 0x2a7d9c : 0xd64f44 })); towel.position.set(x+4,0.035,z); scene.add(towel);
-        }
-        const palmMat = new THREE.MeshLambertMaterial({ color: 0x76502f });
-        const palmLeafMat = new THREE.MeshLambertMaterial({ color: 0x3f843e, side: THREE.DoubleSide });
-        for (let i = 0; i < 6; i++) {
-            const x = BEACH_PARKING_CENTER.x - 118 + i * 46, z = -392 - (i%2)*15;
-            const palm = new THREE.Group();
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.66,8,7), palmMat); trunk.position.y=4; palm.add(trunk);
-            for(let f=0;f<7;f++) { const leaf=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.12,5.4),palmLeafMat); leaf.position.set(0,7.5,0); leaf.rotation.y=f*Math.PI*2/7; leaf.rotation.x=-0.25; palm.add(leaf); }
-            palm.position.set(x,0,z); scene.add(palm);
-        }
-        // Mağara ağızları ve kayalık yığınları orman kıyısında, yol ve yürünebilir alandan uzakta.
-        for (const [cx,cz] of [[312,-108],[306,42]]) {
-            const cave = new THREE.Group();
-            const rockMat = new THREE.MeshLambertMaterial({ color: 0x625b50 });
-            const arch = new THREE.Mesh(new THREE.TorusGeometry(3.6,1.15,7,12,Math.PI),rockMat); arch.position.y=3.2; arch.rotation.z=Math.PI; cave.add(arch);
-            const dark = new THREE.Mesh(new THREE.CircleGeometry(2.65,12),new THREE.MeshBasicMaterial({color:0x101319,side:THREE.DoubleSide})); dark.position.set(0,2.05,0.42); cave.add(dark);
-            for(let r=0;r<7;r++){const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1,0),rockMat);stone.scale.set(1.1+r%2*.35,.8+r%3*.2,1);stone.position.set(-5.4+r*1.8,.35+(r%2)*.22,0.8);cave.add(stone);}
-            cave.position.set(cx,terrainHeightAt(cx,cz),cz); scene.add(cave);
-            buildings.push({x:cx,z:cz,halfW:5.2,halfD:3.2});
-        }
-
-        // İnsan ölçüsünde, duraklayıp yürüyen kasaba ve plaj sakinleri.
-        const townNpcs = [];
-        function createHumanNpc(x,z,seed,beach=false) {
-            const g = new THREE.Group();
-            const colors = [[0x3d7290,0x34414f],[0x9b6042,0x3e5b48],[0x6f587f,0x474245],[0x45765d,0x494d59],[0xc09449,0x56636e]];
-            const palette=colors[seed%colors.length], skin=new THREE.MeshLambertMaterial({color:[0xc58f6c,0xe0b49a,0x936348][seed%3]}), shirt=new THREE.MeshLambertMaterial({color:palette[0]}), pants=new THREE.MeshLambertMaterial({color:palette[1]}), hair=new THREE.MeshLambertMaterial({color:[0x35271e,0x18191d,0x785532][seed%3]}), shoeMat=new THREE.MeshLambertMaterial({color:0x292622});
-            const torso=new THREE.Mesh(new THREE.BoxGeometry(.52,.78,.3),shirt); torso.position.y=1.05; g.add(torso);
-            const neck=new THREE.Mesh(new THREE.CylinderGeometry(.09,.11,.16,7),skin); neck.position.y=1.52; g.add(neck);
-            const head=new THREE.Mesh(new THREE.SphereGeometry(.22,10,8),skin); head.position.y=1.76; g.add(head);
-            const hairCap=new THREE.Mesh(new THREE.SphereGeometry(.225,10,6,0,Math.PI*2,0,Math.PI*.48),hair); hairCap.position.y=1.83; g.add(hairCap);
-            const eyeMat=new THREE.MeshBasicMaterial({color:0x1b1b1b}); for(const ex of [-.075,.075]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.025,6,5),eyeMat);eye.position.set(ex,1.78,.202);g.add(eye);}
-            const armL=new THREE.Group(),armR=new THREE.Group(); armL.position.set(-.33,1.31,0);armR.position.set(.33,1.31,0);
-            for(const [arm,sign] of [[armL,-1],[armR,1]]){const sleeve=new THREE.Mesh(new THREE.CylinderGeometry(.09,.075,.52,7),shirt);sleeve.position.y=-.21;arm.add(sleeve);const hand=new THREE.Mesh(new THREE.SphereGeometry(.075,7,6),skin);hand.position.y=-.49;arm.add(hand);g.add(arm);}
-            const legs=[];for(const lx of [-.145,.145]){const leg=new THREE.Group();leg.position.set(lx,.68,0);const trousers=new THREE.Mesh(new THREE.CylinderGeometry(.105,.09,.62,7),pants);trousers.position.y=-.14;leg.add(trousers);const shoe=new THREE.Mesh(new THREE.BoxGeometry(.2,.12,.32),shoeMat);shoe.position.set(0,-.49,.07);leg.add(shoe);g.add(leg);legs.push(leg);}
-            if(beach){const shorts=new THREE.Mesh(new THREE.BoxGeometry(.5,.28,.31),new THREE.MeshLambertMaterial({color:0x3e7185}));shorts.position.y=.72;g.add(shorts);}
-            g.position.set(x,terrainHeightAt(x,z),z);g.rotation.y=(seed%6)*Math.PI/3;g.userData={legs,armL,armR,phase:seed*1.7,pace:.45+seed%4*.08,homeX:x,homeZ:z,walkRadius:beach?3:6};scene.add(g);townNpcs.push(g);return g;
-        }
-        const parkHumanX = firstBlockCenterX + 2 * GRID_STEP, parkHumanZ = firstBlockCenterZ + 2 * GRID_STEP;
-        [[-8,-7],[6,-8],[-2,6],[9,6],[-10,4],[1,10]].forEach((p,i)=>createHumanNpc(parkHumanX+p[0],parkHumanZ+p[1],i,false));
-        for(let i=0;i<8;i++) createHumanNpc(BEACH_PARKING_CENTER.x-85+(i%4)*44,-405+Math.floor(i/4)*17,20+i,true);
-
         // Lush forest region: thousands of low-cost instanced trees cover ~90% of the woodland canopy.
         const forestTrees=[]; const orchardTrees=[]; const forestTreeGrid=new Map(); const FOREST_CELL=8;
         function mulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
@@ -2618,8 +2418,6 @@
             if(Math.hypot(x-FARM_CX,z-FARM_CZ)<164)continue;
             if(Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<CITY_RADIUS+22)continue;
             if(distanceToRoadAxis(x,z)<10)continue;
-            if(Math.abs(x-BEACH_PARKING_CENTER.x)<135&&z<-382)continue;
-            if(Math.abs(x-BEACH_PARKING_CENTER.x)<20&&z<-305&&z>-372)continue;
             const scale=.82+forestRand()*.66, groundY=terrainHeightAt(x,z);
             const tree={x,z,scale,groundY,radius:.68*scale,id:null,apples:6};
             const gridKey=`${Math.floor(x/FOREST_CELL)},${Math.floor(z/FOREST_CELL)}`;
@@ -3913,8 +3711,6 @@
                     const score=along+side*2;if(score<bestScore){bestScore=score;best={type:'apple',treeId:tree.id,point,distance:along};}
                 }
             }
-            const waterX=Math.max(BEACH_PARKING_CENTER.x-122,Math.min(BEACH_PARKING_CENTER.x+122,x));
-            const waterTargets=[{x:waterX,z:BEACH_WATER_EDGE+1.0},{x:FOREST_POND_CENTER.x,z:FOREST_POND_CENTER.z}];
             for(const target of waterTargets){const waterPoint=new THREE.Vector3(target.x,0,target.z),waterVec=waterPoint.clone().sub(origin);const waterDistance=Math.hypot(x-target.x,z-target.z),waterFacing=waterVec.normalize().dot(dir);if(waterDistance<6.2&&waterFacing>.28&&(!best||waterDistance<best.distance+.3))best={type:'water',distance:waterDistance};}
             return best;
         }
@@ -3996,7 +3792,6 @@
             for(let gx=cx-reach;gx<=cx+reach;gx++)for(let gz=cz-reach;gz<=cz+reach;gz++){
                 for(const tree of (forestTreeGrid.get(`${gx},${gz}`)||[]))if(Math.hypot(x-tree.x,z-tree.z)<radius+tree.radius)return true;
             }
-            if(x>BEACH_PARKING_CENTER.x-142&&x<BEACH_PARKING_CENTER.x+142&&z<BEACH_WATER_EDGE-2&&z>BEACH_WATER_EDGE-54)return true;
             return false;
         };
         function updateTownNpcs(dt,now) {
@@ -4034,7 +3829,7 @@
                 }
                 const mx=targetX-animal.position.x,mz=targetZ-animal.position.z,ml=Math.hypot(mx,mz);const speed=u.temperament==='aggressive'&&distance<12?4.4:(u.temperament==='shy'&&distance<10?4.8:1.25);
                 if(ml>.6){const step=Math.min(ml,speed*dt);const nx=animal.position.x+mx/ml*step,nz=animal.position.z+mz/ml*step;
-                    if(!previousCollisionCheck(nx,nz,.55)&&!(nx>BEACH_PARKING_CENTER.x-142&&nx<BEACH_PARKING_CENTER.x+142&&nz<BEACH_WATER_EDGE-2)){animal.position.x=nx;animal.position.z=nz;}
+                    if(!previousCollisionCheck(nx,nz,.55)){animal.position.x=nx;animal.position.z=nz;}
                     animal.rotation.y=Math.atan2(mx,mz);u.legs.forEach((leg,i)=>leg.rotation.x=Math.sin(u.phase*4+(i%2)*Math.PI)*.42);
                 }else u.legs.forEach(l=>l.rotation.x*=.78);
                 animal.position.y=terrainHeightAt(animal.position.x,animal.position.z)+Math.abs(Math.sin(u.phase*2))*.08;
@@ -4044,11 +3839,7 @@
                 animal.userData.statusSprite.visible=gameStarted&&distance<18;
             }
         }
-        function updateWater(now) {
-            const pos=waterGeo.attributes.position;for(let i=0;i<pos.count;i++){const base=waterBaseY[i*3+1],x=waterBaseY[i*3],z=waterBaseY[i*3+2];pos.setY(i,base+Math.sin(x*.055+now*.0018)*.16+Math.cos(z*.09+now*.0014)*.09);}
-            pos.needsUpdate=true;waterGeo.computeVertexNormals();beachFoam.material.opacity=.48+Math.sin(now*.0018)*.12;
-        }
-        function animateNeedsAndInteraction(){const now=performance.now();const dt=Math.min(.07,Math.max(.001,(now-lastNpcUpdate)/1000));lastNpcUpdate=now;updateWater(now);updateTownNpcs(dt,now);updateWildlife(dt,now);scanInteraction(now);
+        function animateNeedsAndInteraction(){const now=performance.now();const dt=Math.min(.07,Math.max(.001,(now-lastNpcUpdate)/1000));lastNpcUpdate=now;updateTownNpcs(dt,now);updateWildlife(dt,now);updateCityModel(dt);scanInteraction(now);
             if(gameStarted&&playerDonkey.userData.neckHeadGroup&&now<actionAnimationUntil){const pulse=Math.sin((now-(actionAnimationUntil-1100))*.012);if(actionAnimationType==='eat')playerDonkey.userData.neckHeadGroup.rotation.x=pitch+.55*Math.max(0,pulse);else if(actionAnimationType==='drink')playerDonkey.userData.neckHeadGroup.rotation.x=pitch-.3+.18*pulse;else if(actionAnimationType==='attack'){playerDonkey.userData.neckHeadGroup.rotation.x=pitch-.4*Math.max(0,pulse);playerDonkey.userData.legs[0].rotation.x=-.72*Math.max(0,pulse);}else if(actionAnimationType==='hurt')playerDonkey.rotation.z=.12*pulse;}
             else if(playerDonkey.userData.neckHeadGroup&&gameStarted){playerDonkey.userData.neckHeadGroup.rotation.x=pitch;playerDonkey.rotation.z=0;}
         }
