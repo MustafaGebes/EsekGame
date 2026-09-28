@@ -1714,7 +1714,9 @@
             // Meyilli, düşük poligonlu ufuk sırtları
             // The game already supplies a distant mountain ring; avoid a second artificial ridge inside this farm.
             // Gölet çukuru (havuz iç yüzeyi): derinleştirilmiş daire, kenarları yamaçlı.
-            const pondOuterR = 5.5, pondInnerR = 3.5, pondDepth = 2.2;
+            // Göl aynı alanda kalır; yalnızca tabanı aşağı indirilerek derinleştirilir.
+            // Böylece suyun dışarı taşacağı yeni bir yüzey alanı oluşturulmaz.
+            const pondOuterR = 5.5, pondInnerR = 3.5, pondDepth = 4.2;
             const pondGeo = new THREE.CylinderGeometry(pondInnerR, pondInnerR, 0.1, 32);
             // Çukur yan duvarı: iç silindir şeklinde aşağı doğru iner
             const pondWallGeo = new THREE.CylinderGeometry(pondOuterR, pondInnerR, pondDepth, 32, 1, true);
@@ -1741,6 +1743,10 @@
             pond.position.set(16, -0.15, -11);
             pond.name = 'Gölet';
             pond.receiveShadow = true;
+            pond.userData.waterSurfaceY = farmRoot.position.y + pond.position.y;
+            pond.userData.innerRadiusWorld = pondInnerR * farmRoot.scale.x;
+            pond.userData.outerRadiusWorld = pondOuterR * farmRoot.scale.x;
+            pond.userData.depthWorld = pondDepth * farmRoot.scale.y;
             farmRoot.add(pond);
 
             // Su kenarı (kum/çamur şerit)
@@ -3928,13 +3934,17 @@ function stepCar(c,dt){
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
                 let baseSpeed = isCrouching ? 0.10 : 0.22;
                 if (isSprinting && !isCrouching) baseSpeed = 0.45;
+                // Çiftlik göleti: su yüzeyi aynı yerde kalır, fakat dip yaklaşık 5 dünya birimi derindir.
+                // Oyuncu gölete girince yürümek yerine yüzme fiziğine geçer.
                 const pondWX = FARM_CX - 16 * 1.20;
                 const pondWZ = FARM_CZ + 11 * 1.20;
                 const pondSwimR = 3.5 * 1.20;
+                const pondWaterY = 0.08 - 0.15;
                 const pondDist = Math.hypot(playerDonkey.position.x - pondWX, playerDonkey.position.z - pondWZ);
+                const inPondWater = pondDist < pondSwimR;
 
                 let speed = baseSpeed;
-                if (pondDist < pondSwimR) speed *= 0.6;
+                if (inPondWater) speed *= isSprinting ? 0.72 : 0.58;
                 let moveX = 0, moveZ = 0, isMoving = false;
 
                 if (controlMode === 'pc') {
@@ -3967,14 +3977,16 @@ function stepCar(c,dt){
                     playerDonkey.position.z = newZ;
                 }
 
-                // Gölet suyu üzerinde yüzme: su yüzeyinin 0.3 birim üstünde dur
-                const swimPondDist = Math.hypot(playerDonkey.position.x - pondWX, playerDonkey.position.z - pondWZ);
-                if (swimPondDist < pondSwimR) {
-                    // Su içinde: hafif aşağı çek (yüzme efekti)
-                    const waterY = 0.08 - 0.15;  // su yüzeyi yüksekliği (farmRoot.y + pond.y)
-                    playerDonkey.position.y = Math.max(playerDonkey.position.y, waterY + 0.3);
-                    velocityY = 0; // su içinde yerçekimi yok
-                    isGrounded = true; // zıplama devre dışı (yüzme modu)
+                // Gölet su fiziği.
+                // Suya girince ağırlık azalır, yatay hız su direnciyle düşer ve karakter yüzeyde tutulur.
+                // Gölün çapı değiştirilmediği için su dışarı taşmaz; yalnızca dip derinleşmiştir.
+                if (inPondWater) {
+                    const swimTargetY = pondWaterY + 0.28;
+                    const bob = Math.sin(performance.now() * 0.004) * 0.035;
+                    const buoyancy = 0.16;
+                    playerDonkey.position.y += (swimTargetY + bob - playerDonkey.position.y) * buoyancy;
+                    velocityY *= 0.72;
+                    isGrounded = true;
                 }
 
                 const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
@@ -3988,15 +4000,21 @@ function stepCar(c,dt){
                 playerDonkey.scale.y += ((isCrouching ? 0.6 : 1.0) - playerDonkey.scale.y) * 0.5;
 
                 const groundY = terrainHeightAt(playerDonkey.position.x, playerDonkey.position.z);
-                velocityY -= 0.015;
-                playerDonkey.position.y += velocityY;
-                if (playerDonkey.position.y <= groundY) {
-                    playerDonkey.position.y = groundY;
+                if (!inPondWater) {
+                    // Karada normal yerçekimi; suda ise kaldırma kuvveti yukarıdaki blokta uygulanır.
+                    velocityY -= 0.015;
+                    playerDonkey.position.y += velocityY;
+                    if (playerDonkey.position.y <= groundY) {
+                        playerDonkey.position.y = groundY;
+                        velocityY = 0;
+                        isGrounded = true;
+                    }
+                } else {
+                    // Su içindeyken zıplama yerine yüzme animasyonu kullanılır.
                     velocityY = 0;
-                    isGrounded = true;
                 }
 
-                const isJumping = !isGrounded;
+                const isJumping = !isGrounded && !inPondWater;
                 updateDonkeyAnimation(playerDonkey, isMoving, isJumping, isCrouching, isSprinting ? 1.5 : 1);
 
                 if (playerDonkey.userData.neckHeadGroup) {
