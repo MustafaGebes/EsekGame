@@ -1778,7 +1778,7 @@
             for(const x of [-2.9,2.9]){box(barn,'Ahır bölme ön ray altı',x,.42,1.15,2.35,.11,.12,mat('#8b6544'));box(barn,'Ahır bölme ön ray üstü',x,.9,1.15,2.35,.11,.12,mat('#8b6544'));box(barn,'Ahır yemliği',x,.4,1.75,1.5,.45,.55,mat('#8f744c'))}
             for(const z of [-2.35,-.8,.8,2.25])line(barn,'Ahır tavan kirişi',[-4.15,3.05,z],[4.15,3.05,z],.085,mat('#745238'));
             line(barn,'Ahır samanlık merdiveni',[-3.55,.2,-2.2],[-2.05,2.9,-2.2],.09,mat('#8a6041'));
-            for(const [x,z] of [[-2.6,.35],[2.5,-1.2]]){const lamp=new THREE.PointLight('#ffd991',16,11,2);lamp.position.set(x,2.72,z);barn.add(lamp);sphere(barn,'Ahır lambası',x,2.72,z,.12,mat('#ffe9b1',.22,{emissive:'#ffcc62',emissiveIntensity:.7}),[1,1,1],8)}
+            for(const [x,z] of [[-2.6,.35],[2.5,-1.2]]){const lamp=new THREE.PointLight('#ffd991',3.5,8,2);lamp.position.set(x,2.72,z);barn.add(lamp);sphere(barn,'Ahır lambası',x,2.72,z,.12,mat('#ffe9b1',.22,{emissive:'#ffcc62',emissiveIntensity:.7}),[1,1,1],8)}
             box(barn,'Üst kapak',0,4.15,3.11,1.6,1.15,.13,mat('#603e2e'));box(barn,'Üst kapak çerçevesi',0,4.15,3.19,1.8,1.35,.09,mats.cream);
             for(let z=-2.4;z<2.7;z+=.55)box(barn,'Yan ahır penceresi',-4.57,2.1,z,.08,.5,.42,mats.glass);
             // Evin ana kütlesi
@@ -1999,7 +1999,7 @@
             addFarmWorker({name:'Zeynep',x:5.6,z:18.2,shirt:'#657251',denim:'#40536b',pants:'#495449',skin:'#cf9472',hair:'#39271f',hairStyle:'long',hat:'straw',hatColor:'#d3ad55',trim:'#a9593e',tool:'wateringcan',toolSide:-1,yaw:.18});
 
             // 52 x 52 m plot navigation: A* grid, expanded collision boxes and a hard fence boundary.
-            const navGroupBlockers=new Set(['Ahır','Çiftlik evi','Silo','Tavuk kümesi','Alet deposu','Su değirmeni','Elma ağacı','Ağaç','Sebze bostanı','İnek','Koyun','Domuz','Tavuk','Traktör','Tarım römorku','Biçerdöver','El arabası','Ahşap kasa']);
+            const navGroupBlockers=new Set(['Çiftlik evi','Silo','Tavuk kümesi','Alet deposu','Su değirmeni','Elma ağacı','Ağaç','Sebze bostanı','İnek','Koyun','Domuz','Tavuk','Traktör','Tarım römorku','Biçerdöver','El arabası','Ahşap kasa']);
             const navMeshBlockers=new Set(['Çit kazığı','Ahşap çit','Çiftlik giriş direği','Tarla giriş direği','Saman balyası','Tahta varil','Varil metal çemberi','Kasa gövdesi','Kasa ön tahtası','Kasa arka tahtası','Kasa yan tahtası','Kasa köşe dikmesi','Kasa üst kenarı','Yemlik','Su teknesi','Arı kovanı','Kuyu','Gölet','Alet askılığı','Bahçe aleti sapı','Kürek palası','Tırmık başlığı','Çapa başlığı','Tohum çuvalı','Çiftlik taşı','Kuyu saçağı','Kuyu direği']);
             const farmNav={minX:-27.2,maxX:23.2,minZ:-23.2,maxZ:27.2,cell:.65};farmNav.cols=Math.floor((farmNav.maxX-farmNav.minX)/farmNav.cell)+1;farmNav.rows=Math.floor((farmNav.maxZ-farmNav.minZ)/farmNav.cell)+1;farmNav.blocked=new Uint8Array(farmNav.cols*farmNav.rows);
             function navCell(ix,iz){return iz*farmNav.cols+ix}
@@ -2068,7 +2068,7 @@
                 if(!object.isMesh||farmIsWalkableMesh(object)||isDynamicFarmMesh(object))return;
                 let inBarn=false,par=object.parent;while(par&&par!==farmRoot){if(par.name==='Ahır'){inBarn=true;break}par=par.parent}
                 const n=String(object.name||'').toLocaleLowerCase('tr-TR');
-                if(inBarn&&!/duvar|cephe|temel|söve|lento|tahta|bölme|yemlik|ray|varil/.test(n))return;
+                if(inBarn&&!/duvar|cephe|temel|bölme|yemlik|ray|varil/.test(n))return;
                 const bounds=new THREE.Box3().setFromObject(object);if(bounds.isEmpty())return;
                 const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
                 if(size.x<.06||size.z<.06||size.x>60||size.z>60)return;
