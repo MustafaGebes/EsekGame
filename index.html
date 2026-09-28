@@ -2073,6 +2073,7 @@
             // scene remains more than 100 m inside the inner mountain ring.
             const modelMountainSafe=mountains.every(m=>Math.hypot(FARM_CX-m.x,FARM_CZ-m.z)>m.radius+74);
             if(!modelMountainSafe)console.warn('Farm model placement is too close to a mountain ring.');
+            farmRoot.scale.setScalar(1.20);
             farmRoot.position.set(FARM_CX,.025,FARM_CZ);
             farmRoot.rotation.y=Math.PI;
             farmRoot.updateMatrixWorld(true);
@@ -2103,9 +2104,9 @@
         // ŞEHİR
         // ==========================================
         const legacyPreCityScene = new Set(scene.children);
-        const CITY_CENTER_X = -180;
-        const CITY_CENTER_Z = -180;
-        const CITY_MODEL_SCALE = 0.78;
+        const CITY_CENTER_X = -140;
+        const CITY_CENTER_Z = -140;
+        const CITY_MODEL_SCALE = 1.12;
         const ROAD_WIDTH = 12;
         const BLOCK_INNER = 35;
         const SIDEWALK_WIDTH = 3;
@@ -2672,7 +2673,7 @@ var wallMats=[0xffffff,0xf0d9c0,0xc9d6e3,0xd9c6b8,0xb9c4c9].map(function(c){retu
 var roofMat=new THREE.MeshStandardMaterial({map:roofT,roughness:.95});
 function tower(w,h,d,x,y,z,mat){var g=new THREE.BoxGeometry(w,h,d),uv=g.attributes.uv,fw=Math.max(1,Math.round(w/12)),fd=Math.max(1,Math.round(d/12)),fh=Math.max(1,Math.round(h/16));
   for(var i=0;i<uv.count;i++){var f=Math.floor(i/4),u=uv.getX(i),v=uv.getY(i);if(f<2)uv.setXY(i,u*fd,v*fh);else if(f>=4)uv.setXY(i,u*fw,v*fh);else uv.setXY(i,u*3,v*3)}
-  var m=new THREE.Mesh(g,[mat,mat,roofMat,roofMat,mat,mat]);m.position.set(x,y+h/2,z);m.castShadow=m.receiveShadow=true;cityRoot.add(m);buildings.push({x:CITY_CENTER_X+x*CITY_MODEL_SCALE,z:CITY_CENTER_Z+z*CITY_MODEL_SCALE,halfW:w*CITY_MODEL_SCALE/2+.55,halfD:d*CITY_MODEL_SCALE/2+.55})}
+  var m=new THREE.Mesh(g,[mat,mat,roofMat,roofMat,mat,mat]);m.position.set(x,y+h/2,z);m.castShadow=m.receiveShadow=true;cityRoot.add(m);buildings.push({x:CITY_CENTER_X+x*CITY_MODEL_SCALE,z:CITY_CENTER_Z+z*CITY_MODEL_SCALE,halfW:w*CITY_MODEL_SCALE/2+1.2,halfD:d*CITY_MODEL_SCALE/2+1.2})}
 function inst(g,m,list,cast){var im=new THREE.InstancedMesh(g,m,list.length),o=new THREE.Object3D();
   list.forEach(function(a,i){o.position.set(a[0],a[1],a[2]);o.rotation.set(0,a[3]||0,0);var s=a[4]||1;o.scale.set(s,a[5]||s,s);o.updateMatrix();im.setMatrixAt(i,o.matrix);if(a[6]!=null)im.setColorAt(i,new THREE.Color(a[6]))});
   im.castShadow=!!cast;im.receiveShadow=true;cityRoot.add(im);return im}
