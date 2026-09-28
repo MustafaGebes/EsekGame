@@ -3236,8 +3236,18 @@ function stepCar(c,dt){
         let gameStarted = false;
         let yaw = 0, pitch = 0.3, velocityY = 0;
         let isGrounded = true;
+
+        // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
+        // 3. şahıs kamera artık klasik oyunlardaki gibi oyuncunun etrafında yörüngede döner.
+        // PC'de sağ mouse basılı tutulur; mobilde sağ taraftaki boş alana sürükleme yapılır.
         let isMouseDown = false;
         let mouseX = 0, mouseY = 0;
+        let cameraOrbitDistance = 6.0;
+        const CAMERA_MIN_PITCH = -0.28;
+        const CAMERA_MAX_PITCH = 1.05;
+        const CAMERA_ROTATE_SPEED = 0.0045;
+        const CAMERA_HEIGHT = 1.55;
+        // ===== OYUN KAMERASI DÜZENLEMESİ BİTİŞ =====
         const keys = { w: false, a: false, s: false, d: false, c: false, shift: false };
         let joystickActive = false;
         let joystickMoveX = 0, joystickMoveZ = 0;
@@ -3436,15 +3446,26 @@ function stepCar(c,dt){
         // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
         // Menü kamerasından oyun kamerasına geçişi ilk karede de zorlar.
         function setGameplayCameraImmediate() {
-            const distance = 6;
             const crouch = controlMode === 'pc' ? keys.c : isCouchingMobile;
-            const height = crouch ? 1.8 : 2.5;
-            const targetY = playerDonkey.position.y + (crouch ? 1.0 : 1.5);
-            const camX = playerDonkey.position.x - Math.sin(yaw) * distance;
-            const camY = Math.max(0.8, playerDonkey.position.y + height + pitch * 2.5);
-            const camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
-            camera.position.set(camX, camY, camZ);
-            camera.lookAt(new THREE.Vector3(playerDonkey.position.x, targetY, playerDonkey.position.z));
+            const targetY = playerDonkey.position.y + (crouch ? 0.95 : CAMERA_HEIGHT);
+            if (cameraMode === 'third') {
+                const cp = Math.cos(pitch);
+                const sp = Math.sin(pitch);
+                const horizontal = cameraOrbitDistance * cp;
+                const camX = playerDonkey.position.x - Math.sin(yaw) * horizontal;
+                const camY = playerDonkey.position.y + CAMERA_HEIGHT + sp * cameraOrbitDistance;
+                const camZ = playerDonkey.position.z - Math.cos(yaw) * horizontal;
+                camera.position.set(camX, Math.max(0.75, camY), camZ);
+                camera.lookAt(new THREE.Vector3(playerDonkey.position.x, targetY, playerDonkey.position.z));
+            } else {
+                const eyeHeight = crouch ? 1.2 : 2.0;
+                const eyeX = playerDonkey.position.x + Math.sin(yaw) * 0.5;
+                const eyeY = playerDonkey.position.y + eyeHeight;
+                const eyeZ = playerDonkey.position.z + Math.cos(yaw) * 0.5;
+                camera.position.set(eyeX, eyeY, eyeZ);
+                const cp = Math.cos(pitch), sp = Math.sin(pitch);
+                camera.lookAt(new THREE.Vector3(eyeX + Math.sin(yaw) * cp, eyeY + sp, eyeZ + Math.cos(yaw) * cp));
+            }
             camera.updateProjectionMatrix();
         }
         // ===== OYUN KAMERASI DÜZENLEMESİ BİTİŞ =====
@@ -3583,31 +3604,39 @@ function stepCar(c,dt){
             if (k === 'shift') keys.shift = false;
         });
 
+        // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
+        // PC kamera kontrolü: sağ mouse + sürükle. Sol tık yalnızca saldırı için kullanılır.
         document.addEventListener('mousedown', (e) => {
-            if (!gameStarted || controlMode !== 'pc' || e.button !== 0) return;
+            if (!gameStarted || controlMode !== 'pc') return;
             if (e.target.closest('#settingsPanel,#chatPanel,#playerListPanel,#nameCard,#onlineBadge')) return;
-            isMouseDown = true;
-            mouseX = e.clientX;
-            mouseY = e.clientY;
+            if (e.button === 2) {
+                isMouseDown = true;
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                e.preventDefault();
+            }
         });
-        document.addEventListener('mouseup', () => { isMouseDown = false; });
+        document.addEventListener('mouseup', (e) => {
+            if (e.button === 2) isMouseDown = false;
+        });
         document.addEventListener('mousemove', (e) => {
             if (!gameStarted || controlMode !== 'pc') return;
             if (settingsPanel.style.display === 'block') return;
             if (cameraMode === 'first') {
-                yaw -= e.movementX * 0.005 * sensitivity;
-                pitch -= e.movementY * 0.005 * sensitivity;
+                yaw -= (e.movementX || 0) * 0.005 * sensitivity;
+                pitch -= (e.movementY || 0) * 0.005 * sensitivity;
                 pitch = Math.max(-1.2, Math.min(1.4, pitch));
-            } else {
-                if (isMouseDown) {
-                    yaw -= (e.clientX - mouseX) * 0.005 * sensitivity;
-                    pitch += (e.clientY - mouseY) * 0.005 * sensitivity;
-                    pitch = Math.max(-1.2, Math.min(1.4, pitch));
-                    mouseX = e.clientX;
-                    mouseY = e.clientY;
-                }
+            } else if (isMouseDown) {
+                const dx = e.clientX - mouseX;
+                const dy = e.clientY - mouseY;
+                yaw -= dx * CAMERA_ROTATE_SPEED * sensitivity;
+                pitch -= dy * CAMERA_ROTATE_SPEED * sensitivity;
+                pitch = Math.max(CAMERA_MIN_PITCH, Math.min(CAMERA_MAX_PITCH, pitch));
+                mouseX = e.clientX;
+                mouseY = e.clientY;
             }
         });
+        // ===== OYUN KAMERASI DÜZENLEMESİ BİTİŞ =====
 
         const joystickZone = document.getElementById('joystickZone');
         const joystickKnob = document.getElementById('joystickKnob');
@@ -3685,6 +3714,8 @@ function stepCar(c,dt){
             joystickMoveX = 0; joystickMoveZ = 0;
         });
 
+        // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
+        // Mobil kamera: joystick ve butonlardan bağımsız olarak ekranın sağ tarafında sürükleme.
         window.addEventListener('touchstart', (e) => {
             if (!gameStarted || controlMode !== 'mobile') return;
             if (settingsPanel.style.display === 'block') return;
@@ -3692,7 +3723,9 @@ function stepCar(c,dt){
                 const touch = e.changedTouches[i];
                 const target = document.elementFromPoint(touch.clientX, touch.clientY);
                 if (!target) continue;
-                if (target.closest('#joystickZone') || target.closest('.mob-btn-group') || 
+                const rightSide = touch.clientX > window.innerWidth * 0.42;
+                if (!rightSide) continue;
+                if (target.closest('#joystickZone') || target.closest('.mob-btn-group') ||
                     target.closest('#mobMenuBtn') || target.closest('#mobViewBtn') ||
                     target.closest('#mobOpenBtn') || target.closest('#settingsPanel') ||
                     target.closest('#menu')) continue;
@@ -3700,31 +3733,31 @@ function stepCar(c,dt){
                     cameraTouchId = touch.identifier;
                     cameraLastX = touch.clientX;
                     cameraLastY = touch.clientY;
+                    e.preventDefault();
+                    break;
                 }
             }
         }, { passive: false });
 
         window.addEventListener('touchmove', (e) => {
-            if (!gameStarted || controlMode !== 'mobile') return;
-            if (cameraTouchId === null) return;
+            if (!gameStarted || controlMode !== 'mobile' || cameraTouchId === null) return;
             let touch = null;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 if (e.changedTouches[i].identifier === cameraTouchId) { touch = e.changedTouches[i]; break; }
             }
             if (!touch) return;
-            const tX = touch.clientX;
-            const tY = touch.clientY;
-            yaw -= (tX - cameraLastX) * 0.005 * sensitivity;
-            if (cameraMode === 'third') {
-                pitch += (tY - cameraLastY) * 0.005 * sensitivity;
-            } else {
-                pitch -= (tY - cameraLastY) * 0.005 * sensitivity;
-            }
-            pitch = Math.max(-1.2, Math.min(1.4, pitch));
-            cameraLastX = tX;
-            cameraLastY = tY;
+            const dx = touch.clientX - cameraLastX;
+            const dy = touch.clientY - cameraLastY;
+            yaw -= dx * CAMERA_ROTATE_SPEED * sensitivity;
+            pitch -= dy * CAMERA_ROTATE_SPEED * sensitivity;
+            pitch = cameraMode === 'third'
+                ? Math.max(CAMERA_MIN_PITCH, Math.min(CAMERA_MAX_PITCH, pitch))
+                : Math.max(-1.2, Math.min(1.4, pitch));
+            cameraLastX = touch.clientX;
+            cameraLastY = touch.clientY;
             e.preventDefault();
         }, { passive: false });
+        // ===== OYUN KAMERASI DÜZENLEMESİ BİTİŞ =====
 
         window.addEventListener('touchend', (e) => {
             if (cameraTouchId === null) return;
@@ -4076,19 +4109,20 @@ function stepCar(c,dt){
                 
                 // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
                 if (cameraMode === 'third') {
-                    const distance = 6;
-                    const heightOffset = isCrouchNow ? 1.8 : 2.5;
-                    const camX = playerDonkey.position.x - Math.sin(yaw) * distance;
-                    const camY = Math.max(0.8, playerDonkey.position.y + heightOffset);
-                    const camZ = playerDonkey.position.z - Math.cos(yaw) * distance;
-                    camera.position.set(camX, camY, camZ);
-                    // Pitch artık yalnızca kamerayı yukarı/aşağı itmek yerine gerçek bakış noktasını da etkiler.
-                    const lookDistance = 6;
+                    // Standart üçüncü şahıs yörüngesi: kamera oyuncunun arkasında/üstünde kalır,
+                    // pitch kameranın kendi açısını değil yörüngedeki yüksekliğini değiştirir.
                     const cp = Math.cos(pitch);
-                    const lookX = playerDonkey.position.x + Math.sin(yaw) * cp * lookDistance;
-                    const lookY = playerDonkey.position.y + (isCrouchNow ? 1.0 : 1.5) + Math.sin(pitch) * lookDistance;
-                    const lookZ = playerDonkey.position.z + Math.cos(yaw) * cp * lookDistance;
-                    camera.lookAt(new THREE.Vector3(lookX, lookY, lookZ));
+                    const sp = Math.sin(pitch);
+                    const horizontal = cameraOrbitDistance * cp;
+                    const camX = playerDonkey.position.x - Math.sin(yaw) * horizontal;
+                    const camY = playerDonkey.position.y + (isCrouchNow ? 1.35 : CAMERA_HEIGHT) + sp * cameraOrbitDistance;
+                    const camZ = playerDonkey.position.z - Math.cos(yaw) * horizontal;
+                    camera.position.set(camX, Math.max(0.75, camY), camZ);
+                    camera.lookAt(new THREE.Vector3(
+                        playerDonkey.position.x,
+                        playerDonkey.position.y + (isCrouchNow ? 0.9 : 1.25),
+                        playerDonkey.position.z
+                    ));
                 } else {
                     const eyeHeight = isCrouchNow ? 1.2 : 2.0;
                     const eyeForward = 0.5;
@@ -4096,10 +4130,12 @@ function stepCar(c,dt){
                     const eyeY = playerDonkey.position.y + eyeHeight;
                     const eyeZ = playerDonkey.position.z + Math.cos(yaw) * eyeForward;
                     camera.position.set(eyeX, eyeY, eyeZ);
-                    const lookX = eyeX + Math.sin(yaw) * Math.cos(pitch);
-                    const lookY = eyeY + Math.sin(pitch);
-                    const lookZ = eyeZ + Math.cos(yaw) * Math.cos(pitch);
-                    camera.lookAt(new THREE.Vector3(lookX, lookY, lookZ));
+                    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+                    camera.lookAt(new THREE.Vector3(
+                        eyeX + Math.sin(yaw) * cp,
+                        eyeY + sp,
+                        eyeZ + Math.cos(yaw) * cp
+                    ));
                 }
                 // ===== OYUN KAMERASI DÜZENLEMESİ BİTİŞ =====
                 
@@ -4368,24 +4404,39 @@ function stepCar(c,dt){
         });
         mobOpenBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();performInteraction();});
 
+        // ===== SALDIRI MENZİLİ DÜZENLEMESİ BAŞLANGIÇ =====
+        // Saldırı artık kameraya/bakış yönüne göre seçilmez. En yakın canlı, sabit yatay menzil içindeyse seçilir.
+        const ATTACK_RANGE = 4.25;
         function bestCombatTarget() {
-            const px=playerDonkey.position.x,pz=playerDonkey.position.z,cp=Math.cos(pitch);
-            const dir=new THREE.Vector3(Math.sin(yaw)*cp,Math.sin(pitch),Math.cos(yaw)*cp).normalize();
-            let best=null,bestScore=Infinity;
-            for(const [id,o] of Object.entries(otherPlayers)){
-                const p=latestServerPlayers[id];if(!p||!p.inGame||p.alive===false)continue;
-                const target=new THREE.Vector3(o.position.x,playerDonkey.position.y+1,o.position.z),origin=new THREE.Vector3(px,playerDonkey.position.y+1,pz),v=target.sub(origin),along=v.dot(dir),side=v.addScaledVector(dir,-along).length();
-                if(along<0||along>4.2||side>1.35)continue;const score=along+side*2;if(score<bestScore){bestScore=score;best={type:'player',id};}
+            const px = playerDonkey.position.x, pz = playerDonkey.position.z;
+            let best = null;
+            let bestDistance = ATTACK_RANGE + 0.001;
+
+            for (const [id, o] of Object.entries(otherPlayers)) {
+                const p = latestServerPlayers[id];
+                if (!p || !p.inGame || p.alive === false || !o.visible) continue;
+                const distance = Math.hypot(o.position.x - px, o.position.z - pz);
+                if (distance <= ATTACK_RANGE && distance < bestDistance) {
+                    bestDistance = distance;
+                    best = { type: 'player', id, distance };
+                }
             }
-            for(const a of wildlife){if(!a.userData.alive)continue;const target=new THREE.Vector3(a.position.x,a.position.y+1,a.position.z),origin=new THREE.Vector3(px,playerDonkey.position.y+1,pz),v=target.sub(origin),along=v.dot(dir),side=v.addScaledVector(dir,-along).length();
-                if(along<0||along>4.2||side>1.55)continue;const score=along+side*2;if(score<bestScore){bestScore=score;best={type:'animal',animal:a};}
+
+            for (const a of wildlife) {
+                if (!a.userData.alive) continue;
+                const distance = Math.hypot(a.position.x - px, a.position.z - pz);
+                if (distance <= ATTACK_RANGE && distance < bestDistance) {
+                    bestDistance = distance;
+                    best = { type: 'animal', animal: a, distance };
+                }
             }
             return best;
         }
+        // ===== SALDIRI MENZİLİ DÜZENLEMESİ BİTİŞ =====
         function attackNearestTarget() {
             if(!gameStarted||playerIsDead||!ws||ws.readyState!==WebSocket.OPEN)return;
             const target=bestCombatTarget();attackAnimationUntil=performance.now()+440;actionAnimationType='attack';actionAnimationUntil=attackAnimationUntil;
-            if(!target){interactPromptEl.textContent='Hedef menzilde değil';interactPromptEl.style.display='block';setTimeout(()=>{if(!currentTargetAction)interactPromptEl.style.display='none';},450);return;}
+            if(!target){interactPromptEl.textContent=`Hedef ${ATTACK_RANGE.toFixed(1)} m menzil içinde değil`;interactPromptEl.style.display='block';setTimeout(()=>{if(!currentTargetAction)interactPromptEl.style.display='none';},450);return;}
             if(target.type==='player')sendSocketMessage('attack_player',{targetId:target.id});
             else {const a=target.animal;sendSocketMessage('attack_animal',{animalId:a.userData.id,animalName:a.userData.label,x:a.position.x,z:a.position.z});}
         }
