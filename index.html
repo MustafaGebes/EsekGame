@@ -3657,13 +3657,15 @@ function stepCar(c,dt){
             if (settingsPanel.style.display === 'block') return;
             if (cameraMode === 'first') {
                 yaw -= (e.movementX || 0) * 0.005 * sensitivity;
-                pitch -= (e.movementY || 0) * 0.005 * sensitivity;
+                // Fareyi aşağı indirince pitch artar: kamera ve kafa yukarı bakar.
+                pitch += (e.movementY || 0) * 0.005 * sensitivity;
                 pitch = Math.max(-1.2, Math.min(1.4, pitch));
             } else if (isMouseDown) {
                 const dx = e.clientX - mouseX;
                 const dy = e.clientY - mouseY;
                 yaw -= dx * CAMERA_ROTATE_SPEED * sensitivity;
-                pitch -= dy * CAMERA_ROTATE_SPEED * sensitivity;
+                // Fareyi aşağı sürükle -> yukarı bakış.
+                pitch += dy * CAMERA_ROTATE_SPEED * sensitivity;
                 pitch = Math.max(CAMERA_MIN_PITCH, Math.min(CAMERA_MAX_PITCH, pitch));
                 mouseX = e.clientX;
                 mouseY = e.clientY;
@@ -3780,7 +3782,8 @@ function stepCar(c,dt){
             const dx = touch.clientX - cameraLastX;
             const dy = touch.clientY - cameraLastY;
             yaw -= dx * CAMERA_ROTATE_SPEED * sensitivity;
-            pitch -= dy * CAMERA_ROTATE_SPEED * sensitivity;
+            // Mobilde de aynı oyun mantığı: aşağı sürükle -> yukarı bakış.
+            pitch += dy * CAMERA_ROTATE_SPEED * sensitivity;
             pitch = cameraMode === 'third'
                 ? Math.max(CAMERA_MIN_PITCH, Math.min(CAMERA_MAX_PITCH, pitch))
                 : Math.max(-1.2, Math.min(1.4, pitch));
@@ -4111,9 +4114,9 @@ function stepCar(c,dt){
                 updateDonkeyAnimation(playerDonkey, isMoving, isJumping, isCrouching, isSprinting ? 1.5 : 1);
 
                 // ===== KAFA BAKIŞ ANİMASYONU BAŞLANGIÇ =====
-                // Kamera yukarı/aşağı hareket ederken kafa yumuşak ve ters yönde tepki verir.
+                // Kamera yukarı/aşağı hareket ederken kafa aynı yönde, yumuşak ve animasyonlu tepki verir.
                 if (playerDonkey.userData.neckHeadGroup) {
-                    const headTargetPitch = THREE.MathUtils.clamp(-pitch * 0.72, -HEAD_LOOK_LIMIT, HEAD_LOOK_LIMIT);
+                    const headTargetPitch = THREE.MathUtils.clamp(pitch * 0.72, -HEAD_LOOK_LIMIT, HEAD_LOOK_LIMIT);
                     playerDonkey.userData.neckHeadGroup.rotation.x +=
                         (headTargetPitch - playerDonkey.userData.neckHeadGroup.rotation.x) * HEAD_LOOK_SMOOTH;
                 }
@@ -4471,13 +4474,22 @@ function stepCar(c,dt){
             return best;
         }
         // ===== SALDIRI MENZİLİ DÜZENLEMESİ BİTİŞ =====
+        // ===== SALDIRI TIKLAMA DÜZENLEMESİ BAŞLANGIÇ =====
+        // Sol tık saldırıyı çalıştırır; hedef menzil dışında olsa bile kullanıcıya mesaj gösterilmez.
         function attackNearestTarget() {
             if(!gameStarted||playerIsDead||!ws||ws.readyState!==WebSocket.OPEN)return;
-            const target=bestCombatTarget();attackAnimationUntil=performance.now()+440;actionAnimationType='attack';actionAnimationUntil=attackAnimationUntil;
-            if(!target){interactPromptEl.textContent=`Hedef ${ATTACK_RANGE.toFixed(1)} m menzil içinde değil`;interactPromptEl.style.display='block';setTimeout(()=>{if(!currentTargetAction)interactPromptEl.style.display='none';},450);return;}
+            const target=bestCombatTarget();
+            attackAnimationUntil=performance.now()+440;
+            actionAnimationType='attack';
+            actionAnimationUntil=attackAnimationUntil;
+            if(!target)return;
             if(target.type==='player')sendSocketMessage('attack_player',{targetId:target.id});
-            else {const a=target.animal;sendSocketMessage('attack_animal',{animalId:a.userData.id,animalName:a.userData.label,x:a.position.x,z:a.position.z});}
+            else {
+                const a=target.animal;
+                sendSocketMessage('attack_animal',{animalId:a.userData.id,animalName:a.userData.label,x:a.position.x,z:a.position.z});
+            }
         }
+        // ===== SALDIRI TIKLAMA DÜZENLEMESİ BİTİŞ =====
         let mouseDragMoved=false;
         document.addEventListener('mousedown',e=>{if(e.button===0)mouseDragMoved=false;},true);
         document.addEventListener('mousemove',e=>{if(isMouseDown&&(Math.abs(e.movementX||0)>3||Math.abs(e.movementY||0)>3))mouseDragMoved=true;},true);
@@ -4567,7 +4579,7 @@ function stepCar(c,dt){
         function animateNeedsAndInteraction(){const now=performance.now();const dt=Math.min(.07,Math.max(.001,(now-lastNpcUpdate)/1000));lastNpcUpdate=now;updateWater(now);updateTownNpcs(dt,now);updateWildlife(dt,now);updateCityModel(dt);scanInteraction(now);
             if(gameStarted&&playerDonkey.userData.neckHeadGroup&&now<actionAnimationUntil){
                 const pulse=Math.sin((now-(actionAnimationUntil-1100))*.012);
-                const baseHeadPitch=THREE.MathUtils.clamp(-pitch*0.72,-HEAD_LOOK_LIMIT,HEAD_LOOK_LIMIT);
+                const baseHeadPitch=THREE.MathUtils.clamp(pitch*0.72,-HEAD_LOOK_LIMIT,HEAD_LOOK_LIMIT);
                 let actionOffset=0;
                 if(actionAnimationType==='eat') actionOffset=0.55*Math.max(0,pulse);
                 else if(actionAnimationType==='drink') actionOffset=-.3+.18*pulse;
@@ -4576,7 +4588,7 @@ function stepCar(c,dt){
                 const targetHeadPitch=THREE.MathUtils.clamp(baseHeadPitch+actionOffset,-1.0,1.0);
                 playerDonkey.userData.neckHeadGroup.rotation.x += (targetHeadPitch-playerDonkey.userData.neckHeadGroup.rotation.x)*0.24;
             } else if(playerDonkey.userData.neckHeadGroup&&gameStarted){
-                const targetHeadPitch=THREE.MathUtils.clamp(-pitch*0.72,-HEAD_LOOK_LIMIT,HEAD_LOOK_LIMIT);
+                const targetHeadPitch=THREE.MathUtils.clamp(pitch*0.72,-HEAD_LOOK_LIMIT,HEAD_LOOK_LIMIT);
                 playerDonkey.userData.neckHeadGroup.rotation.x += (targetHeadPitch-playerDonkey.userData.neckHeadGroup.rotation.x)*0.18;
                 playerDonkey.rotation.z=0;
             }
