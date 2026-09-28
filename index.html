@@ -2061,6 +2061,9 @@
                 return false;
             };
             const farmExtraColliderKeys=new Set();
+            // Tanım, ilk traverse çağrısından önce olmalı; aksi halde TDZ ReferenceError menüyü de durdurur.
+            const isDynamicFarmMesh=(mesh)=>{let p=mesh.parent;while(p&&p!==farmRoot){if(p.userData?.isFarmWorker||p.userData?.walkAgent||p.userData?.isBarnDoorPivot)return true;p=p.parent}return false};
+            const farmColliderBuildingStart=buildings.length;
             farmRoot.traverse(object=>{
                 if(!object.isMesh||farmIsWalkableMesh(object)||isDynamicFarmMesh(object))return;
                 let inBarn=false,par=object.parent;while(par&&par!==farmRoot){if(par.name==='Ahır'){inBarn=true;break}par=par.parent}
@@ -2073,7 +2076,6 @@
                 if(farmExtraColliderKeys.has(key))return;farmExtraColliderKeys.add(key);
                 buildings.push({x:center.x,z:center.z,halfW:size.x*.5+.28,halfD:size.z*.5+.28});
             });
-            const isDynamicFarmMesh=(mesh)=>{let p=mesh.parent;while(p&&p!==farmRoot){if(p.userData?.isFarmWorker||p.userData?.walkAgent||p.userData?.isBarnDoorPivot)return true;p=p.parent}return false};
             const staticBatches=new Map();
             farmRoot.traverse(object=>{
                 if(!object.isMesh||!object.geometry||!object.material||Array.isArray(object.material)||isDynamicFarmMesh(object))return;
@@ -2098,6 +2100,16 @@
             farmRoot.position.set(FARM_CX,.08,FARM_CZ);
             farmRoot.rotation.y=Math.PI;
             farmRoot.updateMatrixWorld(true);
+            // Collider kutuları modelin yerel koordinatlarında oluşturuldu; farmRoot ölçek/konumundan
+            // sonra bunları dünya koordinatına taşı. Böylece çiftlik objelerinin collider'ları kaymaz.
+            const farmScale=farmRoot.scale.x||1;
+            for(let i=farmColliderBuildingStart;i<buildings.length;i++){
+                const b=buildings[i];
+                b.x=farmRoot.position.x + b.x*farmScale;
+                b.z=farmRoot.position.z + b.z*farmScale;
+                b.halfW*=farmScale;
+                b.halfD*=farmScale;
+            }
             farmRoot.userData.updateWalkers=updateFarmWalkers;
             window.__farmReplacement={root:farmRoot,workers:farmWorkers,animals:farmWorkers.length,mountainSafe:modelMountainSafe,center:{x:FARM_CX,z:FARM_CZ}};
         })(farmModelRoot);
