@@ -8,6 +8,18 @@
     <style>
         body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: Arial, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
         #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.5); z-index: 20; }
+        /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BAŞLANGIÇ ===== */
+        #menu.pause-mode {
+            top: 50%; left: 50%; width: min(320px, 86vw); height: auto; min-height: 0;
+            transform: translate(-50%, -50%); padding: 18px 14px;
+            box-sizing: border-box; border-radius: 16px;
+            background: rgba(10, 14, 18, 0.94); border: 2px solid rgba(255,255,255,.22);
+            box-shadow: 0 14px 45px rgba(0,0,0,.75);
+        }
+        #menu.pause-mode h1, #menu.pause-mode h2, #menu.pause-mode #nameCard, #menu.pause-mode #mainButtons { display: none !important; }
+        #menu.pause-mode #pauseButtons { display: flex !important; width: 100%; }
+        #menu.pause-mode #pauseButtons .btn { min-width: 220px; margin: 6px; }
+        /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ ===== */
         h1 { color: #ffd700; font-size: 64px; margin: 0; text-shadow: 3px 3px 6px #000; }
         h2 { color: #ffffff; font-size: 24px; margin: 10px 0 20px 0; font-weight: 300; }
         .section-title { color: #aaaaaa; font-size: 18px; margin: 15px 0 5px 0; }
@@ -183,7 +195,7 @@
         <input type="range" id="chunkSlider" min="40" max="300" value="100" step="10">
         <p style="font-size:12px; color:#888; margin-top:5px;">Az = daha az kasma, Çok = daha geniş görüş</p>
         <label>Hassasiyet (Sensitivity): <span class="value-display" id="sensValue">1.0</span></label>
-        <input type="range" id="sensSlider" min="0.3" max="3.0" value="1.0" step="0.1">
+        <input type="range" id="sensSlider" min="0.3" max="3.0" value="1.1" step="0.1">
         <p style="font-size:12px; color:#888; margin-top:5px;">Kamera dönüş hızı</p>
         <label for="qualityPreset">Performans profili</label>
         <select id="qualityPreset"><option value="performance">Performans · düşük yük</option><option value="balanced">Dengeli</option><option value="visual">Görsel kalite</option><option value="custom">Özel</option></select>
@@ -222,7 +234,7 @@
         let controlMode = 'pc';
         const MAP_LIMIT = 510;
         let viewDistance = 100;
-        let sensitivity = 1.0;
+        let sensitivity = 1.1;
         let cameraMode = 'third';
         const SPAWN_X = 180;
         const SPAWN_Z = 180;
@@ -3288,6 +3300,7 @@ function stepCar(c,dt){
         const closeSettings = document.getElementById('closeSettings');
         const onlineCountEl = document.getElementById('onlineCount');
         const nameInputEl = document.getElementById('nameInput');
+        const nameCardEl = document.getElementById('nameCard');
         const chatPanelEl = document.getElementById('chatPanel');
         const chatMessagesEl = document.getElementById('chatMessages');
         const chatInputEl = document.getElementById('chatInput');
@@ -3408,6 +3421,23 @@ function stepCar(c,dt){
             if (!autoFpsEnabled) { renderScale = renderScaleTarget; applyRenderScale(); }
         });
 
+        // ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BAŞLANGIÇ =====
+        function openPauseMenu() {
+            menuEl.classList.add('pause-mode');
+            menuEl.style.display = 'flex';
+            nameCardEl.style.display = 'none';
+            mainButtons.style.display = 'none';
+            pauseButtons.style.display = 'flex';
+        }
+        function openMainMenu() {
+            menuEl.classList.remove('pause-mode');
+            menuEl.style.display = 'flex';
+            nameCardEl.style.display = 'block';
+            mainButtons.style.display = 'block';
+            pauseButtons.style.display = 'none';
+        }
+        // ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ =====
+
         function openSettings() { settingsPanel.style.display = 'block'; }
         function closeSettingsPanel() { settingsPanel.style.display = 'none'; }
         closeSettings.addEventListener('click', closeSettingsPanel);
@@ -3510,6 +3540,7 @@ function stepCar(c,dt){
         resumeBtn.addEventListener('click', () => {
             initWebSocket();
             gameStarted = true;
+            menuEl.classList.remove('pause-mode');
             if (cameraMode !== 'first') { cameraMode = 'third'; hudCamEl.textContent = '3. Şahıs'; }
             setGameplayCameraImmediate();
             menuEl.style.display = 'none';
@@ -3535,8 +3566,7 @@ function stepCar(c,dt){
         returnMenuBtn.addEventListener('click', () => {
             gameStarted = false;
             sendPresence(false);
-            menuEl.style.display = 'flex';
-            mainButtons.style.display = 'block';
+            openMainMenu();
             document.getElementById('onlineBadge').style.display = 'block';
             chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
             togglePlayerList(false);
@@ -3563,9 +3593,7 @@ function stepCar(c,dt){
                 sendPresence(false);
                 document.getElementById('onlineBadge').style.display = 'block';
                 chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
-                menuEl.style.display = 'flex';
-                mainButtons.style.display = 'none';
-                pauseButtons.style.display = 'flex';
+                openPauseMenu();
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
                 hudEl.style.display = 'none';
@@ -3653,9 +3681,7 @@ function stepCar(c,dt){
                 document.getElementById('onlineBadge').style.display = 'block';
                 chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
                 togglePlayerList(false);
-                menuEl.style.display = 'flex';
-                mainButtons.style.display = 'none';
-                pauseButtons.style.display = 'flex';
+                openPauseMenu();
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
                 hudEl.style.display = 'none';
@@ -4298,7 +4324,7 @@ function stepCar(c,dt){
         function leaveAfterDeath() {
             sendPresence(false);playerIsDead=false;deathScreenShowing=false;gameStarted=false;deathOverlayEl.style.display='none';
             playerDonkey.visible=false;playerDonkey.rotation.z=0;mobileControlsEl.style.display='none';hudEl.style.display='none';infoEl.style.display='none';crosshairEl.style.display='none';survivalHudEl.style.display='none';
-            chatPanelEl.style.display='none';chatReopenBtn.style.display='none';menuEl.style.display='flex';mainButtons.style.display='none';pauseButtons.style.display='flex';setNameError('');
+            chatPanelEl.style.display='none';chatReopenBtn.style.display='none';openMainMenu();setNameError('');
         }
         respawnBtnEl.addEventListener('click',()=>{respawnBtnEl.disabled=true;respawnBtnEl.textContent='Yeniden doğuluyor…';sendSocketMessage('respawn',{});});
         deathMenuBtnEl.addEventListener('click',leaveAfterDeath);
