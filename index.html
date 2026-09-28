@@ -2068,7 +2068,9 @@
                 if(!object.isMesh||farmIsWalkableMesh(object)||isDynamicFarmMesh(object))return;
                 let inBarn=false,par=object.parent;while(par&&par!==farmRoot){if(par.name==='Ahır'){inBarn=true;break}par=par.parent}
                 const n=String(object.name||'').toLocaleLowerCase('tr-TR');
-                if(inBarn&&!/duvar|cephe|temel|bölme|yemlik|ray|varil/.test(n))return;
+                // Ahırın içini tamamen kapatan tek parça collider kullanma. İçerisi yürünebilir;
+                // sadece duvar/temel/kapı çerçevesi gibi gerçek sınırlar aşağıda ayrıca eklenir.
+                if(inBarn)return;
                 const bounds=new THREE.Box3().setFromObject(object);if(bounds.isEmpty())return;
                 const size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
                 if(size.x<.06||size.z<.06||size.x>60||size.z>60)return;
@@ -2103,6 +2105,20 @@
             // Collider kutuları modelin yerel koordinatlarında oluşturuldu; farmRoot ölçek/konumundan
             // sonra bunları dünya koordinatına taşı. Böylece çiftlik objelerinin collider'ları kaymaz.
             const farmScale=farmRoot.scale.x||1;
+            // Ahır: sadece duvarlar ve kapı çevresi collider. İç zemin, bölmeler, yemlikler,
+            // çatı ve ışıklar oyuncunun yatay hareketini bloke etmez. Kapı kanatları açık
+            // başlangıçta olduğu için geçiş ağzına collider koyulmuyor.
+            const barnWallColliders=[
+                [-4.41,0,.18,6.0], [4.41,0,.18,6.0], [0,-2.91,9.0,.18],
+                [-4.50,2.91,1.30,.18], [4.50,2.91,1.30,.18],
+                [-3.20,3.08,.20,.28], [3.20,3.08,.20,.28], [0,3.08,6.55,.18]
+            ];
+            for(const [lx,lz,hw,hd] of barnWallColliders){
+                const wx=farmRoot.position.x-lx*farmScale, wz=farmRoot.position.z-lz*farmScale;
+                buildings.push({x:wx,z:wz,halfW:hw*farmScale*.5+.10,halfD:hd*farmScale*.5+.10});
+            }
+            // Çatı fiziksel olarak oyuncunun baş üstündedir; 2D yatay collider ile eklenirse
+            // ahırın bütün içini kapatır. Bu nedenle çatı görsel/üst sınır olarak kalır.
             for(let i=farmColliderBuildingStart;i<buildings.length;i++){
                 const b=buildings[i];
                 b.x=farmRoot.position.x + b.x*farmScale;
