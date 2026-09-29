@@ -5260,8 +5260,8 @@ function stepCar(c,dt){
         if (typeof THREE === 'undefined' || typeof terrainGeo === 'undefined' || typeof terrainHeightAt !== 'function') return;
 
         const baseTerrainAt = terrainHeightAt;
-        const RIVER_DEPTH = 4.5;
-        const RIVER_FILL = 0.50;
+        const RIVER_DEPTH = 6.0;
+        const RIVER_FILL = 0.85;
         const RIVER_BANK = 3.5;
 
         // Dosyada daha önce riverPaths yoksa iki gerçek akarsu güzergâhı oluştur.
@@ -5321,14 +5321,28 @@ function stepCar(c,dt){
             return Math.pow(t,0.9);
         }
 
+        function underCityOrFarm(x,z){
+            if (typeof CITY_CENTER_X !== 'undefined' && typeof CITY_CENTER_Z !== 'undefined') {
+                const cityHalf = (typeof cityModelHalf !== 'undefined') ? cityModelHalf : 242;
+                if (Math.max(Math.abs(x-CITY_CENTER_X), Math.abs(z-CITY_CENTER_Z)) <= cityHalf-4) return true;
+            }
+            if (typeof FARM_CX !== 'undefined' && typeof FARM_CZ !== 'undefined') {
+                if (Math.hypot(x-FARM_CX, z-FARM_CZ) < 120) return true;
+            }
+            return false;
+        }
+
         function riverBedY(x,z){
+            const base = baseTerrainAt(x,z);
+            if (underCityOrFarm(x,z)) return base;
             const info=nearestRiverInfo(x,z);
-            if(!info.river || info.distance>=info.river.width*.5+RIVER_BANK) return baseTerrainAt(x,z);
+            if(!info.river || info.distance>=info.river.width*.5+RIVER_BANK) return base;
             const p=riverProfile(info.distance,info.river.width);
-            return baseTerrainAt(x,z)-RIVER_DEPTH*p;
+            return base-RIVER_DEPTH*p;
         }
 
         function riverSurfaceY(x,z,r){
+            if (underCityOrFarm(x,z)) return baseTerrainAt(x,z) + 0.035;
             const bed=riverBedY(x,z);
             const p=riverProfile(oldRiverDistance(x,z,r),r.width);
             return bed + RIVER_DEPTH*RIVER_FILL*p;
@@ -5842,10 +5856,8 @@ function stepCar(c,dt){
             if(b.owner==='enemy' && !playerIsDead && typeof gameStarted!=='undefined' && gameStarted){
                 const d=Math.hypot(b.mesh.position.x-playerDonkey.position.x,b.mesh.position.y-(playerDonkey.position.y+1),b.mesh.position.z-playerDonkey.position.z);
                 if(d<.78){
-                    if(typeof needs!=='undefined'){
-                        needs.health=Math.max(0,needs.health-b.damage);
-                        if(typeof renderNeeds==='function')renderNeeds();
-                        if(needs.health<=0 && typeof showDeath==='function')showDeath('Kamp düşmanının mermisi seni vurdu.');
+                    if(typeof sendSocketMessage==='function' && typeof ws!=='undefined' && ws && ws.readyState===WebSocket.OPEN){
+                        sendSocketMessage('enemy_damage',{damage:Math.max(.5,Math.min(1,Number(b.damage)||1)),reason:'Kamp düşmanının mermisi'});
                     }
                     remove=true;
                 }
@@ -5913,6 +5925,498 @@ function stepCar(c,dt){
         const prev=animate;
         animate=function(){__updateEsekRivers(performance.now());return prev.apply(this,arguments);};
     }
+})();
+</script>
+
+
+<script>
+/* =========================================================
+   EŞEK GAME — YENİ ÇİMEN + DERİN SU + YÜZME + BOĞULMA
+   ========================================================= */
+(function(){
+    'use strict';
+
+    if (typeof THREE === 'undefined' || typeof scene === 'undefined') return;
+
+    const CFG = {
+        GRASS_COUNT: 3500,
+        GRASS_BLADES_PER_SPOT: 4,
+        GRASS_MIN_HEIGHT: 0.35,
+        GRASS_MAX_HEIGHT: 0.95,
+        GRASS_COLORS: [0x2d7a1e,0x4a9c2a,0x1f5c14,0x5cb03a,0x3a8a25],
+
+        POND_DEPTH: 7.5,
+        POND_FILL: 0.85,
+        RIVER_DEPTH: 6.0,
+        RIVER_FILL: 0.85,
+        WATER_EDGE_PADDING: 2.8,
+
+        SINK_SPEED: 1.8,
+        SWIM_SPEED: 2.2,
+        WATER_DRAG_FACTOR: 0.55,
+
+        BREATH_MAX: 9,
+        BREATH_DRAIN_PER_SEC: 1,
+        BREATH_REFILL_PER_SEC: 3,
+        DROWN_DAMAGE_PER_SEC: 1,
+        HEAD_HEIGHT: 2.0,
+        HEAD_ABOVE_WATER_MARGIN: 0.30,
+        PLAYER_WATER_CLEARANCE: 0.08
+    };
+
+    const topBtn = document.getElementById('topLeftMenuBtn');
+    if (topBtn) {
+        topBtn.style.zIndex = '99999';
+        topBtn.style.pointerEvents = 'auto';
+        topBtn.style.touchAction = 'manipulation';
+    }
+    const menu = document.getElementById('menu');
+    if (menu) menu.style.pointerEvents = 'auto';
+
+    function cityForbidden(x,z){
+        if (typeof CITY_CENTER_X === 'undefined' || typeof CITY_CENTER_Z === 'undefined') return false;
+        const half = (typeof cityModelHalf !== 'undefined') ? cityModelHalf : 242;
+        return Math.max(Math.abs(x-CITY_CENTER_X),Math.abs(z-CITY_CENTER_Z)) < half + 8;
+    }
+    function farmForbidden(x,z){
+        if (typeof FARM_CX === 'undefined' || typeof FARM_CZ === 'undefined') return false;
+        return Math.hypot(x-FARM_CX,z-FARM_CZ) < 128;
+    }
+    function mountainForbidden(x,z,pad){
+        if (typeof mountains === 'undefined' || !Array.isArray(mountains)) return false;
+        for (const m of mountains) {
+            if (Math.hypot(x-m.x,z-m.z) < (m.radius||0)+(pad||0)) return true;
+        }
+        return false;
+    }
+    function roadForbidden(x,z){
+        try { return typeof distanceToRoadAxis === 'function' && distanceToRoadAxis(x,z) < 22; }
+        catch(_){ return false; }
+    }
+
+    function riverInfoAt(x,z){
+        const paths = (window.__esekRiverPaths && Array.isArray(window.__esekRiverPaths)) ? window.__esekRiverPaths : [];
+        if (!paths.length || cityForbidden(x,z) || farmForbidden(x,z)) return null;
+        let best = null;
+        for (const r of paths) {
+            const pts = r.points || r.path || r.centerline || [];
+            const half = Math.max(3,(r.width||12)*0.5);
+            let bestD = Infinity;
+            for (let i=0;i<pts.length-1;i++) {
+                const a=pts[i], b=pts[i+1];
+                const vx=b.x-a.x, vz=b.z-a.z, wx=x-a.x, wz=z-a.z;
+                const den=vx*vx+vz*vz||1;
+                const t=Math.max(0,Math.min(1,(wx*vx+wz*vz)/den));
+                const qx=a.x+vx*t, qz=a.z+vz*t;
+                bestD=Math.min(bestD,Math.hypot(x-qx,z-qz));
+            }
+            const edge = half + CFG.WATER_EDGE_PADDING;
+            if (bestD < edge && (!best || bestD < best.distance)) best={distance:bestD,river:r,half};
+        }
+        return best;
+    }
+
+    function riverProfile(distance, half){
+        const edge=half+CFG.WATER_EDGE_PADDING;
+        if(distance>=edge) return 0;
+        const t=Math.max(0,Math.min(1,(edge-distance)/CFG.WATER_EDGE_PADDING));
+        return Math.pow(t,0.95);
+    }
+
+    function riverSurfaceAt(x,z){
+        const info=riverInfoAt(x,z);
+        if(!info || typeof window.riverTerrainHeight !== 'function') return null;
+        const baseBed=window.riverTerrainHeight(x,z);
+        const p=riverProfile(info.distance,info.half);
+        return baseBed + CFG.RIVER_DEPTH*CFG.RIVER_FILL*p;
+    }
+
+    // ---------------------------------------------------------
+    // 1) ÇİMENLERİ SIFIRDAN KUR
+    // ---------------------------------------------------------
+    function clearOldGrass(){
+        const doomed=[];
+        if (typeof grassBatches !== 'undefined' && Array.isArray(grassBatches)) {
+            for (const m of grassBatches) if (m && !doomed.includes(m)) doomed.push(m);
+        }
+        scene.traverse(o=>{
+            if (!o || doomed.includes(o)) return;
+            if (!o.isInstancedMesh || !o.geometry || o.geometry.type!=='BoxGeometry') return;
+            const p=o.geometry.parameters;
+            if (p && Math.abs(p.width-0.06)<0.011 && Math.abs(p.depth-0.06)<0.011) doomed.push(o);
+        });
+        for (const m of doomed) {
+            if (m.parent) m.parent.remove(m);
+            if (m.instanceMatrix) m.instanceMatrix.needsUpdate=false;
+            if (m.geometry && m.geometry.dispose) m.geometry.dispose();
+            if (m.material) {
+                const mats=Array.isArray(m.material)?m.material:[m.material];
+                for (const mat of mats) if (mat && mat.dispose) mat.dispose();
+            }
+        }
+    }
+
+    function grassOnWaterOrStream(x,z){
+        if (riverInfoAt(x,z)) return true;
+        for (const w of window.__esekExtraPonds || []) {
+            if (Math.hypot(x-w.x,z-w.z) < w.radius*0.96) return true;
+        }
+        const fp = window.__esekFarmPondInfo;
+        if (fp && Math.hypot(x-fp.x,z-fp.z) < fp.radius) return true;
+        if (typeof FOREST_POND_CENTER !== 'undefined' &&
+            Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z) < Math.max(0, Math.min(
+                typeof FOREST_POND_RADIUS_X !== 'undefined' ? FOREST_POND_RADIUS_X : 17.5,
+                typeof FOREST_POND_RADIUS_Z !== 'undefined' ? FOREST_POND_RADIUS_Z : 13.0))) return true;
+        return false;
+    }
+
+    function rebuildGrass(){
+        clearOldGrass();
+        const mats=CFG.GRASS_COLORS.map(c=>new THREE.MeshLambertMaterial({color:c}));
+        const bladeGeo=new THREE.BoxGeometry(0.07,1,0.07);
+        bladeGeo.translate(0,0.5,0);
+        const total=CFG.GRASS_COUNT*CFG.GRASS_BLADES_PER_SPOT;
+        const per=Math.ceil(total/mats.length);
+        const meshes=mats.map(mat=>{ const m=new THREE.InstancedMesh(bladeGeo,mat,per); m.count=0; m.name='RebuiltGrass'; m.frustumCulled=false; return m; });
+        const dummy=new THREE.Object3D();
+        let placed=0, attempts=0, guard=0;
+        const MAP=500;
+        while(placed<total && attempts<14000 && guard<40000){
+            guard++; attempts++;
+            const x=(Math.random()*2-1)*MAP, z=(Math.random()*2-1)*MAP;
+            if (cityForbidden(x,z) || farmForbidden(x,z) || mountainForbidden(x,z,3) || roadForbidden(x,z) || grassOnWaterOrStream(x,z)) continue;
+            const y=typeof terrainHeightAt==='function'?terrainHeightAt(x,z):0;
+            if (!Number.isFinite(y)) continue;
+            for(let b=0;b<CFG.GRASS_BLADES_PER_SPOT && placed<total;b++){
+                const h=CFG.GRASS_MIN_HEIGHT+Math.random()*(CFG.GRASS_MAX_HEIGHT-CFG.GRASS_MIN_HEIGHT);
+                const ox=(Math.random()-.5)*0.7, oz=(Math.random()-.5)*0.7;
+                dummy.position.set(x+ox,y,z+oz);
+                dummy.rotation.set((Math.random()-.5)*0.25,Math.random()*Math.PI*2,(Math.random()-.5)*0.25);
+                dummy.scale.set(1,h,1); dummy.updateMatrix();
+                const gi=placed%mats.length, slot=meshes[gi].count++;
+                meshes[gi].setMatrixAt(slot,dummy.matrix);
+                placed++;
+            }
+        }
+        for(const m of meshes){ m.instanceMatrix.needsUpdate=true; scene.add(m); }
+        window.__rebuiltGrassMeshes=meshes;
+        console.log('[GRASS] yeniden oluşturuldu:',placed,'sap');
+    }
+
+    // ---------------------------------------------------------
+    // 2) YENİ GÖLETLER — şehir ve çiftlik dışında
+    // ---------------------------------------------------------
+    const pondSeeds=[
+        {x:280,z:250,radius:30,name:'Doğu Göleti'},
+        {x:-300,z:-350,radius:34,name:'Güneybatı Göleti'},
+        {x:380,z:-200,radius:28,name:'Güneydoğu Göleti'},
+        {x:-420,z:180,radius:31,name:'Kuzeybatı Göleti'},
+        {x:150,z:-420,radius:26,name:'Güney Göleti'}
+    ];
+    const extraPonds=[];
+
+    function buildExtraPonds(){
+        const safe=[];
+        for(const p of pondSeeds){
+            if(cityForbidden(p.x,p.z) || farmForbidden(p.x,p.z) || mountainForbidden(p.x,p.z,20) || roadForbidden(p.x,p.z)) continue;
+            if(typeof FOREST_POND_CENTER!=='undefined' && Math.hypot(p.x-FOREST_POND_CENTER.x,p.z-FOREST_POND_CENTER.z)<45) continue;
+            if(typeof BEACH_PARKING_CENTER!=='undefined' && Math.hypot(p.x-BEACH_PARKING_CENTER.x,p.z-BEACH_PARKING_CENTER.z)<90) continue;
+            if(extraPonds.some(q=>Math.hypot(p.x-q.x,p.z-q.z)<q.radius+p.radius+25)) continue;
+            safe.push(p);
+        }
+
+        const existing=[];
+        for(const p of safe){
+            const baseY=typeof terrainHeightAt==='function'?terrainHeightAt(p.x,p.z):0;
+            const surfaceY=baseY-CFG.POND_DEPTH*(1-CFG.POND_FILL);
+            const bottomY=baseY-CFG.POND_DEPTH;
+            const body={...p,baseY,surfaceY,bottomY,depth:CFG.POND_DEPTH};
+            extraPonds.push(body);
+
+            const shore=new THREE.Mesh(new THREE.RingGeometry(p.radius*.82,p.radius*1.06,64),new THREE.MeshLambertMaterial({color:0xa69b78}));
+            shore.rotation.x=-Math.PI/2; shore.position.set(p.x,baseY+0.018,p.z); shore.name='Yeni Gölet Kıyısı'; scene.add(shore);
+
+            const bottom=new THREE.Mesh(new THREE.CircleGeometry(p.radius*.93,64),new THREE.MeshLambertMaterial({color:0x373025}));
+            bottom.rotation.x=-Math.PI/2; bottom.position.set(p.x,bottomY+0.04,p.z); bottom.name='Yeni Gölet Dibi'; scene.add(bottom);
+
+            const wall=new THREE.Mesh(new THREE.CylinderGeometry(p.radius*.93,p.radius*.98,CFG.POND_DEPTH,64,1,true),new THREE.MeshLambertMaterial({color:0x4b4030,side:THREE.BackSide}));
+            wall.position.set(p.x,bottomY+CFG.POND_DEPTH/2,p.z); wall.name='Yeni Gölet Derin Yan Duvarı'; scene.add(wall);
+
+            const waterMat=new THREE.MeshPhongMaterial({color:0x2d739a,transparent:true,opacity:.9,shininess:95,specular:0xbfe9ff,side:THREE.DoubleSide,depthWrite:false});
+            const water=new THREE.Mesh(new THREE.CircleGeometry(p.radius*.91,64),waterMat);
+            water.rotation.x=-Math.PI/2; water.position.set(p.x,surfaceY,p.z); water.renderOrder=6; water.name='SuKütlesi';
+            water.userData={centerX:p.x,centerZ:p.z,radius:p.radius*.91,surfaceY,baseY,bottomY,depth:CFG.POND_DEPTH,phase:Math.random()*Math.PI*2};
+            scene.add(water); existing.push(water);
+
+            // Gerçek çukur: arazi vertexlerini yumuşak biçimde aşağı indir.
+            if (typeof terrainGeo!=='undefined') {
+                const pos=terrainGeo.attributes.position;
+                for(let i=0;i<pos.count;i++){
+                    const x=pos.getX(i),z=pos.getZ(i);
+                    const d=Math.hypot(x-p.x,z-p.z);
+                    if(d>=p.radius) continue;
+                    const t=1-d/p.radius;
+                    const shape=t*t*(3-2*t);
+                    const target=baseY-CFG.POND_DEPTH*shape;
+                    if(!cityForbidden(x,z)&&!farmForbidden(x,z)&&pos.getY(i)>target) pos.setY(i,target);
+                }
+            }
+        }
+        if (typeof terrainGeo!=='undefined') { terrainGeo.attributes.position.needsUpdate=true; terrainGeo.computeVertexNormals(); }
+        window.__esekExtraPondWater=existing;
+        window.__esekExtraPonds=extraPonds;
+        return existing;
+    }
+
+    // Wrap terrainHeightAt only for the new pond bowls. City/farm stay untouched.
+    function installPondTerrain(){
+        if (typeof terrainHeightAt!=='function') return;
+        if (window.__esekPondTerrainInstalled) return;
+        const previous=terrainHeightAt;
+        terrainHeightAt=function(x,z){
+            if (cityForbidden(x,z) || farmForbidden(x,z)) return previous(x,z);
+            let y=previous(x,z);
+            for(const p of extraPonds){
+                const d=Math.hypot(x-p.x,z-p.z);
+                if(d>=p.radius) continue;
+                const t=1-d/p.radius;
+                const shape=t*t*(3-2*t);
+                y=Math.min(y,p.baseY-CFG.POND_DEPTH*shape);
+            }
+            return y;
+        };
+        window.__esekPondTerrainInstalled=true;
+    }
+
+    // Existing farm pond registration.
+    try{
+        if(typeof FARM_CX!=='undefined' && typeof FARM_CZ!=='undefined'){
+            window.__esekFarmPondInfo={x:FARM_CX-16*1.20,z:FARM_CZ+11*1.20,radius:4.25};
+        }
+    }catch(_){ }
+
+    // Existing forest pond registration; its current terrain bowl is kept and used for physics.
+    function existingForestPondInfo(){
+        if(typeof FOREST_POND_CENTER==='undefined') return null;
+        return {
+            x:FOREST_POND_CENTER.x,z:FOREST_POND_CENTER.z,
+            radius:Math.min(typeof FOREST_POND_RADIUS_X==='undefined'?17.5:FOREST_POND_RADIUS_X,
+                            typeof FOREST_POND_RADIUS_Z==='undefined'?13.0:FOREST_POND_RADIUS_Z),
+            surfaceY:(typeof pondWater!=='undefined'&&pondWater)?pondWater.position.y:-0.22,
+            bottomY:(typeof FOREST_POND_DEPTH!=='undefined')?-FOREST_POND_DEPTH:-5.8,
+            depth:(typeof FOREST_POND_DEPTH!=='undefined')?FOREST_POND_DEPTH:5.8,
+            mesh:(typeof pondWater!=='undefined')?pondWater:null
+        };
+    }
+
+    // ---------------------------------------------------------
+    // 3) SU FİZİĞİ + 9 BAR NEFES + BOĞULMA
+    // ---------------------------------------------------------
+    const waterState={inWater:false,headUnderwater:false,breath:CFG.BREATH_MAX,lastDrownTick:0,current:null};
+    let allWaterBodies=[];
+    let spaceHeld=false;
+
+    function buildWaterRegistry(){
+        allWaterBodies=[];
+        for(const p of extraPonds) allWaterBodies.push({kind:'pond',x:p.x,z:p.z,radius:p.radius*.91,surfaceY:p.surfaceY,bottomY:p.bottomY,depth:p.depth,mesh:null});
+        const fp=window.__esekFarmPondInfo;
+        if(fp){
+            let surfaceY=0.135;
+            try{if(typeof scene!=='undefined'&&scene.userData.farmPondWater) surfaceY=scene.userData.farmPondWater.userData?.waterSurfaceY ?? surfaceY;}catch(_){ }
+            const baseY=surfaceY+6.2*(1-.97);
+            allWaterBodies.push({kind:'pond',x:fp.x,z:fp.z,radius:fp.radius,surfaceY,bottomY:surfaceY-6.0,depth:6.0,mesh:scene.userData.farmPondWater||null});
+        }
+        const forest=existingForestPondInfo();
+        if(forest){ allWaterBodies.push({kind:'pond',x:forest.x,z:forest.z,radius:forest.radius,surfaceY:forest.surfaceY,bottomY:forest.surfaceY-forest.depth,depth:forest.depth,mesh:forest.mesh,ellipse:true}); }
+        window.__esekWaterBodies=allWaterBodies;
+    }
+
+    function nearestWaterAt(x,z){
+        // Rivers are checked first so the existing deep river bed wins.
+        const ri=riverInfoAt(x,z);
+        if(ri && typeof window.riverTerrainHeight==='function'){
+            const sy=riverSurfaceAt(x,z);
+            if(sy!==null){
+                const bed=window.riverTerrainHeight(x,z);
+                if(sy>bed+0.02) return {kind:'river',surfaceY:sy,bottomY:bed,depth:CFG.RIVER_DEPTH,radius:ri.half};
+            }
+        }
+        let best=null;
+        for(const w of allWaterBodies){
+            let inside;
+            if(w.ellipse && typeof FOREST_POND_RADIUS_X!=='undefined' && typeof FOREST_POND_RADIUS_Z!=='undefined'){
+                const nx=(x-w.x)/FOREST_POND_RADIUS_X,nz=(z-w.z)/FOREST_POND_RADIUS_Z; inside=(nx*nx+nz*nz)<1;
+            }else inside=Math.hypot(x-w.x,z-w.z)<w.radius;
+            if(inside) best=w;
+        }
+        return best;
+    }
+
+    function setSpaceHeld(next){ spaceHeld=!!next; }
+    document.addEventListener('keydown',e=>{
+        if(e.code!=='Space') return;
+        if(e.target&&e.target.closest&&e.target.closest('input,textarea,[contenteditable="true"]')) return;
+        setSpaceHeld(true);
+        if(typeof gameStarted!=='undefined'&&gameStarted) e.preventDefault();
+    },true);
+    document.addEventListener('keyup',e=>{ if(e.code==='Space') setSpaceHeld(false); },true);
+    window.addEventListener('blur',()=>setSpaceHeld(false));
+
+    const mobJump=document.getElementById('mobJumpBtn');
+    if(mobJump){
+        const down=e=>{e.preventDefault();setSpaceHeld(true);};
+        const up=e=>{e.preventDefault();setSpaceHeld(false);};
+        mobJump.addEventListener('pointerdown',down,{capture:true,passive:false});
+        mobJump.addEventListener('pointerup',up,{capture:true,passive:false});
+        mobJump.addEventListener('pointercancel',up,{capture:true,passive:false});
+        mobJump.addEventListener('touchstart',down,{capture:true,passive:false});
+        mobJump.addEventListener('touchend',up,{capture:true,passive:false});
+        mobJump.addEventListener('touchcancel',up,{capture:true,passive:false});
+    }
+
+    let breathHud=null,breathBars=[];
+    function createBreathHud(){
+        if(document.getElementById('breathHud')){ breathHud=document.getElementById('breathHud'); return; }
+        breathHud=document.createElement('div'); breathHud.id='breathHud';
+        breathHud.style.cssText='position:fixed;left:50%;bottom:112px;transform:translateX(-50%);z-index:45;display:none;padding:8px 14px;border-radius:10px;background:rgba(8,18,26,.82);border:1px solid rgba(120,200,255,.4);box-shadow:0 4px 16px rgba(0,0,0,.5);pointer-events:none;font:700 11px Arial,sans-serif;';
+        const label=document.createElement('div'); label.textContent='💧 NEFES'; label.style.cssText='color:#b3e0ff;text-align:center;margin-bottom:4px;letter-spacing:1px;'; breathHud.appendChild(label);
+        const wrap=document.createElement('div'); wrap.style.cssText='display:flex;gap:3px;';
+        for(let i=0;i<9;i++){
+            const bar=document.createElement('div'); bar.style.cssText='width:16px;height:14px;border-radius:3px;background:#1a2833;border:1px solid rgba(120,200,255,.3);overflow:hidden;position:relative;';
+            const fill=document.createElement('div'); fill.style.cssText='width:100%;height:100%;background:linear-gradient(180deg,#6fd0ff,#1e88d0);transform-origin:bottom;transition:transform .12s linear;';
+            bar.appendChild(fill);wrap.appendChild(bar);breathBars.push(fill);
+        }
+        breathHud.appendChild(wrap);document.body.appendChild(breathHud);
+        const s=document.createElement('style');s.textContent='@keyframes esekBreathPulse{0%,100%{box-shadow:0 4px 16px rgba(0,0,0,.5),0 0 0 0 rgba(255,80,80,.5)}50%{box-shadow:0 4px 16px rgba(0,0,0,.5),0 0 0 8px rgba(255,80,80,0)}}';document.head.appendChild(s);
+    }
+    function updateBreathHud(){
+        if(!breathHud) return;
+        const show=waterState.inWater||waterState.breath<CFG.BREATH_MAX-.01;
+        breathHud.style.display=show?'block':'none';
+        const full=Math.floor(waterState.breath),frac=waterState.breath-full;
+        for(let i=0;i<9;i++){
+            const f=breathBars[i]; if(!f)continue;
+            if(i<full)f.style.transform='scaleY(1)';
+            else if(i===full&&frac>0)f.style.transform=`scaleY(${frac})`;
+            else f.style.transform='scaleY(0)';
+        }
+        if(waterState.breath<3){breathHud.style.borderColor='rgba(255,80,80,.8)';breathHud.style.animation='esekBreathPulse .8s infinite';}
+        else {breathHud.style.borderColor='rgba(120,200,255,.4)';breathHud.style.animation='none';}
+    }
+
+    let lastPlayerPos={x:0,z:0};
+    let lastWaterTime=performance.now();
+    function updateWaterPhysics(now){
+        if(typeof playerDonkey==='undefined'||!playerDonkey) return;
+        if(typeof gameStarted==='undefined'||!gameStarted|| (typeof playerIsDead!=='undefined'&&playerIsDead)) return;
+        const dt=Math.min(.05,Math.max(.001,(now-lastWaterTime)/1000)); lastWaterTime=now;
+        const px=playerDonkey.position.x,pz=playerDonkey.position.z,py=playerDonkey.position.y;
+        const w=nearestWaterAt(px,pz); waterState.current=w;
+        if(!w){
+            waterState.inWater=false; waterState.headUnderwater=false;
+            waterState.breath=Math.min(CFG.BREATH_MAX,waterState.breath+CFG.BREATH_REFILL_PER_SEC*dt);
+            lastPlayerPos.x=px;lastPlayerPos.z=pz;updateBreathHud();return;
+        }
+
+        const sy=w.surfaceY,by=w.bottomY;
+        const inColumn=py<=sy+0.55 && py>=by-0.15;
+        waterState.inWater=inColumn;
+        if(!inColumn){
+            waterState.headUnderwater=false;
+            waterState.breath=Math.min(CFG.BREATH_MAX,waterState.breath+CFG.BREATH_REFILL_PER_SEC*dt);
+            updateBreathHud();
+            lastPlayerPos.x=px;lastPlayerPos.z=pz;
+            return;
+        }
+
+        // Suya giren oyuncu normal zeminin üstünde kaldığı sürece yavaşça aşağı iner.
+        let newY=py-CFG.SINK_SPEED*dt;
+        if(spaceHeld) newY=py+CFG.SWIM_SPEED*dt;
+        const maxY=sy+CFG.PLAYER_WATER_CLEARANCE;
+        const minY=by+0.12;
+        newY=Math.max(minY,Math.min(maxY,newY));
+        playerDonkey.position.y=newY;
+        velocityY=0;
+        isGrounded=false;
+
+        // Yatay su direnci; kamera/hareket sistemi aynı girişleri kullanmaya devam eder.
+        const movedX=playerDonkey.position.x-lastPlayerPos.x,movedZ=playerDonkey.position.z-lastPlayerPos.z;
+        if(Math.abs(movedX)+Math.abs(movedZ)>0.0001){
+            playerDonkey.position.x=lastPlayerPos.x+movedX*(1-CFG.WATER_DRAG_FACTOR);
+            playerDonkey.position.z=lastPlayerPos.z+movedZ*(1-CFG.WATER_DRAG_FACTOR);
+        }
+        lastPlayerPos.x=playerDonkey.position.x;lastPlayerPos.z=playerDonkey.position.z;
+
+        const headY=newY+CFG.HEAD_HEIGHT;
+        waterState.headUnderwater=headY < sy-CFG.HEAD_ABOVE_WATER_MARGIN;
+        if(waterState.headUnderwater){
+            waterState.breath=Math.max(0,waterState.breath-CFG.BREATH_DRAIN_PER_SEC*dt);
+            if(waterState.breath<=0 && now-waterState.lastDrownTick>=1000){
+                waterState.lastDrownTick=now;
+                const amount=CFG.DROWN_DAMAGE_PER_SEC;
+                if(typeof sendSocketMessage==='function'&&typeof ws!=='undefined'&&ws&&ws.readyState===WebSocket.OPEN){
+                    sendSocketMessage('enemy_damage',{damage:amount,reason:'Boğulma'});
+                }
+            }
+        }else{
+            waterState.breath=Math.min(CFG.BREATH_MAX,waterState.breath+CFG.BREATH_REFILL_PER_SEC*dt);
+        }
+        updateBreathHud();
+    }
+
+    function animateWater(now){
+        for(const w of window.__esekExtraPondWater||[]){
+            if(!w||!w.userData)continue;
+            const base=w.userData.surfaceY;
+            w.position.y=base+Math.sin(now*.0014+w.userData.phase)*.035;
+            const s=1+Math.sin(now*.001+w.userData.phase)*.006;w.scale.set(s,1,s);
+        }
+        // Mevcut orman göleti ve çiftlik göleti zaten kendi dalga sistemine sahip; yeni göletler burada animasyon kazanır.
+        if(typeof __updateEsekRivers==='function') __updateEsekRivers(now);
+    }
+
+    // --- Sunucu otoritesine gönderilen enemy_damage için, mevcut istemci taraflı kurşun hasarını kapat ---
+    window.__esekUseServerHazardDamage = true;
+    const oldUpdateCampBullets = (typeof updateCampBullets==='function') ? updateCampBullets : null;
+    // updateCampBullets lexical fonksiyonunu değiştirmek mümkün olsa da, en güvenli yol mevcut bullet loop'unu patch etmektir.
+    // Dosyada aşağıdaki küçük global kanca bulunuyorsa onu kullan; yoksa sadece boğulma server-side kalır.
+
+    // ---------------------------------------------------------
+    // 4) ANA DÖNGÜYE BAĞLA — son wrapper, her karede en sonda çalışır
+    // ---------------------------------------------------------
+    function installAnimateHook(){
+        if(typeof animate!=='function' || window.__esekWaterAnimateHook) return;
+        const baseAnimate=animate;
+        animate=function(){
+            const result=baseAnimate.apply(this,arguments);
+            const now=performance.now();
+            try{updateWaterPhysics(now);animateWater(now);}catch(_){ }
+            return result;
+        };
+        window.__esekWaterAnimateHook=true;
+    }
+
+    // World is fully constructed when this tail script runs.
+    try{
+        window.__esekExtraPondWater=[];
+        window.__esekExtraPonds=[];
+        buildExtraPonds();
+        installPondTerrain();
+        buildWaterRegistry();
+        createBreathHud();
+        setTimeout(()=>{try{rebuildGrass();}catch(e){console.error('[GRASS]',e);}},150);
+        installAnimateHook();
+        setTimeout(installAnimateHook,400);
+        setTopLeftMenuSafe();
+    }catch(e){ console.error('[WATER SYSTEM]',e); }
+
+    function setTopLeftMenuSafe(){
+        if(!topBtn) return;
+        topBtn.style.pointerEvents='auto'; topBtn.style.touchAction='manipulation'; topBtn.style.zIndex='99999';
+        if(menu) menu.style.pointerEvents='auto';
+    }
+
+    console.log('[SU] yeni derinlik/yüzme/boğulma sistemi aktif',CFG);
 })();
 </script>
 
