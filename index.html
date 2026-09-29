@@ -10,7 +10,7 @@
         makeOrchardLeafTexture ve orchardTrees bölümünde. Koyu orman tepeleri kaldırıldı.
       • Hayvanlar: tür dokuları makeAnimalTexture(), gövde/siluetler createWildAnimal().
       • Kamera: CAMERA_* ayarları, toggleCameraMode(), resolveCameraBoom() ve
-        animate() içindeki kamera bölümü. Mobilde sağ taraftan sürükle, PC'de sağ tuşla sürükle.
+        animate() içindeki kamera bölümü. PC 3. şahıs: sol/sağ tuşla sürükle; 1. şahıs: imleç kilidiyle fareyi döndür. Mobilde sağ taraftan sürükle.
       • Göletler: FOREST_POND_DEPTH / pondDepth; createPondRadialGeometry() tabanı,
         updateWater() dalgaları kontrol eder.
       Değişiklikleri tek bir bölümde tutmak için aşağıdaki BAŞLANGIÇ/BİTİŞ yorumlarını izleyin.
@@ -3477,8 +3477,9 @@ function stepCar(c,dt){
 
         // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
         // 3. şahıs kamera artık klasik oyunlardaki gibi oyuncunun etrafında yörüngede döner.
-        // PC'de sağ mouse basılı tutulur; mobilde sağ taraftaki boş alana sürükleme yapılır.
+        // PC 3. şahıs: sol/sağ tuşla sürükle. 1. şahıs: imleç kilidiyle serbest fare bakışı.
         let isMouseDown = false;
+        const cameraMouseButtons = new Set();
         let mouseX = 0, mouseY = 0;
         let cameraOrbitDistance = 6.0;
         let cameraFollowInitialized = false;
@@ -3694,6 +3695,38 @@ function stepCar(c,dt){
         });
 
         // ===== BİRİNCİ ŞAHIS KAMERA DÜZELTMESİ BAŞLANGIÇ =====
+        // Birinci şahısta fareyi kilitle: imleç gizlenir ve movementX/Y kamerayı doğrudan döndürür.
+        function requestFirstPersonPointerLock() {
+            if (!gameStarted || controlMode !== 'pc' || cameraMode !== 'first') return;
+            const canvas = renderer.domElement;
+            document.body.style.cursor = 'none';
+            if (!canvas || typeof canvas.requestPointerLock !== 'function' || document.pointerLockElement === canvas) return;
+            try {
+                const result = canvas.requestPointerLock();
+                if (result && typeof result.catch === 'function') {
+                    result.catch(() => { document.body.style.cursor = 'default'; });
+                }
+            } catch (_error) {
+                document.body.style.cursor = 'default';
+            }
+        }
+        function releaseFirstPersonPointerLock() {
+            cameraMouseButtons.clear();
+            isMouseDown = false;
+            if (document.pointerLockElement && typeof document.exitPointerLock === 'function') document.exitPointerLock();
+            document.body.style.cursor = 'default';
+            if (renderer && renderer.domElement) renderer.domElement.style.cursor = 'default';
+        }
+        document.addEventListener('pointerlockchange', () => {
+            const locked = document.pointerLockElement === renderer.domElement;
+            if (gameStarted && controlMode === 'pc' && cameraMode === 'first') {
+                document.body.style.cursor = locked ? 'none' : 'default';
+                renderer.domElement.style.cursor = locked ? 'none' : 'default';
+            } else {
+                document.body.style.cursor = 'default';
+                renderer.domElement.style.cursor = 'default';
+            }
+        });
         function toggleCameraMode() {
             if (cameraMode === 'third') {
                 cameraMode = 'first';
@@ -3702,14 +3735,14 @@ function stepCar(c,dt){
                 hudCamEl.textContent = '1. Şahıs';
                 mobViewBtn.textContent = '3P'; mobViewBtn.title = '3. şahsa geç';
                 crosshairEl.style.display = 'block';
-                if (controlMode === 'pc') document.body.style.cursor = 'default';
+                if (controlMode === 'pc') requestFirstPersonPointerLock();
             } else {
                 cameraMode = 'third';
                 pitch = THREE.MathUtils.clamp(pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH);
                 hudCamEl.textContent = '3. Şahıs';
                 mobViewBtn.textContent = '1P'; mobViewBtn.title = '1. şahsa geç';
                 crosshairEl.style.display = 'none';
-                if (controlMode === 'pc') document.body.style.cursor = 'default';
+                if (controlMode === 'pc') releaseFirstPersonPointerLock();
             }
             setGameplayCameraImmediate();
         }
@@ -3783,6 +3816,7 @@ function stepCar(c,dt){
             playerDonkey.position.set(barnSpawnX, 0.28, barnSpawnZ);
             gameStarted = true;
             cameraMode = 'third';
+            releaseFirstPersonPointerLock();
             yaw = 0;
             pitch = 0.12;
             setGameplayCameraImmediate();
@@ -3818,6 +3852,7 @@ function stepCar(c,dt){
             menuEl.classList.remove('pause-mode');
             if (cameraMode !== 'first') { cameraMode = 'third'; hudCamEl.textContent = '3. Şahıs'; }
             setGameplayCameraImmediate();
+            if (cameraMode === 'first') requestFirstPersonPointerLock();
             menuEl.style.display = 'none';
             playerDonkey.visible = true;
             setDonkeyNameTag(playerDonkey, getPlayerName());
@@ -3840,6 +3875,7 @@ function stepCar(c,dt){
 
         returnMenuBtn.addEventListener('click', () => {
             gameStarted = false;
+            releaseFirstPersonPointerLock();
             sendPresence(false);
             openMainMenu();
             document.getElementById('onlineBadge').style.display = 'block';
@@ -3865,6 +3901,7 @@ function stepCar(c,dt){
                 if (settingsPanel.style.display === 'block') { closeSettingsPanel(); return; }
                 if (playerListPanel.style.display === 'block') { togglePlayerList(false); return; }
                 gameStarted = false;
+                releaseFirstPersonPointerLock();
                 sendPresence(false);
                 document.getElementById('onlineBadge').style.display = 'block';
                 chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
@@ -3908,31 +3945,49 @@ function stepCar(c,dt){
         });
 
         // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
-        // PC kamera kontrolü: sağ mouse + sürükle. Sol tık yalnızca saldırı için kullanılır.
+        // 3. şahıs: sol veya sağ tuş basılıyken yatay/dikey kamera yörüngesi.
+        // 1. şahıs: pointer lock açıkken fareyi tuşa basmadan çevirerek bakış.
+        const cameraUiSelector = '#settingsPanel,#chatPanel,#playerListPanel,#nameCard,#onlineBadge,#mobViewBtn,#mobMenuBtn,#mobChatBtn,#mobPlayersBtn,#mobOpenBtn,#mobAttackBtn';
         document.addEventListener('mousedown', (e) => {
             if (!gameStarted || controlMode !== 'pc') return;
-            if (e.target.closest('#settingsPanel,#chatPanel,#playerListPanel,#nameCard,#onlineBadge')) return;
-            if (e.button === 2) {
-                isMouseDown = true;
-                mouseX = e.clientX;
-                mouseY = e.clientY;
+            if (e.target.closest(cameraUiSelector)) return;
+            if (cameraMode === 'first') {
+                if (e.button === 0 || e.button === 2) {
+                    if (document.pointerLockElement !== renderer.domElement) {
+                        cameraMouseButtons.add(e.button); isMouseDown = true;
+                        mouseX = e.clientX; mouseY = e.clientY;
+                        requestFirstPersonPointerLock();
+                    }
+                }
+                return;
+            }
+            if (e.button === 0 || e.button === 2) {
+                cameraMouseButtons.add(e.button); isMouseDown = true;
+                mouseX = e.clientX; mouseY = e.clientY;
                 e.preventDefault();
             }
         });
         document.addEventListener('mouseup', (e) => {
-            if (e.button === 2) isMouseDown = false;
+            cameraMouseButtons.delete(e.button);
+            isMouseDown = cameraMouseButtons.size > 0;
+        });
+        window.addEventListener('blur', () => {
+            cameraMouseButtons.clear(); isMouseDown = false;
         });
         document.addEventListener('mousemove', (e) => {
-            if (!gameStarted || controlMode !== 'pc' || !isMouseDown) return;
+            if (!gameStarted || controlMode !== 'pc') return;
             if (settingsPanel.style.display === 'block') return;
-            const dx = e.clientX - mouseX, dy = e.clientY - mouseY;
+            const pointerLocked = cameraMode === 'first' && document.pointerLockElement === renderer.domElement;
+            if (cameraMode === 'first' && !pointerLocked && !isMouseDown) return;
+            if (cameraMode === 'third' && !isMouseDown) return;
+            const dx = pointerLocked ? (e.movementX || 0) : e.clientX - mouseX;
+            const dy = pointerLocked ? (e.movementY || 0) : e.clientY - mouseY;
             yaw += dx * CAMERA_ROTATE_SPEED * sensitivity;
-            // Her iki modda da fareyi aşağı çekmek aşağı bakar; üst/alt sınırlar ayrı tutulur.
             pitch += dy * CAMERA_ROTATE_SPEED * sensitivity;
             pitch = cameraMode === 'first'
                 ? Math.max(-1.4, Math.min(1.2, pitch))
                 : Math.max(CAMERA_MIN_PITCH, Math.min(CAMERA_MAX_PITCH, pitch));
-            mouseX = e.clientX; mouseY = e.clientY;
+            if (!pointerLocked) { mouseX = e.clientX; mouseY = e.clientY; }
         });
         // Roblox benzeri yakınlaştırma: tekerlek kamerayı oyuncuya yaklaştırır/uzaklaştırır.
         document.addEventListener('wheel', (e) => {
@@ -3953,6 +4008,7 @@ function stepCar(c,dt){
         mobileUiTap(mobMenuBtn, () => {
             if (gameStarted) {
                 gameStarted = false;
+                releaseFirstPersonPointerLock();
                 sendPresence(false);
                 document.getElementById('onlineBadge').style.display = 'block';
                 chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
@@ -4527,7 +4583,7 @@ function stepCar(c,dt){
             infoEl.style.display = 'block'; mobileControlsEl.style.display = mode === 'mobile' ? 'block' : 'none';
             hudEl.style.display = 'block'; crosshairEl.style.display = cameraMode === 'first' ? 'block' : 'none';
             playerDonkey.visible = cameraMode !== 'first'; playerDonkey.rotation.z = 0;
-            playerDonkey.scale.set(DONKEY_BASE_SCALE,DONKEY_BASE_SCALE,DONKEY_BASE_SCALE); document.body.style.cursor = 'crosshair';
+            playerDonkey.scale.set(DONKEY_BASE_SCALE,DONKEY_BASE_SCALE,DONKEY_BASE_SCALE); document.body.style.cursor = (cameraMode === 'first' && mode === 'pc' && document.pointerLockElement === renderer.domElement) ? 'none' : 'crosshair';
             for (const other of Object.values(otherPlayers)) other.visible = true;
             sendPresence(true); setGameUiVisible(true); setChatVisible(!chatIsManuallyHidden);
             sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
@@ -4548,7 +4604,12 @@ function stepCar(c,dt){
         }
         pcSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('pc',false);},true);
         mobileSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('mobile',false);},true);
-        resumeBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin(controlMode,true);},true);
+        resumeBtn.addEventListener('click',e=>{
+            e.preventDefault();e.stopImmediatePropagation();
+            // Pointer Lock user activation must be requested during the resume click, before async join.
+            if(cameraMode==='first'&&controlMode==='pc'){gameStarted=true;requestFirstPersonPointerLock();}
+            beginJoin(controlMode,true);
+        },true);
         document.getElementById('chatHideBtn').addEventListener('click',()=>setChatVisible(false));
         chatReopenBtn.addEventListener('click',()=>setChatVisible(true));
         mobileUiTap(mobChatBtnEl, ()=>setChatVisible(chatIsManuallyHidden));
@@ -4588,14 +4649,14 @@ function stepCar(c,dt){
             renderNeeds();
         }
         function showDeath(reason) {
-            playerIsDead=true;deathScreenShowing=true;gameStarted=false;joinPending=null;
+            playerIsDead=true;deathScreenShowing=true;gameStarted=false;releaseFirstPersonPointerLock();joinPending=null;
             playerDonkey.visible=true;playerDonkey.position.y=terrainHeightAt(playerDonkey.position.x,playerDonkey.position.z)+.3;playerDonkey.rotation.z=Math.PI/2;playerDonkey.userData.legs.forEach(l=>l.rotation.x=.65);
             deathReasonEl.textContent=reason||'Canın tükendi.';deathOverlayEl.style.display='flex';
             menuEl.style.display='none';mobileControlsEl.style.display='none';hudEl.style.display='none';infoEl.style.display='none';crosshairEl.style.display='none';interactPromptEl.style.display='none';
             setGameUiVisible(false);chatPanelEl.style.display='none';chatReopenBtn.style.display='none';mobOpenBtn.style.display='none';
         }
         function leaveAfterDeath() {
-            sendPresence(false);playerIsDead=false;deathScreenShowing=false;gameStarted=false;deathOverlayEl.style.display='none';
+            sendPresence(false);playerIsDead=false;deathScreenShowing=false;gameStarted=false;releaseFirstPersonPointerLock();deathOverlayEl.style.display='none';
             playerDonkey.visible=false;playerDonkey.rotation.z=0;mobileControlsEl.style.display='none';hudEl.style.display='none';infoEl.style.display='none';crosshairEl.style.display='none';survivalHudEl.style.display='none';
             chatPanelEl.style.display='none';chatReopenBtn.style.display='none';openMainMenu();setNameError('');
         }
@@ -4609,6 +4670,7 @@ function stepCar(c,dt){
                 setGameUiVisible(true);sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
                 sendSocketMessage('apple_state_request',{trees:orchardTrees.map(t=>({id:t.id,x:t.x,z:t.z}))});
             } else if(data.type==='join_denied'){
+                if(joinPending&&joinPending.isResume){gameStarted=false;releaseFirstPersonPointerLock();}
                 joinPending=null;setNameError(data.message||'Bu oyuncu adı şu an kullanılıyor. Başka bir ad dene.');menuEl.style.display='flex';deathOverlayEl.style.display='none';
             } else if(data.type==='profile_error') setNameError(data.message||'Oyuncu adı güncellenemedi.');
             else if(data.type==='needs'){
@@ -4764,7 +4826,7 @@ function stepCar(c,dt){
         document.addEventListener('mousemove',e=>{if(isMouseDown&&(Math.abs(e.movementX||0)>3||Math.abs(e.movementY||0)>3))mouseDragMoved=true;},true);
         document.addEventListener('click',e=>{
             if(e.button!==0||!gameStarted||controlMode!=='pc'||mouseDragMoved)return;
-            if(e.target.closest('button,input,textarea,#menu,#settingsPanel,#chatPanel,#playerListPanel,#deathOverlay,#mobileControls'))return;
+            if(e.target.closest('button,input,textarea,#menu,#settingsPanel,#chatPanel,#playerListPanel,#deathOverlay,#mobileControls,#mobViewBtn,#mobMenuBtn,#mobChatBtn,#mobPlayersBtn,#mobOpenBtn'))return;
             attackNearestTarget();
         });
         document.addEventListener('contextmenu',e=>{if(gameStarted&&controlMode==='pc')e.preventDefault();});
