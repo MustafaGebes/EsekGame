@@ -1,9 +1,9 @@
-const express = require("express");
-const http = require("http");
-const path = require("path");
-const crypto = require("crypto");
-const fs = require("fs");
-const WebSocket = require("ws");
+const express = require('express');
+const http = require('http');
+const path = require('path');
+const crypto = require('crypto');
+const fs = require('fs');
+const WebSocket = require('ws');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,825 +13,1160 @@ const wss = new WebSocket.Server({
     maxPayload: 24 * 1024
 });
 
-app.use(
-    express.json({
-        limit: "32kb"
-    })
-);
+app.use(express.json({
+    limit: '64kb'
+}));
 
-app.use(
-    express.static(__dirname)
-);
+app.use(express.static(__dirname));
 
-app.get("/", (_req, res) => {
+
+// ============================================================
+// ANA SAYFA
+// ============================================================
+
+app.get('/', (_req, res) => {
     res.sendFile(
         path.join(
             __dirname,
-            "index.html"
+            'index.html'
         )
     );
 });
 
-/* =========================================================
-   SÜRÜM
-========================================================= */
 
-const APP_VERSION =
-    "2026-09-29-4";
+// ============================================================
+// KALICI VERİLER
+// ============================================================
 
-app.get(
-    "/api/version",
-    (_req, res) => {
-        res.json({
-            ok: true,
-            version:
-                APP_VERSION
-        });
-    }
-);
-
-app.get(
-    "/health",
-    (_req, res) => {
-        res.json({
-            ok: true,
-            players:
-                activePlayerCount(),
-            version:
-                APP_VERSION
-        });
-    }
-);
-
-/* =========================================================
-   HESAP SİSTEMİ
-========================================================= */
+const DATA_DIR =
+    path.join(
+        __dirname,
+        'data'
+    );
 
 const ACCOUNTS_FILE =
     path.join(
-        __dirname,
-        "accounts.json"
+        DATA_DIR,
+        'accounts.json'
     );
+
+
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(
+        DATA_DIR,
+        {
+            recursive: true
+        }
+    );
+}
+
 
 let accounts = {};
 
+
+// ============================================================
+// HESAPLARI YÜKLE
+// ============================================================
+
 function loadAccounts() {
+
+    if (
+        !fs.existsSync(
+            ACCOUNTS_FILE
+        )
+    ) {
+        accounts = {};
+
+        saveAccounts();
+
+        return;
+    }
+
+
     try {
+
+        const raw =
+            fs.readFileSync(
+                ACCOUNTS_FILE,
+                'utf8'
+            );
+
+
         if (
-            fs.existsSync(
-                ACCOUNTS_FILE
+            !raw.trim()
+        ) {
+            accounts = {};
+            return;
+        }
+
+
+        const parsed =
+            JSON.parse(
+                raw
+            );
+
+
+        /*
+         * Yeni format:
+         *
+         * {
+         *   "accounts": {
+         *      ...
+         *   }
+         * }
+         */
+
+        if (
+            parsed &&
+            typeof parsed === 'object' &&
+            parsed.accounts &&
+            typeof parsed.accounts === 'object' &&
+            !Array.isArray(
+                parsed.accounts
             )
         ) {
-            const raw =
-                fs.readFileSync(
-                    ACCOUNTS_FILE,
-                    "utf8"
-                );
 
-            const parsed =
-                JSON.parse(raw);
+            accounts =
+                parsed.accounts;
 
-            if (
-                parsed &&
-                typeof parsed ===
-                    "object"
-            ) {
-                accounts =
-                    parsed;
-            }
+            return;
         }
+
+
+        /*
+         * Eski formatı da destekle.
+         */
+
+        if (
+            parsed &&
+            typeof parsed === 'object' &&
+            !Array.isArray(
+                parsed
+            )
+        ) {
+
+            accounts =
+                parsed;
+
+            return;
+        }
+
+
+        accounts = {};
+
     } catch (error) {
-        console.log(
-            "accounts.json okunamadı:",
+
+        console.error(
+            'accounts.json okunamadı:',
             error.message
         );
 
+        /*
+         * Hatalı dosyada üstüne boş
+         * hesap yazmıyoruz.
+         */
         accounts = {};
     }
 }
 
+
+// ============================================================
+// HESAPLARI KAYDET
+// ============================================================
+
 function saveAccounts() {
+
     try {
+
+        if (
+            !fs.existsSync(
+                DATA_DIR
+            )
+        ) {
+            fs.mkdirSync(
+                DATA_DIR,
+                {
+                    recursive: true
+                }
+            );
+        }
+
+
+        const data = {
+            accounts
+        };
+
+
+        const tempFile =
+            ACCOUNTS_FILE +
+            '.tmp';
+
+
         fs.writeFileSync(
-            ACCOUNTS_FILE,
+            tempFile,
             JSON.stringify(
-                accounts,
+                data,
                 null,
                 2
             ),
-            "utf8"
+            'utf8'
         );
+
+
+        fs.renameSync(
+            tempFile,
+            ACCOUNTS_FILE
+        );
+
     } catch (error) {
-        console.log(
-            "accounts.json kaydedilemedi:",
+
+        console.error(
+            'Hesaplar kaydedilemedi:',
             error.message
         );
     }
 }
 
+
 loadAccounts();
 
+
+// ============================================================
+// AUTH TOKENLARI
+// ============================================================
+
+const authTokens =
+    new Map();
+
+
+// ============================================================
+// KULLANICI ADI
+// ============================================================
+
 function normalizeUsername(
-    username
+    value
 ) {
+
     return String(
-        username || ""
+        value ?? ''
     )
+        .normalize(
+            'NFKC'
+        )
         .trim()
-        .normalize("NFKC")
         .toLocaleLowerCase(
-            "tr-TR"
+            'tr-TR'
         );
 }
+
+
+function displayUsername(
+    value
+) {
+
+    return String(
+        value ?? ''
+    )
+        .normalize(
+            'NFKC'
+        )
+        .trim()
+        .slice(
+            0,
+            20
+        );
+}
+
 
 function validUsername(
     username
 ) {
-    return /^[A-Za-z0-9_ÇĞİÖŞÜçğıöşü-]{3,20}$/.test(
-        String(
-            username || ""
-        )
-    );
+
+    return /^[\p{L}\p{N}_-]{3,20}$/u
+        .test(
+            username
+        );
 }
 
-function hashPassword(
-    password,
-    salt
-) {
-    return crypto
-        .scryptSync(
-            String(password),
-            String(salt),
-            64
-        )
-        .toString("hex");
-}
 
-function makeToken() {
-    return crypto
-        .randomBytes(32)
-        .toString("hex");
-}
+// ============================================================
+// ŞİFRE
+// ============================================================
 
-function makeAccount(
-    username,
+function validPassword(
     password
 ) {
-    const salt =
-        crypto
-            .randomBytes(16)
-            .toString("hex");
 
-    return {
-        username:
-            username,
-
-        salt:
-            salt,
-
-        passwordHash:
-            hashPassword(
-                password,
-                salt
-            ),
-
-        token:
-            makeToken(),
-
-        createdAt:
-            new Date().toISOString()
-    };
-}
-
-function getAccountByToken(
-    token
-) {
-    const wanted =
-        String(
-            token || ""
-        );
-
-    if (!wanted) {
-        return null;
-    }
-
-    for (
-        const account of Object.values(
-            accounts
-        )
-    ) {
-        if (
-            account &&
-            account.token ===
-                wanted
-        ) {
-            return account;
-        }
-    }
-
-    return null;
-}
-
-function getAccountKey(
-    account
-) {
-    if (!account) {
-        return null;
-    }
-
-    return normalizeUsername(
-        account.username
+    return (
+        typeof password ===
+            'string' &&
+        password.length >= 4 &&
+        password.length <= 128
     );
 }
 
-/* =========================================================
-   HESAP OLUŞTUR
-========================================================= */
+
+function hashPassword(
+    password
+) {
+
+    const salt =
+        crypto
+            .randomBytes(
+                16
+            )
+            .toString(
+                'hex'
+            );
+
+
+    const hash =
+        crypto
+            .scryptSync(
+                password,
+                salt,
+                64
+            )
+            .toString(
+                'hex'
+            );
+
+
+    return (
+        salt +
+        ':' +
+        hash
+    );
+}
+
+
+function verifyPassword(
+    password,
+    storedHash
+) {
+
+    try {
+
+        if (
+            typeof storedHash !==
+                'string' ||
+            !storedHash.includes(
+                ':'
+            )
+        ) {
+            return false;
+        }
+
+
+        const parts =
+            storedHash.split(
+                ':'
+            );
+
+
+        if (
+            parts.length !== 2
+        ) {
+            return false;
+        }
+
+
+        const salt =
+            parts[0];
+
+
+        const originalHash =
+            Buffer.from(
+                parts[1],
+                'hex'
+            );
+
+
+        const calculatedHash =
+            crypto.scryptSync(
+                password,
+                salt,
+                64
+            );
+
+
+        if (
+            originalHash.length !==
+            calculatedHash.length
+        ) {
+            return false;
+        }
+
+
+        return crypto.timingSafeEqual(
+            originalHash,
+            calculatedHash
+        );
+
+    } catch {
+
+        return false;
+    }
+}
+
+
+// ============================================================
+// TOKEN
+// ============================================================
+
+function createAuthToken() {
+
+    return crypto
+        .randomBytes(
+            32
+        )
+        .toString(
+            'hex'
+        );
+}
+
+
+function getUsernameFromToken(
+    token
+) {
+
+    if (
+        typeof token !==
+            'string' ||
+        !token
+    ) {
+        return null;
+    }
+
+
+    return (
+        authTokens.get(
+            token
+        ) ||
+        null
+    );
+}
+
+
+// ============================================================
+// HESAP KAYIT
+// ============================================================
 
 app.post(
-    "/api/auth/register",
+    '/api/auth/register',
     (req, res) => {
+
         try {
+
+            const rawUsername =
+                displayUsername(
+                    req.body?.username
+                );
+
+
             const username =
-                String(
-                    req.body?.username ||
-                        ""
-                ).trim();
+                normalizeUsername(
+                    rawUsername
+                );
+
 
             const password =
                 String(
-                    req.body?.password ||
-                        ""
+                    req.body?.password ??
+                    ''
                 );
 
+
             const passwordConfirm =
-                String(
-                    req.body
-                        ?.passwordConfirm ??
-                        req.body
-                            ?.password2 ??
-                        ""
-                );
+                req.body?.passwordConfirm ??
+                req.body?.password2 ??
+                undefined;
+
 
             if (
                 !validUsername(
-                    username
+                    rawUsername
                 )
             ) {
+
                 return res
                     .status(400)
                     .json({
                         ok: false,
+
                         message:
-                            "Kullanıcı adı 3-20 karakter olmalı. Harf, rakam, _ veya - kullanabilirsin."
+                            'Kullanıcı adı 3-20 karakter olmalı ve sadece harf, rakam, alt çizgi veya tire içermelidir.'
                     });
             }
 
+
             if (
-                password.length <
-                6
+                !validPassword(
+                    password
+                )
             ) {
+
                 return res
                     .status(400)
                     .json({
                         ok: false,
+
                         message:
-                            "Şifre en az 6 karakter olmalı."
+                            'Şifre 4-128 karakter arasında olmalıdır.'
                     });
             }
 
+
             if (
+                passwordConfirm !==
+                    undefined &&
                 password !==
-                passwordConfirm
+                    String(
+                        passwordConfirm
+                    )
             ) {
+
                 return res
                     .status(400)
                     .json({
                         ok: false,
+
                         message:
-                            "Şifreler aynı değil."
+                            'Şifreler aynı değil.'
                     });
             }
 
-            const key =
-                normalizeUsername(
-                    username
-                );
 
             if (
-                accounts[key]
+                accounts[
+                    username
+                ]
             ) {
+
                 return res
                     .status(409)
                     .json({
                         ok: false,
+
                         message:
-                            "Bu kullanıcı adı zaten alınmış."
+                            'Bu kullanıcı adı zaten kullanılıyor.'
                     });
             }
 
-            const account =
-                makeAccount(
-                    username,
-                    password
-                );
 
-            accounts[key] =
-                account;
+            accounts[
+                username
+            ] = {
+
+                username:
+                    rawUsername,
+
+                usernameKey:
+                    username,
+
+                passwordHash:
+                    hashPassword(
+                        password
+                    ),
+
+                createdAt:
+                    new Date()
+                        .toISOString()
+            };
+
 
             saveAccounts();
 
-            console.log(
-                "Yeni hesap:",
+
+            const token =
+                createAuthToken();
+
+
+            authTokens.set(
+                token,
                 username
             );
 
+
             return res.json({
+
                 ok: true,
 
-                username:
-                    account.username,
+                token,
 
-                token:
-                    account.token
+                username:
+                    rawUsername
             });
+
         } catch (error) {
-            console.log(
-                "REGISTER ERROR:",
+
+            console.error(
+                'Register hatası:',
                 error
             );
+
 
             return res
                 .status(500)
                 .json({
+
                     ok: false,
+
                     message:
-                        "Hesap oluşturulurken sunucu hatası oluştu."
+                        'Hesap oluşturulurken bir hata oluştu.'
                 });
         }
     }
 );
 
-/* =========================================================
-   GİRİŞ
-========================================================= */
+
+// ============================================================
+// HESAP GİRİŞ
+// ============================================================
 
 app.post(
-    "/api/auth/login",
+    '/api/auth/login',
     (req, res) => {
+
         try {
+
             const username =
-                String(
-                    req.body?.username ||
-                        ""
-                ).trim();
+                normalizeUsername(
+                    req.body?.username
+                );
+
 
             const password =
                 String(
-                    req.body?.password ||
-                        ""
+                    req.body?.password ??
+                    ''
                 );
 
-            const key =
-                normalizeUsername(
-                    username
-                );
 
             const account =
-                accounts[key];
+                accounts[
+                    username
+                ];
 
-            if (!account) {
+
+            if (
+                !account ||
+                !verifyPassword(
+                    password,
+                    account.passwordHash
+                )
+            ) {
+
                 return res
                     .status(401)
                     .json({
+
                         ok: false,
+
                         message:
-                            "Kullanıcı adı veya şifre hatalı."
+                            'Kullanıcı adı veya şifre hatalı.'
                     });
             }
 
-            /*
-             * Yeni sistem
-             */
-            if (
-                account.salt &&
-                account.passwordHash
-            ) {
-                const calculated =
-                    hashPassword(
-                        password,
-                        account.salt
-                    );
 
-                const a =
-                    Buffer.from(
-                        calculated,
-                        "hex"
-                    );
+            const token =
+                createAuthToken();
 
-                const b =
-                    Buffer.from(
-                        account.passwordHash,
-                        "hex"
-                    );
 
-                if (
-                    a.length !==
-                        b.length ||
-                    !crypto.timingSafeEqual(
-                        a,
-                        b
-                    )
-                ) {
-                    return res
-                        .status(401)
-                        .json({
-                            ok: false,
-                            message:
-                                "Kullanıcı adı veya şifre hatalı."
-                        });
-                }
-            }
-
-            /*
-             * Güvenlik için her girişte
-             * yeni token.
-             */
-            account.token =
-                makeToken();
-
-            saveAccounts();
-
-            console.log(
-                "Giriş:",
-                account.username
+            authTokens.set(
+                token,
+                username
             );
+
 
             return res.json({
+
                 ok: true,
 
-                username:
-                    account.username,
+                token,
 
-                token:
-                    account.token
+                username:
+                    account.username
             });
+
         } catch (error) {
-            console.log(
-                "LOGIN ERROR:",
+
+            console.error(
+                'Login hatası:',
                 error
             );
+
 
             return res
                 .status(500)
                 .json({
+
                     ok: false,
+
                     message:
-                        "Giriş yapılırken sunucu hatası oluştu."
+                        'Giriş yapılırken bir hata oluştu.'
                 });
         }
     }
 );
 
-/* =========================================================
-   AD DEĞİŞTİR
-========================================================= */
+
+// ============================================================
+// ÇIKIŞ
+// ============================================================
 
 app.post(
-    "/api/auth/change-username",
+    '/api/auth/logout',
     (req, res) => {
+
+        const token =
+            req.body?.token;
+
+
+        if (token) {
+            authTokens.delete(
+                token
+            );
+        }
+
+
+        res.json({
+            ok: true
+        });
+    }
+);
+
+
+// ============================================================
+// BENİM HESABIM
+// ============================================================
+
+app.get(
+    '/api/auth/me',
+    (req, res) => {
+
+        const authorization =
+            req.headers.authorization ||
+            '';
+
+
+        const token =
+            authorization.replace(
+                /^Bearer\s+/i,
+                ''
+            );
+
+
+        const username =
+            getUsernameFromToken(
+                token
+            );
+
+
+        if (!username) {
+
+            return res
+                .status(401)
+                .json({
+                    ok: false
+                });
+        }
+
+
+        const account =
+            accounts[
+                username
+            ];
+
+
+        if (!account) {
+
+            return res
+                .status(401)
+                .json({
+                    ok: false
+                });
+        }
+
+
+        res.json({
+
+            ok: true,
+
+            username:
+                account.username
+        });
+    }
+);
+
+
+// ============================================================
+// ŞİFRE DEĞİŞTİR
+// ============================================================
+
+app.post(
+    '/api/auth/change-password',
+    (req, res) => {
+
         try {
+
             const token =
-                String(
-                    req.body?.token ||
-                        ""
-                );
+                req.body?.token;
 
-            const newUsername =
-                String(
-                    req.body?.username ||
-                        ""
-                ).trim();
 
-            const account =
-                getAccountByToken(
+            const username =
+                getUsernameFromToken(
                     token
                 );
 
-            if (!account) {
+
+            if (!username) {
+
                 return res
                     .status(401)
                     .json({
+
                         ok: false,
+
                         message:
-                            "Oturum geçersiz."
+                            'Oturum geçersiz.'
                     });
             }
 
-            if (
-                !validUsername(
-                    newUsername
-                )
-            ) {
+
+            const account =
+                accounts[
+                    username
+                ];
+
+
+            if (!account) {
+
                 return res
-                    .status(400)
+                    .status(404)
                     .json({
+
                         ok: false,
+
                         message:
-                            "Kullanıcı adı 3-20 karakter olmalı."
+                            'Hesap bulunamadı.'
                     });
             }
 
-            const oldKey =
-                normalizeUsername(
-                    account.username
-                );
-
-            const newKey =
-                normalizeUsername(
-                    newUsername
-                );
-
-            if (
-                oldKey !==
-                    newKey &&
-                accounts[newKey]
-            ) {
-                return res
-                    .status(409)
-                    .json({
-                        ok: false,
-                        message:
-                            "Bu kullanıcı adı zaten alınmış."
-                    });
-            }
-
-            /*
-             * Oyundaki hesabı da bulmak için
-             * eski kullanıcı adını kullanıyoruz.
-             */
-            for (
-                const player of Object.values(
-                    players
-                )
-            ) {
-                if (
-                    player.accountKey ===
-                    oldKey
-                ) {
-                    player.name =
-                        newUsername;
-
-                    player.accountKey =
-                        newKey;
-                }
-            }
-
-            delete accounts[
-                oldKey
-            ];
-
-            account.username =
-                newUsername;
-
-            accounts[newKey] =
-                account;
-
-            saveAccounts();
-
-            sendPlayers();
-
-            return res.json({
-                ok: true,
-
-                username:
-                    account.username,
-
-                token:
-                    account.token
-            });
-        } catch (error) {
-            console.log(
-                "CHANGE USERNAME ERROR:",
-                error
-            );
-
-            return res
-                .status(500)
-                .json({
-                    ok: false,
-                    message:
-                        "Ad değiştirilemedi."
-                });
-        }
-    }
-);
-
-/* =========================================================
-   ŞİFRE DEĞİŞTİR
-========================================================= */
-
-app.post(
-    "/api/auth/change-password",
-    (req, res) => {
-        try {
-            const token =
-                String(
-                    req.body?.token ||
-                        ""
-                );
 
             const oldPassword =
                 String(
-                    req.body
-                        ?.oldPassword ||
-                        ""
+                    req.body?.oldPassword ??
+                    ''
                 );
+
 
             const newPassword =
                 String(
-                    req.body
-                        ?.newPassword ||
-                        ""
+                    req.body?.newPassword ??
+                    ''
                 );
 
-            const newPasswordConfirm =
-                String(
-                    req.body
-                        ?.newPasswordConfirm ||
-                        ""
-                );
-
-            const account =
-                getAccountByToken(
-                    token
-                );
-
-            if (!account) {
-                return res
-                    .status(401)
-                    .json({
-                        ok: false,
-                        message:
-                            "Oturum geçersiz."
-                    });
-            }
-
-            const oldHash =
-                hashPassword(
-                    oldPassword,
-                    account.salt
-                );
-
-            const a =
-                Buffer.from(
-                    oldHash,
-                    "hex"
-                );
-
-            const b =
-                Buffer.from(
-                    account.passwordHash,
-                    "hex"
-                );
 
             if (
-                a.length !==
-                    b.length ||
-                !crypto.timingSafeEqual(
-                    a,
-                    b
+                !verifyPassword(
+                    oldPassword,
+                    account.passwordHash
                 )
             ) {
-                return res
-                    .status(401)
-                    .json({
-                        ok: false,
-                        message:
-                            "Mevcut şifre yanlış."
-                    });
-            }
 
-            if (
-                newPassword.length <
-                6
-            ) {
                 return res
                     .status(400)
                     .json({
+
                         ok: false,
+
                         message:
-                            "Yeni şifre en az 6 karakter olmalı."
+                            'Mevcut şifre hatalı.'
                     });
             }
 
+
             if (
-                newPassword !==
-                newPasswordConfirm
+                !validPassword(
+                    newPassword
+                )
             ) {
+
                 return res
                     .status(400)
                     .json({
+
                         ok: false,
+
                         message:
-                            "Yeni şifreler aynı değil."
+                            'Yeni şifre 4-128 karakter arasında olmalıdır.'
                     });
             }
 
-            const newSalt =
-                crypto
-                    .randomBytes(
-                        16
-                    )
-                    .toString(
-                        "hex"
-                    );
-
-            account.salt =
-                newSalt;
 
             account.passwordHash =
                 hashPassword(
-                    newPassword,
-                    newSalt
+                    newPassword
                 );
 
-            /*
-             * Şifre değişince eski oturum
-             * tokenını iptal ediyoruz.
-             */
-            account.token =
-                makeToken();
+
+            account.updatedAt =
+                new Date()
+                    .toISOString();
+
 
             saveAccounts();
 
-            return res.json({
+
+            for (
+                const [
+                    authToken,
+                    tokenUsername
+                ]
+                of authTokens
+            ) {
+
+                if (
+                    tokenUsername ===
+                    username
+                ) {
+
+                    authTokens.delete(
+                        authToken
+                    );
+                }
+            }
+
+
+            res.json({
+
                 ok: true,
 
-                token:
-                    account.token
+                message:
+                    'Şifre değiştirildi.'
             });
+
         } catch (error) {
-            console.log(
-                "CHANGE PASSWORD ERROR:",
+
+            console.error(
+                'Şifre değiştirme hatası:',
                 error
             );
 
-            return res
+
+            res
                 .status(500)
                 .json({
+
                     ok: false,
+
                     message:
-                        "Şifre değiştirilemedi."
+                        'Şifre değiştirilemedi.'
                 });
         }
     }
 );
 
-/* =========================================================
-   HESAPTAN ÇIK
-========================================================= */
+
+// ============================================================
+// KULLANICI ADI DEĞİŞTİR
+// ============================================================
 
 app.post(
-    "/api/auth/logout",
+    '/api/auth/change-username',
     (req, res) => {
-        try {
-            const token =
-                String(
-                    req.body?.token ||
-                        ""
-                );
 
-            const account =
-                getAccountByToken(
+        try {
+
+            const token =
+                req.body?.token;
+
+
+            const oldUsername =
+                getUsernameFromToken(
                     token
                 );
 
-            if (account) {
-                account.token =
-                    null;
 
-                saveAccounts();
+            if (!oldUsername) {
+
+                return res
+                    .status(401)
+                    .json({
+
+                        ok: false,
+
+                        message:
+                            'Oturum geçersiz.'
+                    });
             }
 
-            return res.json({
-                ok: true
+
+            const account =
+                accounts[
+                    oldUsername
+                ];
+
+
+            if (!account) {
+
+                return res
+                    .status(404)
+                    .json({
+
+                        ok: false,
+
+                        message:
+                            'Hesap bulunamadı.'
+                    });
+            }
+
+
+            const newDisplay =
+                displayUsername(
+                    req.body?.newUsername
+                );
+
+
+            const newUsername =
+                normalizeUsername(
+                    newDisplay
+                );
+
+
+            if (
+                !validUsername(
+                    newDisplay
+                )
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+
+                        ok: false,
+
+                        message:
+                            'Kullanıcı adı 3-20 karakter olmalı ve sadece harf, rakam, alt çizgi veya tire içermelidir.'
+                    });
+            }
+
+
+            if (
+                newUsername ===
+                oldUsername
+            ) {
+
+                return res.json({
+
+                    ok: true,
+
+                    username:
+                        account.username
+                });
+            }
+
+
+            if (
+                accounts[
+                    newUsername
+                ]
+            ) {
+
+                return res
+                    .status(409)
+                    .json({
+
+                        ok: false,
+
+                        message:
+                            'Bu kullanıcı adı zaten kullanılıyor.'
+                    });
+            }
+
+
+            delete accounts[
+                oldUsername
+            ];
+
+
+            account.username =
+                newDisplay;
+
+
+            account.usernameKey =
+                newUsername;
+
+
+            account.updatedAt =
+                new Date()
+                    .toISOString();
+
+
+            accounts[
+                newUsername
+            ] =
+                account;
+
+
+            for (
+                const [
+                    authToken,
+                    tokenUsername
+                ]
+                of authTokens
+            ) {
+
+                if (
+                    tokenUsername ===
+                    oldUsername
+                ) {
+
+                    authTokens.set(
+                        authToken,
+                        newUsername
+                    );
+                }
+            }
+
+
+            saveAccounts();
+
+
+            res.json({
+
+                ok: true,
+
+                username:
+                    newDisplay
             });
+
         } catch (error) {
-            return res
+
+            console.error(
+                'Kullanıcı adı değiştirme hatası:',
+                error
+            );
+
+
+            res
                 .status(500)
                 .json({
+
                     ok: false,
+
                     message:
-                        "Çıkış yapılamadı."
+                        'Kullanıcı adı değiştirilemedi.'
                 });
         }
     }
 );
 
-/* =========================================================
-   OYUN VERİLERİ
-========================================================= */
+
+// ============================================================
+// OYUN DEĞİŞKENLERİ
+// ============================================================
 
 const players =
     Object.create(null);
@@ -844,7 +1179,6 @@ const wildAnimals =
 
 let chatHistory = [];
 
-let guestCounter = 0;
 
 const CHAT_RESET_MS =
     10 * 60 * 1000;
@@ -861,54 +1195,41 @@ const MAX_NEED =
 const MAP_LIMIT =
     510;
 
+
 const SPAWN = {
+
     x: 180,
+
     y: 0,
+
     z: 210
 };
 
+
 const FOREST_POND = {
+
     x: 300,
+
     z: -8,
+
     radius: 14
 };
 
-/* =========================================================
-   GUEST NUMARASI
-========================================================= */
 
-function nextGuestName() {
-    const number =
-        guestCounter++;
-
-    return (
-        "Guest-" +
-        String(number)
-            .padStart(3, "0")
-    );
-}
-
-/* =========================================================
-   YARDIMCILAR
-========================================================= */
-
-function activePlayerCount() {
-    return Object.values(
-        players
-    ).filter(
-        p => p.inGame
-    ).length;
-}
+// ============================================================
+// YARDIMCILAR
+// ============================================================
 
 function send(
     ws,
     payload
 ) {
+
     if (
-        ws &&
         ws.readyState ===
-            WebSocket.OPEN
+        WebSocket.OPEN
     ) {
+
         ws.send(
             JSON.stringify(
                 payload
@@ -917,22 +1238,27 @@ function send(
     }
 }
 
+
 function broadcast(
     payload
 ) {
+
     const encoded =
         JSON.stringify(
             payload
         );
 
+
     for (
-        const client of
-            wss.clients
+        const client
+        of wss.clients
     ) {
+
         if (
             client.readyState ===
             WebSocket.OPEN
         ) {
+
             client.send(
                 encoded
             );
@@ -940,87 +1266,249 @@ function broadcast(
     }
 }
 
+
+function activePlayerCount() {
+
+    return Object.values(
+        players
+    )
+        .filter(
+            p =>
+                p.inGame
+        )
+        .length;
+}
+
+
 function clamp(
     value,
     min,
     max,
     fallback = min
 ) {
-    const n =
-        Number(value);
 
-    return Number.isFinite(n)
-        ? Math.max(
-              min,
-              Math.min(
-                  max,
-                  n
-              )
-          )
-        : fallback;
+    const n =
+        Number(
+            value
+        );
+
+
+    if (
+        !Number.isFinite(
+            n
+        )
+    ) {
+        return fallback;
+    }
+
+
+    return Math.max(
+        min,
+        Math.min(
+            max,
+            n
+        )
+    );
 }
+
 
 function cleanName(
     value
 ) {
+
     const name =
         String(
-            value ?? ""
+            value ?? ''
         )
             .replace(
                 /[\u0000-\u001f\u007f]/g,
-                ""
+                ''
             )
             .trim()
-            .slice(0, 20);
+            .slice(
+                0,
+                20
+            );
+
 
     return (
         name ||
-        "Player"
+        'Player'
     );
 }
+
 
 function nameKey(
     value
 ) {
+
     return cleanName(
         value
     )
-        .normalize("NFKC")
+        .normalize(
+            'NFKC'
+        )
         .toLocaleLowerCase(
-            "tr-TR"
+            'tr-TR'
         );
 }
+
 
 function cleanText(
     value,
     limit = 220
 ) {
+
     return String(
-        value ?? ""
+        value ?? ''
     )
         .replace(
             /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,
-            ""
+            ''
         )
         .trim()
-        .slice(0, limit);
+        .slice(
+            0,
+            limit
+        );
 }
 
-/* =========================================================
-   OYUNCU LİSTESİ
-========================================================= */
+
+// ============================================================
+// GUEST SİSTEMİ
+// ============================================================
+
+/*
+ * ÖNEMLİ:
+ *
+ * Guest numarası kaydedilmez.
+ *
+ * O anda oyunda bulunan Guest'lere bakılır
+ * ve EN KÜÇÜK BOŞ NUMARA bulunur.
+ *
+ * Örnek:
+ *
+ * Guest-000
+ * Guest-001
+ * Guest-003
+ *
+ * Yeni kişi:
+ *
+ * Guest-002
+ *
+ * Eğer hiç Guest yoksa:
+ *
+ * Guest-000
+ */
+
+function nextGuestName() {
+
+    const usedNumbers =
+        new Set();
+
+
+    for (
+        const player
+        of Object.values(
+            players
+        )
+    ) {
+
+        if (
+            !player.inGame
+        ) {
+            continue;
+        }
+
+
+        if (
+            typeof player.name !==
+            'string'
+        ) {
+            continue;
+        }
+
+
+        const match =
+            player.name.match(
+                /^Guest-(\d+)$/
+            );
+
+
+        if (!match) {
+            continue;
+        }
+
+
+        const number =
+            Number(
+                match[1]
+            );
+
+
+        if (
+            Number.isInteger(
+                number
+            ) &&
+            number >= 0
+        ) {
+
+            usedNumbers.add(
+                number
+            );
+        }
+    }
+
+
+    let number = 0;
+
+
+    while (
+        usedNumbers.has(
+            number
+        )
+    ) {
+
+        number++;
+    }
+
+
+    return (
+        'Guest-' +
+        String(
+            number
+        ).padStart(
+            3,
+            '0'
+        )
+    );
+}
+
+
+// ============================================================
+// PLAYER SNAPSHOT
+// ============================================================
 
 function playerSnapshot(
     p
 ) {
-    return {
-        x: p.x,
-        y: p.y,
-        z: p.z,
 
-        yaw: p.yaw,
-        pitch: p.pitch,
+    return {
+
+        x:
+            p.x,
+
+        y:
+            p.y,
+
+        z:
+            p.z,
+
+        yaw:
+            p.yaw,
+
+        pitch:
+            p.pitch,
 
         isCrouching:
             p.isCrouching,
@@ -1057,27 +1545,38 @@ function playerSnapshot(
     };
 }
 
+
+// ============================================================
+// OYUNCULARI GÖNDER
+// ============================================================
+
 function sendPlayers() {
+
     const publicPlayers =
         Object.create(null);
+
 
     for (
         const [
             id,
             p
-        ] of Object.entries(
+        ]
+        of Object.entries(
             players
         )
     ) {
+
         publicPlayers[id] =
             playerSnapshot(
                 p
             );
     }
 
+
     broadcast({
+
         type:
-            "players",
+            'players',
 
         players:
             publicPlayers,
@@ -1087,60 +1586,29 @@ function sendPlayers() {
     });
 }
 
-/* =========================================================
-   AKTİF İSİM KONTROLÜ
-========================================================= */
 
-function findActiveName(
-    name,
-    exceptId
-) {
-    const key =
-        nameKey(name);
-
-    return Object.entries(
-        players
-    ).find(
-        ([
-            id,
-            p
-        ]) =>
-            id !==
-                exceptId &&
-            p.inGame &&
-            nameKey(
-                p.name
-            ) === key
-    );
-}
-
-/* =========================================================
-   SİSTEM MESAJI
-========================================================= */
+// ============================================================
+// SİSTEM CHAT
+// ============================================================
 
 function publicSystem(
     text
 ) {
-    const message = {
-        id:
-            "sys-" +
-            Date.now() +
-            "-" +
-            crypto
-                .randomBytes(3)
-                .toString(
-                    "hex"
-                ),
 
-        system: true,
+    const message = {
+
+        id:
+            `sys-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+
+        system:
+            true,
 
         name:
-            "Sistem",
+            'Sistem',
 
         text:
             cleanText(
-                text,
-                220
+                text
             ),
 
         time:
@@ -1148,47 +1616,57 @@ function publicSystem(
                 .toISOString()
     };
 
+
     chatHistory.push(
         message
     );
+
 
     if (
         chatHistory.length >
         CHAT_LIMIT
     ) {
+
         chatHistory =
             chatHistory.slice(
                 -CHAT_LIMIT
             );
     }
 
+
     broadcast({
+
         type:
-            "chat_message",
+            'chat_message',
 
         message
     });
 }
 
-/* =========================================================
-   CAN / AÇLIK / SUSUZLUK
-========================================================= */
+
+// ============================================================
+// NEEDS
+// ============================================================
 
 function sendNeeds(
     id
 ) {
+
     const p =
         players[id];
+
 
     if (!p) {
         return;
     }
 
+
     send(
         p.ws,
         {
+
             type:
-                "needs",
+                'needs',
 
             health:
                 p.health,
@@ -1205,19 +1683,22 @@ function sendNeeds(
     );
 }
 
-/* =========================================================
-   ÖLÜM
-========================================================= */
+
+// ============================================================
+// ÖLÜM
+// ============================================================
 
 function killPlayer(
     victimId,
     killerId,
     cause
 ) {
+
     const victim =
         players[
             victimId
         ];
+
 
     if (
         !victim ||
@@ -1226,21 +1707,27 @@ function killPlayer(
         return;
     }
 
+
     victim.health =
         0;
 
     victim.alive =
         false;
 
-    victim.lastKiller =
-        killerId || null;
+
+    const killer =
+        killerId
+            ? players[
+                killerId
+            ]
+            : null;
+
 
     const killerName =
-        killerId &&
-        players[killerId]
-            ? players[killerId]
-                  .name
+        killer
+            ? killer.name
             : null;
+
 
     const reason =
         cause ||
@@ -1250,13 +1737,16 @@ function killPlayer(
                 : `${victim.name} hayatını kaybetti.`
         );
 
+
     publicSystem(
         reason
     );
 
+
     broadcast({
+
         type:
-            "player_death",
+            'player_death',
 
         id:
             victimId,
@@ -1265,36 +1755,69 @@ function killPlayer(
             killerId || null,
 
         killerName:
-            killerName ||
-            null,
+            killerName || null,
 
         reason
     });
-
-    sendNeeds(
-        victimId
-    );
 }
 
-/* =========================================================
-   ELMA
-========================================================= */
+
+// ============================================================
+// AKTİF İSİM KONTROLÜ
+// ============================================================
+
+function findActiveName(
+    name,
+    exceptId
+) {
+
+    const key =
+        nameKey(
+            name
+        );
+
+
+    return Object.entries(
+        players
+    )
+        .find(
+            ([
+                id,
+                player
+            ]) =>
+                id !== exceptId &&
+                player.inGame &&
+                nameKey(
+                    player.name
+                ) === key
+        );
+}
+
+
+// ============================================================
+// ELMA
+// ============================================================
 
 function appleState(
     treeId,
     x,
     z
 ) {
+
     let state =
         appleTrees.get(
             treeId
         );
 
+
     const now =
         Date.now();
 
+
     if (!state) {
+
         state = {
+
             id:
                 treeId,
 
@@ -1321,11 +1844,13 @@ function appleState(
                 now
         };
 
+
         appleTrees.set(
             treeId,
             state
         );
     }
+
 
     const elapsed =
         Math.floor(
@@ -1333,54 +1858,72 @@ function appleState(
                 now -
                 state.lastGrowAt
             ) /
-                APPLE_GROW_MS
+            APPLE_GROW_MS
         );
+
 
     if (
         elapsed > 0
     ) {
+
         state.apples =
             Math.min(
                 10,
                 state.apples +
-                    elapsed
+                elapsed
             );
+
 
         state.lastGrowAt +=
             elapsed *
             APPLE_GROW_MS;
     }
 
+
     return state;
 }
 
-/* =========================================================
-   HAYVAN
-========================================================= */
+
+// ============================================================
+// HAYVAN
+// ============================================================
 
 function validAnimalId(
     id
 ) {
-    return /^forest-(wolf|deer|rabbit|boar|fox|goat)-\d{1,3}$/.test(
-        String(id || "")
-    );
+
+    return /^forest-(wolf|deer|rabbit|boar|fox|goat)-\d{1,3}$/
+        .test(
+            String(
+                id || ''
+            )
+        );
 }
+
 
 function ensureAnimal(
     id
 ) {
+
     if (
-        !validAnimalId(id)
+        !validAnimalId(
+            id
+        )
     ) {
         return null;
     }
 
+
     if (
-        !wildAnimals.has(id)
+        !wildAnimals.has(
+            id
+        )
     ) {
+
         wildAnimals.set(
             id,
             {
+
                 id,
 
                 health:
@@ -1407,56 +1950,70 @@ function ensureAnimal(
         );
     }
 
+
     return wildAnimals.get(
         id
     );
 }
 
+
 function animalLabel(
     id
 ) {
+
     const kind =
-        String(id)
-            .split("-")[1];
+        String(
+            id
+        ).split(
+            '-'
+        )[1];
 
-    return (
-        {
-            wolf:
-                "Kurt",
 
-            deer:
-                "Geyik",
+    return {
 
-            rabbit:
-                "Tavşan",
+        wolf:
+            'Kurt',
 
-            boar:
-                "Yaban domuzu",
+        deer:
+            'Geyik',
 
-            fox:
-                "Tilki",
+        rabbit:
+            'Tavşan',
 
-            goat:
-                "Keçi"
-        }[kind] ||
-        "Vahşi hayvan"
-    );
+        boar:
+            'Yaban domuzu',
+
+        fox:
+            'Tilki',
+
+        goat:
+            'Keçi'
+
+    }[kind] ||
+        'Vahşi hayvan';
 }
 
-/* =========================================================
-   WHISPER
-========================================================= */
+
+// ============================================================
+// CHAT
+// ============================================================
 
 function parseWhisper(
     text
 ) {
+
     const quoted =
         text.match(
             /^\/msg\s+(\S+)\s+"([\s\S]{1,220})"\s*$/i
         );
 
-    if (quoted) {
+
+    if (
+        quoted
+    ) {
+
         return {
+
             target:
                 cleanName(
                     quoted[1]
@@ -1469,13 +2026,19 @@ function parseWhisper(
         };
     }
 
+
     const plain =
         text.match(
             /^\/msg\s+(\S+)\s+([\s\S]{1,220})$/i
         );
 
-    if (plain) {
+
+    if (
+        plain
+    ) {
+
         return {
+
             target:
                 cleanName(
                     plain[1]
@@ -1488,29 +2051,36 @@ function parseWhisper(
         };
     }
 
+
     return null;
 }
 
-/* =========================================================
-   WEBSOCKET
-========================================================= */
+
+// ============================================================
+// WEBSOCKET
+// ============================================================
 
 wss.on(
-    "connection",
+    'connection',
     ws => {
+
         const id =
             crypto
-                .randomBytes(5)
+                .randomBytes(
+                    5
+                )
                 .toString(
-                    "hex"
+                    'hex'
                 );
 
+
         console.log(
-            "Oyuncu bağlandı:",
-            id
+            `Oyuncu bağlandı: ${id}`
         );
 
+
         players[id] = {
+
             ws,
 
             x:
@@ -1538,13 +2108,10 @@ wss.on(
                 false,
 
             name:
-                null,
-
-            accountKey:
-                null,
+                'Guest',
 
             platform:
-                "pc",
+                'pc',
 
             pingMs:
                 null,
@@ -1577,35 +2144,37 @@ wss.on(
                 0,
 
             lastStarveDamageAt:
-                0
+                0,
+
+            accountUsername:
+                null,
+
+            authToken:
+                null,
+
+            hasJoined:
+                false
         };
+
 
         send(
             ws,
             {
+
                 type:
-                    "init",
+                    'init',
 
                 id
             }
         );
 
-        send(
-            ws,
-            {
-                type:
-                    "server_version",
-
-                version:
-                    APP_VERSION
-            }
-        );
 
         send(
             ws,
             {
+
                 type:
-                    "chat_history",
+                    'chat_history',
 
                 messages:
                     chatHistory.slice(
@@ -1614,184 +2183,240 @@ wss.on(
             }
         );
 
+
         sendPlayers();
 
+
+        // ====================================================
+        // MESAJ
+        // ====================================================
+
         ws.on(
-            "message",
+            'message',
             raw => {
+
                 try {
+
                     const data =
                         JSON.parse(
                             raw.toString()
                         );
 
+
                     const p =
-                        players[id];
+                        players[
+                            id
+                        ];
+
 
                     if (
                         !p ||
                         !data ||
                         typeof data.type !==
-                            "string"
+                            'string'
                     ) {
                         return;
                     }
+
 
                     switch (
                         data.type
                     ) {
 
-                        /* =================================
-                           PROFİL
-                        ================================= */
+                        // ====================================
+                        // PROFİL
+                        // ====================================
 
-                        case "profile": {
+                        case 'profile': {
+
                             p.platform =
                                 data.platform ===
-                                "mobile"
-                                    ? "mobile"
-                                    : "pc";
+                                'mobile'
+                                    ? 'mobile'
+                                    : 'pc';
+
 
                             /*
-                             * Artık istemcinin gönderdiği
-                             * isim oyuncu adını değiştiremez.
-                             *
-                             * Hesap adı sunucudan gelir.
-                             * Misafir adı da sunucudan gelir.
+                             * İsim server tarafından belirlenir.
+                             * Client'ın gönderdiği name
+                             * kabul edilmez.
                              */
+
+                            if (
+                                p.accountUsername
+                            ) {
+
+                                const account =
+                                    accounts[
+                                        p.accountUsername
+                                    ];
+
+
+                                if (
+                                    account
+                                ) {
+
+                                    p.name =
+                                        account.username;
+                                }
+                            }
+
 
                             sendPlayers();
 
                             break;
                         }
 
-                        /* =================================
-                           OYUNA GİRİŞ
-                        ================================= */
 
-                        case "join_request": {
-                            /*
-                             * Hesap tokenı.
-                             */
+                        // ====================================
+                        // OYUNA GİR
+                        // ====================================
+
+                        case 'join_request': {
+
                             const token =
                                 String(
+                                    data.authToken ||
                                     data.token ||
-                                        ""
+                                    ''
                                 );
 
-                            const account =
-                                getAccountByToken(
+
+                            const accountUsername =
+                                getUsernameFromToken(
                                     token
                                 );
 
-                            let playerName;
 
-                            let accountKey =
-                                null;
+                            // --------------------------------
+                            // HESAPLI OYUNCU
+                            // --------------------------------
 
                             if (
-                                account
+                                accountUsername &&
+                                accounts[
+                                    accountUsername
+                                ]
                             ) {
-                                playerName =
-                                    cleanName(
-                                        account.username
+
+                                const account =
+                                    accounts[
+                                        accountUsername
+                                    ];
+
+
+                                const accountName =
+                                    account.username;
+
+
+                                const duplicate =
+                                    findActiveName(
+                                        accountName,
+                                        id
                                     );
 
-                                accountKey =
-                                    normalizeUsername(
-                                        account.username
+
+                                if (
+                                    duplicate
+                                ) {
+
+                                    send(
+                                        ws,
+                                        {
+
+                                            type:
+                                                'join_denied',
+
+                                            message:
+                                                `“${accountName}” adı şu anda oyunda kullanılıyor.`
+                                        }
                                     );
-                            } else {
+
+
+                                    break;
+                                }
+
+
+                                p.accountUsername =
+                                    accountUsername;
+
+
+                                p.authToken =
+                                    token;
+
+
+                                p.name =
+                                    accountName;
+
+                            }
+
+                            // --------------------------------
+                            // GUEST
+                            // --------------------------------
+
+                            else {
+
                                 /*
-                                 * Misafir ise yeni numara.
+                                 * YENİ GUEST SADECE GERÇEK
+                                 * JOIN'DE VERİLİR.
                                  *
-                                 * ESC ile duraklatmada
-                                 * burası tekrar çağrılmaz.
+                                 * Pause / ESC bunu çalıştırmaz.
                                  */
-                                playerName =
+
+                                p.name =
                                     nextGuestName();
+
+
+                                p.accountUsername =
+                                    null;
+
+
+                                p.authToken =
+                                    null;
                             }
 
-                            const duplicate =
-                                findActiveName(
-                                    playerName,
-                                    id
-                                );
-
-                            if (
-                                duplicate
-                            ) {
-                                send(
-                                    ws,
-                                    {
-                                        type:
-                                            "join_denied",
-
-                                        message:
-                                            `“${playerName}” adı şu anda oyunda kullanılıyor.`
-                                    }
-                                );
-
-                                break;
-                            }
-
-                            if (
-                                !p.alive &&
-                                p.inGame
-                            ) {
-                                send(
-                                    ws,
-                                    {
-                                        type:
-                                            "join_denied",
-
-                                        message:
-                                            "Ölüm ekranından yeniden doğ veya önce menüye dön."
-                                    }
-                                );
-
-                                break;
-                            }
-
-                            if (
-                                !p.alive
-                            ) {
-                                p.health =
-                                    MAX_NEED;
-
-                                p.hunger =
-                                    MAX_NEED;
-
-                                p.thirst =
-                                    MAX_NEED;
-
-                                p.alive =
-                                    true;
-                            }
-
-                            p.name =
-                                playerName;
-
-                            p.accountKey =
-                                accountKey;
 
                             p.platform =
                                 data.platform ===
-                                "mobile"
-                                    ? "mobile"
-                                    : "pc";
+                                'mobile'
+                                    ? 'mobile'
+                                    : 'pc';
+
 
                             p.inGame =
                                 true;
 
+
+                            p.hasJoined =
+                                true;
+
+
+                            p.alive =
+                                true;
+
+
+                            p.health =
+                                MAX_NEED;
+
+
+                            p.hunger =
+                                MAX_NEED;
+
+
+                            p.thirst =
+                                MAX_NEED;
+
+
                             p.lastNeedTick =
                                 Date.now();
+
 
                             send(
                                 ws,
                                 {
+
                                     type:
-                                        "join_accepted",
+                                        'join_accepted',
 
                                     id,
 
@@ -1805,60 +2430,73 @@ wss.on(
                                 }
                             );
 
-                            sendNeeds(
-                                id
-                            );
 
                             sendPlayers();
 
                             break;
                         }
 
-                        /* =================================
-                           PRESENCE
-                        ================================= */
 
-                        case "presence": {
-                            p.platform =
-                                data.platform ===
-                                "mobile"
-                                    ? "mobile"
-                                    : "pc";
+                        // ====================================
+                        // MENÜ / PRESENCE
+                        // ====================================
+
+                        case 'presence': {
 
                             /*
-                             * Burada isim değiştirmiyoruz.
+                             * active:false:
                              *
-                             * active:false
-                             * = gerçekten oyundan çıkış.
+                             * Oyuncu gerçekten menüye
+                             * dönmüş demektir.
                              *
-                             * ESC pause sırasında frontend
-                             * bunu false göndermemeli.
+                             * Sonraki girişte yeni/
+                             * boş Guest numarası bulunur.
                              */
 
                             if (
                                 data.active !==
                                 true
                             ) {
+
                                 p.inGame =
                                     false;
+
+
+                                p.hasJoined =
+                                    false;
+
+
+                                sendPlayers();
+
+                                break;
                             }
+
+
+                            /*
+                             * Pause sırasında client'ın
+                             * active:true göndermesine
+                             * gerek yok.
+                             */
 
                             sendPlayers();
 
                             break;
                         }
 
-                        /* =================================
-                           HAREKET
-                        ================================= */
 
-                        case "move": {
+                        // ====================================
+                        // HAREKET
+                        // ====================================
+
+                        case 'move': {
+
                             if (
                                 !p.inGame ||
                                 !p.alive
                             ) {
                                 break;
                             }
+
 
                             p.x =
                                 clamp(
@@ -1868,6 +2506,7 @@ wss.on(
                                     p.x
                                 );
 
+
                             p.y =
                                 clamp(
                                     data.y,
@@ -1875,6 +2514,7 @@ wss.on(
                                     100,
                                     p.y
                                 );
+
 
                             p.z =
                                 clamp(
@@ -1884,15 +2524,15 @@ wss.on(
                                     p.z
                                 );
 
+
                             p.yaw =
                                 clamp(
                                     data.yaw,
-                                    -Math.PI *
-                                        20,
-                                    Math.PI *
-                                        20,
+                                    -Math.PI * 20,
+                                    Math.PI * 20,
                                     p.yaw
                                 );
+
 
                             p.pitch =
                                 clamp(
@@ -1902,49 +2542,65 @@ wss.on(
                                     p.pitch
                                 );
 
+
                             p.isCrouching =
                                 data.isCrouching ===
                                 true;
+
 
                             p.isMoving =
                                 data.isMoving ===
                                 true;
 
+
                             p.isJumping =
                                 data.isJumping ===
                                 true;
 
+
                             if (
                                 data.pingMs !==
-                                    undefined &&
-                                Number.isFinite(
+                                undefined
+                            ) {
+
+                                const ping =
                                     Number(
                                         data.pingMs
-                                    )
-                                )
-                            ) {
-                                p.pingMs =
-                                    clamp(
-                                        data.pingMs,
-                                        0,
-                                        10000,
-                                        p.pingMs
                                     );
+
+
+                                if (
+                                    Number.isFinite(
+                                        ping
+                                    )
+                                ) {
+
+                                    p.pingMs =
+                                        clamp(
+                                            ping,
+                                            0,
+                                            10000,
+                                            p.pingMs
+                                        );
+                                }
                             }
 
                             break;
                         }
 
-                        /* =================================
-                           PING
-                        ================================= */
 
-                        case "ping": {
+                        // ====================================
+                        // PING
+                        // ====================================
+
+                        case 'ping': {
+
                             send(
                                 ws,
                                 {
+
                                     type:
-                                        "pong",
+                                        'pong',
 
                                     timestamp:
                                         Number(
@@ -1956,51 +2612,40 @@ wss.on(
                             break;
                         }
 
-                        case "ping_result": {
+
+                        case 'ping_result': {
+
+                            const ping =
+                                Number(
+                                    data.pingMs
+                                );
+
+
                             if (
                                 Number.isFinite(
-                                    Number(
-                                        data.pingMs
-                                    )
+                                    ping
                                 )
                             ) {
+
                                 p.pingMs =
                                     clamp(
-                                        data.pingMs,
+                                        ping,
                                         0,
-                                        10000
+                                        10000,
+                                        p.pingMs
                                     );
                             }
 
                             break;
                         }
 
-                        /* =================================
-                           CHAT HISTORY
-                        ================================= */
 
-                        case "chat_history": {
-                            send(
-                                ws,
-                                {
-                                    type:
-                                        "chat_history",
+                        // ====================================
+                        // CHAT
+                        // ====================================
 
-                                    messages:
-                                        chatHistory.slice(
-                                            -50
-                                        )
-                                }
-                            );
+                        case 'chat': {
 
-                            break;
-                        }
-
-                        /* =================================
-                           CHAT
-                        ================================= */
-
-                        case "chat": {
                             if (
                                 !p.inGame ||
                                 !p.alive
@@ -2008,21 +2653,25 @@ wss.on(
                                 break;
                             }
 
+
                             const now =
                                 Date.now();
 
+
                             if (
                                 now -
-                                    p.lastChatAt <
+                                p.lastChatAt <
                                 450
                             ) {
                                 break;
                             }
 
+
                             const rawText =
                                 cleanText(
                                     data.text
                                 );
+
 
                             if (
                                 !rawText
@@ -2030,27 +2679,33 @@ wss.on(
                                 break;
                             }
 
+
                             p.lastChatAt =
                                 now;
+
 
                             const whisper =
                                 parseWhisper(
                                     rawText
                                 );
 
+
                             if (
                                 /^\/msg\b/i.test(
                                     rawText
                                 )
                             ) {
+
                                 if (
                                     !whisper
                                 ) {
+
                                     send(
                                         ws,
                                         {
+
                                             type:
-                                                "chat_error",
+                                                'chat_error',
 
                                             message:
                                                 'Kullanım: /msg OyuncuAdı "mesaj"'
@@ -2060,34 +2715,42 @@ wss.on(
                                     break;
                                 }
 
+
                                 const target =
                                     Object.entries(
                                         players
-                                    ).find(
-                                        ([
-                                            targetId,
-                                            targetPlayer
-                                        ]) =>
-                                            targetId !==
+                                    )
+                                        .find(
+                                            ([
+                                                targetId,
+                                                targetPlayer
+                                            ]) =>
+                                                targetId !==
                                                 id &&
-                                            targetPlayer.inGame &&
-                                            targetPlayer.alive &&
-                                            nameKey(
-                                                targetPlayer.name
-                                            ) ===
+
+                                                targetPlayer.inGame &&
+
+                                                targetPlayer.alive &&
+
+                                                nameKey(
+                                                    targetPlayer.name
+                                                ) ===
                                                 nameKey(
                                                     whisper.target
                                                 )
-                                    );
+                                        );
+
 
                                 if (
                                     !target
                                 ) {
+
                                     send(
                                         ws,
                                         {
+
                                             type:
-                                                "chat_error",
+                                                'chat_error',
 
                                             message:
                                                 `${whisper.target} adlı oyuncu şu an oyunda değil.`
@@ -2097,85 +2760,29 @@ wss.on(
                                     break;
                                 }
 
-                                const message =
-                                    {
-                                        id:
-                                            `whisper-${now}-${id}`,
 
-                                        clientId:
-                                            cleanText(
-                                                data.clientId,
-                                                80
-                                            ),
+                                const message = {
 
-                                        private:
-                                            true,
-
-                                        fromId:
-                                            id,
-
-                                        toId:
-                                            target[0],
-
-                                        name:
-                                            p.name,
-
-                                        toName:
-                                            target[1]
-                                                .name,
-
-                                        text:
-                                            whisper.text,
-
-                                        time:
-                                            new Date(
-                                                now
-                                            ).toISOString()
-                                    };
-
-                                send(
-                                    ws,
-                                    {
-                                        type:
-                                            "chat_message",
-
-                                        message
-                                    }
-                                );
-
-                                send(
-                                    target[1]
-                                        .ws,
-                                    {
-                                        type:
-                                            "chat_message",
-
-                                        message
-                                    }
-                                );
-
-                                break;
-                            }
-
-                            const message =
-                                {
                                     id:
-                                        `${now}-${id}`,
+                                        `whisper-${now}-${id}`,
 
-                                    clientId:
-                                        cleanText(
-                                            data.clientId,
-                                            80
-                                        ),
+                                    private:
+                                        true,
+
+                                    fromId:
+                                        id,
+
+                                    toId:
+                                        target[0],
 
                                     name:
                                         p.name,
 
-                                    platform:
-                                        p.platform,
+                                    toName:
+                                        target[1].name,
 
                                     text:
-                                        rawText,
+                                        whisper.text,
 
                                     time:
                                         new Date(
@@ -2183,65 +2790,127 @@ wss.on(
                                         ).toISOString()
                                 };
 
+
+                                send(
+                                    ws,
+                                    {
+
+                                        type:
+                                            'chat_message',
+
+                                        message
+                                    }
+                                );
+
+
+                                send(
+                                    target[1].ws,
+                                    {
+
+                                        type:
+                                            'chat_message',
+
+                                        message
+                                    }
+                                );
+
+
+                                break;
+                            }
+
+
+                            const message = {
+
+                                id:
+                                    `${now}-${id}`,
+
+                                name:
+                                    p.name,
+
+                                platform:
+                                    p.platform,
+
+                                text:
+                                    rawText,
+
+                                time:
+                                    new Date(
+                                        now
+                                    ).toISOString()
+                            };
+
+
                             chatHistory.push(
                                 message
                             );
+
 
                             if (
                                 chatHistory.length >
                                 CHAT_LIMIT
                             ) {
+
                                 chatHistory =
                                     chatHistory.slice(
                                         -CHAT_LIMIT
                                     );
                             }
 
+
                             broadcast({
+
                                 type:
-                                    "chat_message",
+                                    'chat_message',
 
                                 message
                             });
 
+
                             break;
                         }
 
-                        /* =================================
-                           ELMA DURUMU
-                        ================================= */
 
-                        case "apple_state_request": {
-                            const states =
-                                {};
+                        // ====================================
+                        // ELMA DURUMU
+                        // ====================================
+
+                        case 'apple_state_request': {
+
+                            const states = {};
+
 
                             const trees =
                                 Array.isArray(
                                     data.trees
                                 )
                                     ? data.trees.slice(
-                                          0,
-                                          240
-                                      )
+                                        0,
+                                        240
+                                    )
                                     : [];
 
+
                             for (
-                                const item of
-                                    trees
+                                const item
+                                of trees
                             ) {
+
                                 const treeId =
                                     String(
                                         item.id ||
-                                            ""
+                                        ''
                                     );
 
+
                                 if (
-                                    !/^apple-[A-Za-z0-9_-]{1,40}$/.test(
-                                        treeId
-                                    )
+                                    !/^apple-[A-Za-z0-9_-]{1,40}$/
+                                        .test(
+                                            treeId
+                                        )
                                 ) {
                                     continue;
                                 }
+
 
                                 const state =
                                     appleState(
@@ -2250,30 +2919,36 @@ wss.on(
                                         item.z
                                     );
 
+
                                 states[
                                     treeId
                                 ] =
                                     state.apples;
                             }
 
+
                             send(
                                 ws,
                                 {
+
                                     type:
-                                        "apple_states",
+                                        'apple_states',
 
                                     states
                                 }
                             );
 
+
                             break;
                         }
 
-                        /* =================================
-                           ELMA TOPLA
-                        ================================= */
 
-                        case "apple_pick": {
+                        // ====================================
+                        // ELMA TOPLA
+                        // ====================================
+
+                        case 'apple_pick': {
+
                             if (
                                 !p.inGame ||
                                 !p.alive
@@ -2281,39 +2956,64 @@ wss.on(
                                 break;
                             }
 
+
                             const treeId =
                                 String(
                                     data.treeId ||
-                                        ""
+                                    ''
                                 );
+
 
                             const state =
                                 appleTrees.get(
                                     treeId
                                 );
 
-                            const distance =
-                                state
-                                    ? Math.hypot(
-                                          p.x -
-                                              state.x,
-                                          p.z -
-                                              state.z
-                                      )
-                                    : Infinity;
 
                             if (
-                                !state ||
-                                distance >
-                                    6 ||
-                                state.apples <=
-                                    0
+                                !state
                             ) {
+
                                 send(
                                     ws,
                                     {
+
                                         type:
-                                            "apple_pick_result",
+                                            'apple_pick_result',
+
+                                        ok:
+                                            false,
+
+                                        treeId
+                                    }
+                                );
+
+
+                                break;
+                            }
+
+
+                            const distance =
+                                Math.hypot(
+                                    p.x -
+                                    state.x,
+
+                                    p.z -
+                                    state.z
+                                );
+
+
+                            if (
+                                distance > 6 ||
+                                state.apples <= 0
+                            ) {
+
+                                send(
+                                    ws,
+                                    {
+
+                                        type:
+                                            'apple_pick_result',
 
                                         ok:
                                             false,
@@ -2321,25 +3021,30 @@ wss.on(
                                         treeId,
 
                                         message:
-                                            "Elma kalmadı veya ağaca yaklaşmalısın."
+                                            'Elma kalmadı veya ağaca yaklaşmalısın.'
                                     }
                                 );
+
 
                                 break;
                             }
 
+
                             state.apples--;
+
 
                             p.hunger =
                                 Math.min(
                                     MAX_NEED,
                                     p.hunger +
-                                        1.5
+                                    1.5
                                 );
 
+
                             broadcast({
+
                                 type:
-                                    "apple_update",
+                                    'apple_update',
 
                                 treeId,
 
@@ -2347,11 +3052,13 @@ wss.on(
                                     state.apples
                             });
 
+
                             send(
                                 ws,
                                 {
+
                                     type:
-                                        "apple_pick_result",
+                                        'apple_pick_result',
 
                                     ok:
                                         true,
@@ -2372,14 +3079,17 @@ wss.on(
                                 }
                             );
 
+
                             break;
                         }
 
-                        /* =================================
-                           SU İÇME
-                        ================================= */
 
-                        case "drink": {
+                        // ====================================
+                        // SU
+                        // ====================================
+
+                        case 'drink': {
+
                             if (
                                 !p.inGame ||
                                 !p.alive
@@ -2387,62 +3097,68 @@ wss.on(
                                 break;
                             }
 
+
                             const atBeachWater =
-                                p.x >=
-                                    -310 &&
-                                p.x <=
-                                    -35 &&
-                                p.z >=
-                                    -459 &&
-                                p.z <=
-                                    -444;
+                                p.x >= -310 &&
+                                p.x <= -35 &&
+                                p.z >= -459 &&
+                                p.z <= -444;
+
 
                             const atForestPond =
                                 Math.hypot(
                                     p.x -
-                                        FOREST_POND.x,
+                                    FOREST_POND.x,
+
                                     p.z -
-                                        FOREST_POND.z
+                                    FOREST_POND.z
                                 ) <=
                                 FOREST_POND.radius +
-                                    4;
+                                4;
+
 
                             if (
                                 !atBeachWater &&
                                 !atForestPond
                             ) {
+
                                 send(
                                     ws,
                                     {
+
                                         type:
-                                            "action_denied",
+                                            'action_denied',
 
                                         action:
-                                            "drink",
+                                            'drink',
 
                                         message:
-                                            "Suya biraz daha yaklaş."
+                                            'Suya biraz daha yaklaş.'
                                     }
                                 );
 
+
                                 break;
                             }
+
 
                             p.thirst =
                                 Math.min(
                                     MAX_NEED,
                                     p.thirst +
-                                        2
+                                    2
                                 );
+
 
                             send(
                                 ws,
                                 {
+
                                     type:
-                                        "action_ok",
+                                        'action_ok',
 
                                     action:
-                                        "drink",
+                                        'drink',
 
                                     health:
                                         p.health,
@@ -2455,31 +3171,46 @@ wss.on(
                                 }
                             );
 
+
                             break;
                         }
 
-                        /* =================================
-                           OYUNCUYA SALDIR
-                        ================================= */
 
-                        case "attack_player": {
+                        // ====================================
+                        // OYUNCUYA SALDIRI
+                        // ====================================
+
+                        case 'attack_player': {
+
                             if (
                                 !p.inGame ||
-                                !p.alive ||
-                                Date.now() -
-                                    p.lastAttackAt <
-                                    550
+                                !p.alive
                             ) {
                                 break;
                             }
 
+
+                            if (
+                                Date.now() -
+                                p.lastAttackAt <
+                                550
+                            ) {
+                                break;
+                            }
+
+
+                            const targetId =
+                                String(
+                                    data.targetId ||
+                                    ''
+                                );
+
+
                             const target =
                                 players[
-                                    String(
-                                        data.targetId ||
-                                            ""
-                                    )
+                                    targetId
                                 ];
+
 
                             if (
                                 !target ||
@@ -2490,57 +3221,50 @@ wss.on(
                                 break;
                             }
 
+
                             const distance =
                                 Math.hypot(
                                     p.x -
-                                        target.x,
+                                    target.x,
+
                                     p.z -
-                                        target.z
+                                    target.z
                                 );
+
 
                             if (
                                 distance >
                                 4
                             ) {
-                                send(
-                                    ws,
-                                    {
-                                        type:
-                                            "attack_result",
-
-                                        ok:
-                                            false,
-
-                                        message:
-                                            "Vurmak için yaklaş."
-                                    }
-                                );
-
                                 break;
                             }
+
 
                             p.lastAttackAt =
                                 Date.now();
 
+
                             const damage =
                                 1;
+
 
                             target.health =
                                 Math.max(
                                     0,
                                     target.health -
-                                        damage
+                                    damage
                                 );
 
+
                             broadcast({
+
                                 type:
-                                    "combat_hit",
+                                    'combat_hit',
 
                                 attackerId:
                                     id,
 
-                                targetId:
-                                    data.targetId,
+                                targetId,
 
                                 damage,
 
@@ -2551,69 +3275,74 @@ wss.on(
                                     target.name
                             });
 
+
                             sendNeeds(
-                                String(
-                                    data.targetId
-                                )
+                                targetId
                             );
+
 
                             if (
                                 target.health <=
                                 0
                             ) {
+
                                 killPlayer(
-                                    String(
-                                        data.targetId
-                                    ),
+                                    targetId,
+
                                     id,
+
                                     `${target.name}, ${p.name} tarafından öldürüldü.`
                                 );
                             }
 
-                            send(
-                                ws,
-                                {
-                                    type:
-                                        "attack_result",
-
-                                    ok:
-                                        true,
-
-                                    targetId:
-                                        data.targetId,
-
-                                    damage
-                                }
-                            );
 
                             break;
                         }
 
-                        /* =================================
-                           HAYVANA SALDIR
-                        ================================= */
 
-                        case "attack_animal": {
+                        // ====================================
+                        // HAYVANA SALDIR
+                        // ====================================
+
+                        case 'attack_animal': {
+
                             if (
                                 !p.inGame ||
-                                !p.alive ||
-                                Date.now() -
-                                    p.lastAttackAt <
-                                    550
+                                !p.alive
                             ) {
                                 break;
                             }
 
+
+                            if (
+                                Date.now() -
+                                p.lastAttackAt <
+                                550
+                            ) {
+                                break;
+                            }
+
+
                             const animalId =
                                 String(
                                     data.animalId ||
-                                        ""
+                                    ''
                                 );
+
 
                             const animal =
                                 ensureAnimal(
                                     animalId
                                 );
+
+
+                            if (
+                                !animal ||
+                                !animal.alive
+                            ) {
+                                break;
+                            }
+
 
                             const ax =
                                 clamp(
@@ -2623,6 +3352,7 @@ wss.on(
                                     p.x
                                 );
 
+
                             const az =
                                 clamp(
                                     data.z,
@@ -2631,41 +3361,50 @@ wss.on(
                                     p.z
                                 );
 
+
                             if (
-                                !animal ||
-                                !animal.alive ||
                                 Math.hypot(
                                     p.x -
-                                        ax,
+                                    ax,
+
                                     p.z -
-                                        az
+                                    az
                                 ) >
-                                    4
+                                4
                             ) {
                                 break;
                             }
 
+
                             p.lastAttackAt =
                                 Date.now();
+
 
                             animal.health =
                                 Math.max(
                                     0,
                                     animal.health -
-                                        1
+                                    1
                                 );
 
+
                             if (
-                                animal.health ===
+                                animal.health <=
                                 0
                             ) {
+
+                                animal.health =
+                                    0;
+
                                 animal.alive =
                                     false;
                             }
 
+
                             broadcast({
+
                                 type:
-                                    "animal_state",
+                                    'animal_state',
 
                                 id:
                                     animalId,
@@ -2683,61 +3422,64 @@ wss.on(
                                     animal.alive
                             });
 
-                            send(
-                                ws,
-                                {
-                                    type:
-                                        "attack_result",
-
-                                    ok:
-                                        true,
-
-                                    animalId,
-
-                                    damage:
-                                        1
-                                }
-                            );
 
                             if (
                                 !animal.alive
                             ) {
+
                                 publicSystem(
-                                    `${p.name}, ${String(
-                                        data.animalName ||
-                                            "bir vahşi hayvan"
-                                    )} adlı hayvanı yendi.`
+                                    `${p.name}, ${animalLabel(animalId)} adlı hayvanı yendi.`
                                 );
                             }
+
 
                             break;
                         }
 
-                        /* =================================
-                           HAYVAN SALDIRISI
-                        ================================= */
 
-                        case "animal_attack": {
+                        // ====================================
+                        // HAYVAN SALDIRISI
+                        // ====================================
+
+                        case 'animal_attack': {
+
                             if (
                                 !p.inGame ||
-                                !p.alive ||
-                                Date.now() -
-                                    p.lastAnimalAttackAt <
-                                    1800
+                                !p.alive
                             ) {
                                 break;
                             }
 
+
+                            if (
+                                Date.now() -
+                                p.lastAnimalAttackAt <
+                                1800
+                            ) {
+                                break;
+                            }
+
+
                             const animalId =
                                 String(
                                     data.animalId ||
-                                        ""
+                                    ''
                                 );
+
 
                             const animal =
                                 ensureAnimal(
                                     animalId
                                 );
+
+
+                            if (
+                                !animal ||
+                                !animal.alive
+                            ) {
+                                break;
+                            }
+
 
                             const ax =
                                 clamp(
@@ -2747,6 +3489,7 @@ wss.on(
                                     p.x
                                 );
 
+
                             const az =
                                 clamp(
                                     data.z,
@@ -2755,33 +3498,42 @@ wss.on(
                                     p.z
                                 );
 
+
                             if (
-                                !animal ||
-                                !animal.alive ||
                                 Math.hypot(
                                     p.x -
-                                        ax,
+                                    ax,
+
                                     p.z -
-                                        az
+                                    az
                                 ) >
-                                    3.2
+                                3.2
                             ) {
                                 break;
                             }
 
+
                             p.lastAnimalAttackAt =
                                 Date.now();
+
 
                             p.health =
                                 Math.max(
                                     0,
                                     p.health -
-                                        0.5
+                                    0.5
                                 );
 
+
+                            sendNeeds(
+                                id
+                            );
+
+
                             broadcast({
+
                                 type:
-                                    "animal_bite",
+                                    'animal_bite',
 
                                 animalId,
 
@@ -2795,29 +3547,32 @@ wss.on(
                                     p.health
                             });
 
-                            sendNeeds(
-                                id
-                            );
 
                             if (
                                 p.health <=
                                 0
                             ) {
+
                                 killPlayer(
                                     id,
+
                                     null,
+
                                     `${p.name} vahşi hayvanların saldırısında hayatını kaybetti.`
                                 );
                             }
 
+
                             break;
                         }
 
-                        /* =================================
-                           HAYVAN BESLE / SU VER
-                        ================================= */
 
-                        case "animal_care": {
+                        // ====================================
+                        // HAYVAN BAKIMI
+                        // ====================================
+
+                        case 'animal_care': {
+
                             if (
                                 !p.inGame ||
                                 !p.alive
@@ -2825,23 +3580,32 @@ wss.on(
                                 break;
                             }
 
+
                             const animal =
                                 ensureAnimal(
                                     String(
                                         data.animalId ||
-                                            ""
+                                        ''
                                     )
                                 );
 
+
                             if (
                                 !animal ||
-                                !animal.alive ||
-                                Date.now() -
-                                    animal.lastCareAt <
-                                    8000
+                                !animal.alive
                             ) {
                                 break;
                             }
+
+
+                            if (
+                                Date.now() -
+                                animal.lastCareAt <
+                                8000
+                            ) {
+                                break;
+                            }
+
 
                             const x =
                                 clamp(
@@ -2851,6 +3615,7 @@ wss.on(
                                     p.x
                                 );
 
+
                             const z =
                                 clamp(
                                     data.z,
@@ -2859,51 +3624,42 @@ wss.on(
                                     p.z
                                 );
 
+
                             if (
                                 data.action ===
-                                "eat"
+                                'eat'
                             ) {
-                                if (
-                                    Math.hypot(
-                                        x -
-                                            220,
-                                        z +
-                                            55
-                                    ) >
-                                    150
-                                ) {
-                                    break;
-                                }
 
                                 animal.hunger =
                                     Math.min(
                                         MAX_NEED,
                                         animal.hunger +
-                                            1
+                                        1
                                     );
+
                             } else if (
                                 data.action ===
-                                "drink"
+                                'drink'
                             ) {
+
                                 const atPond =
                                     Math.hypot(
                                         x -
-                                            FOREST_POND.x,
+                                        FOREST_POND.x,
+
                                         z -
-                                            FOREST_POND.z
+                                        FOREST_POND.z
                                     ) <=
                                     FOREST_POND.radius +
-                                        4;
+                                    4;
+
 
                                 const atBeach =
-                                    x >=
-                                        -310 &&
-                                    x <=
-                                        -35 &&
-                                    z >=
-                                        -459 &&
-                                    z <=
-                                        -444;
+                                    x >= -310 &&
+                                    x <= -35 &&
+                                    z >= -459 &&
+                                    z <= -444;
+
 
                                 if (
                                     !atPond &&
@@ -2912,22 +3668,28 @@ wss.on(
                                     break;
                                 }
 
+
                                 animal.thirst =
                                     Math.min(
                                         MAX_NEED,
                                         animal.thirst +
-                                            1.25
+                                        1.25
                                     );
+
                             } else {
+
                                 break;
                             }
+
 
                             animal.lastCareAt =
                                 Date.now();
 
+
                             broadcast({
+
                                 type:
-                                    "animal_state",
+                                    'animal_state',
 
                                 id:
                                     animal.id,
@@ -2948,42 +3710,50 @@ wss.on(
                                     data.action
                             });
 
+
                             break;
                         }
 
-                        /* =================================
-                           HAYVAN DURUMLARI
-                        ================================= */
 
-                        case "animal_states_request": {
-                            const states =
-                                {};
+                        // ====================================
+                        // HAYVAN DURUMLARI
+                        // ====================================
+
+                        case 'animal_states_request': {
+
+                            const states = {};
+
 
                             const ids =
                                 Array.isArray(
                                     data.ids
                                 )
                                     ? data.ids.slice(
-                                          0,
-                                          80
-                                      )
+                                        0,
+                                        80
+                                    )
                                     : [];
 
+
                             for (
-                                const animalId of
-                                    ids
+                                const animalId
+                                of ids
                             ) {
+
                                 const state =
                                     ensureAnimal(
                                         animalId
                                     );
 
+
                                 if (
                                     state
                                 ) {
+
                                     states[
                                         animalId
                                     ] = {
+
                                         health:
                                             state.health,
 
@@ -2999,24 +3769,29 @@ wss.on(
                                 }
                             }
 
+
                             send(
                                 ws,
                                 {
+
                                     type:
-                                        "animal_states",
+                                        'animal_states',
 
                                     states
                                 }
                             );
 
+
                             break;
                         }
 
-                        /* =================================
-                           RESPAWN
-                        ================================= */
 
-                        case "respawn": {
+                        // ====================================
+                        // RESPAWN
+                        // ====================================
+
+                        case 'respawn': {
+
                             if (
                                 !p.inGame ||
                                 p.alive
@@ -3024,35 +3799,45 @@ wss.on(
                                 break;
                             }
 
+
                             p.alive =
                                 true;
+
 
                             p.health =
                                 MAX_NEED;
 
+
                             p.hunger =
                                 MAX_NEED;
+
 
                             p.thirst =
                                 MAX_NEED;
 
+
                             p.x =
                                 SPAWN.x;
+
 
                             p.y =
                                 SPAWN.y;
 
+
                             p.z =
                                 SPAWN.z;
+
 
                             p.lastNeedTick =
                                 Date.now();
 
+
                             send(
                                 ws,
                                 {
+
                                     type:
-                                        "respawned",
+                                        'respawned',
 
                                     spawn:
                                         SPAWN,
@@ -3064,17 +3849,19 @@ wss.on(
                                 }
                             );
 
+
                             sendPlayers();
 
                             break;
                         }
 
+
                         default:
                             break;
                     }
-                } catch (
-                    error
-                ) {
+
+                } catch (error) {
+
                     console.warn(
                         `Geçersiz istemci mesajı (${id}):`,
                         error.message
@@ -3083,25 +3870,34 @@ wss.on(
             }
         );
 
+
+        // ====================================================
+        // BAĞLANTI KAPANDI
+        // ====================================================
+
         ws.on(
-            "close",
+            'close',
             () => {
+
                 delete players[
                     id
                 ];
 
+
                 console.log(
-                    "Oyuncu ayrıldı:",
-                    id
+                    `Oyuncu ayrıldı: ${id}`
                 );
+
 
                 sendPlayers();
             }
         );
 
+
         ws.on(
-            "error",
+            'error',
             error => {
+
                 console.warn(
                     `WebSocket hatası (${id}):`,
                     error.message
@@ -3111,23 +3907,28 @@ wss.on(
     }
 );
 
-/* =========================================================
-   AÇLIK / SUSUZLUK
-========================================================= */
+
+// ============================================================
+// OYUNCU AÇLIK / SUSUZLUK
+// ============================================================
 
 setInterval(
     () => {
+
         const now =
             Date.now();
+
 
         for (
             const [
                 id,
                 p
-            ] of Object.entries(
+            ]
+            of Object.entries(
                 players
             )
         ) {
+
             if (
                 !p.inGame ||
                 !p.alive
@@ -3135,98 +3936,112 @@ setInterval(
                 continue;
             }
 
+
             const elapsed =
                 now -
                 p.lastNeedTick;
 
+
             const steps =
                 Math.floor(
                     elapsed /
-                        30000
+                    30000
                 );
 
-            if (!steps) {
+
+            if (
+                steps <= 0
+            ) {
                 continue;
             }
+
 
             p.lastNeedTick +=
                 steps *
                 30000;
 
+
             p.hunger =
                 Math.max(
                     0,
                     p.hunger -
-                        0.25 *
-                            steps
+                    0.25 *
+                    steps
                 );
+
 
             p.thirst =
                 Math.max(
                     0,
                     p.thirst -
-                        0.5 *
-                            steps
+                    0.5 *
+                    steps
                 );
+
 
             if (
                 (
-                    p.hunger <=
-                        0 ||
-                    p.thirst <=
-                        0
+                    p.hunger <= 0 ||
+                    p.thirst <= 0
                 ) &&
                 now -
-                    (
-                        p.lastStarveDamageAt ||
-                        0
-                    ) >=
-                    30000
+                (
+                    p.lastStarveDamageAt ||
+                    0
+                ) >=
+                30000
             ) {
+
                 p.health =
                     Math.max(
                         0,
                         p.health -
-                            0.5
+                        0.5
                     );
+
 
                 p.lastStarveDamageAt =
                     now;
+
 
                 if (
                     p.health <=
                     0
                 ) {
-                    const cause =
-                        p.thirst <=
-                        0
-                            ? "susuzluktan"
-                            : "açlıktan";
 
                     killPlayer(
                         id,
+
                         null,
-                        `${p.name} ${cause} hayatını kaybetti.`
+
+                        p.thirst <= 0
+                            ? `${p.name} susuzluktan hayatını kaybetti.`
+                            : `${p.name} açlıktan hayatını kaybetti.`
                     );
                 }
             }
+
 
             sendNeeds(
                 id
             );
         }
+
     },
     1000
 );
 
-/* =========================================================
-   HAYVAN İHTİYAÇLARI
-========================================================= */
+
+// ============================================================
+// HAYVAN İHTİYAÇLARI
+// ============================================================
 
 setInterval(
     () => {
+
         const now =
             Date.now();
+
 
         const hasPlayers =
             Object.values(
@@ -3237,19 +4052,23 @@ setInterval(
                     p.alive
             );
 
+
         for (
-            const animal of
-                wildAnimals.values()
+            const animal
+            of wildAnimals.values()
         ) {
+
             if (
                 !hasPlayers ||
                 !animal.alive
             ) {
+
                 animal.lastNeedTick =
                     now;
 
                 continue;
             }
+
 
             const steps =
                 Math.floor(
@@ -3257,77 +4076,88 @@ setInterval(
                         now -
                         animal.lastNeedTick
                     ) /
-                        30000
+                    30000
                 );
 
-            if (!steps) {
+
+            if (
+                steps <= 0
+            ) {
                 continue;
             }
+
 
             animal.lastNeedTick +=
                 steps *
                 30000;
 
+
             animal.hunger =
                 Math.max(
                     0,
                     animal.hunger -
-                        0.25 *
-                            steps
+                    0.25 *
+                    steps
                 );
+
 
             animal.thirst =
                 Math.max(
                     0,
                     animal.thirst -
-                        0.5 *
-                            steps
+                    0.5 *
+                    steps
                 );
+
 
             if (
                 (
                     animal.hunger <=
-                        0 ||
+                    0 ||
                     animal.thirst <=
-                        0
+                    0
                 ) &&
                 now -
-                    animal.lastStarveDamageAt >=
-                    30000
+                animal.lastStarveDamageAt >=
+                30000
             ) {
+
                 animal.health =
                     Math.max(
                         0,
                         animal.health -
-                            0.5
+                        0.5
                     );
+
 
                 animal.lastStarveDamageAt =
                     now;
+
 
                 if (
                     animal.health <=
                     0
                 ) {
+
                     animal.alive =
                         false;
 
+
                     publicSystem(
-                        `${animalLabel(
-                            animal.id
-                        )} vahşi hayvanı ${
-                            animal.thirst <=
-                            0
-                                ? "susuzluktan"
-                                : "açlıktan"
+                        `${animalLabel(animal.id)} vahşi hayvanı ${
+                            animal.thirst <= 0
+                                ? 'susuzluktan'
+                                : 'açlıktan'
                         } öldü.`
                     );
                 }
             }
 
+
             broadcast({
+
                 type:
-                    "animal_state",
+                    'animal_state',
 
                 id:
                     animal.id,
@@ -3345,22 +4175,27 @@ setInterval(
                     animal.alive
             });
         }
+
     },
     1000
 );
 
-/* =========================================================
-   ELMA BÜYÜMESİ
-========================================================= */
+
+// ============================================================
+// ELMA BÜYÜMESİ
+// ============================================================
 
 setInterval(
     () => {
+
         for (
-            const state of
-                appleTrees.values()
+            const state
+            of appleTrees.values()
         ) {
+
             const before =
                 state.apples;
+
 
             appleState(
                 state.id,
@@ -3368,13 +4203,16 @@ setInterval(
                 state.z
             );
 
+
             if (
                 state.apples !==
                 before
             ) {
+
                 broadcast({
+
                     type:
-                        "apple_update",
+                        'apple_update',
 
                     treeId:
                         state.id,
@@ -3384,76 +4222,112 @@ setInterval(
                 });
             }
         }
+
     },
     10000
 );
 
-/* =========================================================
-   OYUNCU LİSTESİ
-========================================================= */
+
+// ============================================================
+// OYUNCU LİSTESİ
+// ============================================================
 
 setInterval(
     sendPlayers,
     100
 );
 
-/* =========================================================
-   CHAT TEMİZLEME
-========================================================= */
+
+// ============================================================
+// CHAT TEMİZLEME
+// ============================================================
 
 setInterval(
     () => {
+
         chatHistory =
             [];
 
+
         broadcast({
+
             type:
-                "chat_reset",
+                'chat_reset',
 
             time:
                 new Date()
                     .toISOString()
         });
+
     },
     CHAT_RESET_MS
 );
 
-/* =========================================================
-   SUNUCUYU BAŞLAT
-========================================================= */
+
+// ============================================================
+// SERVER SAĞLIK
+// ============================================================
+
+app.get(
+    '/health',
+    (_req, res) => {
+
+        res.json({
+
+            ok:
+                true,
+
+            players:
+                activePlayerCount(),
+
+            accounts:
+                Object.keys(
+                    accounts
+                ).length
+        });
+    }
+);
+
+
+// ============================================================
+// SERVER BAŞLAT
+// ============================================================
 
 const PORT =
     process.env.PORT ||
     3000;
 
+
 server.listen(
     PORT,
     () => {
-        console.log("");
+
         console.log(
-            "========================================"
+            '======================================'
         );
+
+
         console.log(
-            "          ESEK GAMES SERVER"
+            `EsekGame server ${PORT} portunda çalışıyor.`
         );
+
+
         console.log(
-            "========================================"
+            `Kayıtlı hesap: ${
+                Object.keys(
+                    accounts
+                ).length
+            }`
         );
+
+
         console.log(
-            "Port:",
-            PORT
+            'Guest sistemi: boş olan en küçük numara kullanılıyor.'
         );
+
+
         console.log(
-            "Adres: http://localhost:" +
-                PORT
+            '======================================'
         );
-        console.log(
-            "Sürüm:",
-            APP_VERSION
-        );
-        console.log(
-            "========================================"
-        );
-        console.log("");
     }
 );
