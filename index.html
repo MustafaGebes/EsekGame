@@ -19,9 +19,13 @@
         body {
             margin: 0;
             min-height: 100vh;
-            font-family: Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
+
             background:
-                radial-gradient(circle at top, #253a45 0%, #111820 45%, #080b0f 100%);
+                radial-gradient(circle at 20% 10%, rgba(255, 212, 59, 0.12), transparent 30%),
+                radial-gradient(circle at 80% 30%, rgba(70, 180, 255, 0.10), transparent 30%),
+                linear-gradient(135deg, #080b10, #111a21 50%, #080b10);
+
             color: white;
         }
 
@@ -38,31 +42,44 @@
 
             padding: 16px 35px;
 
-            background: rgba(8, 12, 17, 0.92);
-            border-bottom: 1px solid rgba(255,255,255,0.12);
-            backdrop-filter: blur(12px);
+            background: rgba(8, 12, 17, 0.88);
+            border-bottom: 1px solid rgba(255,255,255,0.10);
+
+            backdrop-filter: blur(14px);
         }
 
         .logo {
-            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+
+            font-size: 27px;
             font-weight: 900;
-            letter-spacing: 1px;
             color: #ffd43b;
+        }
+
+        .logo-icon {
+            font-size: 29px;
         }
 
         nav {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
 
         nav button {
             border: none;
             background: transparent;
-            color: #ddd;
+
+            color: #bfc6cc;
+
             padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 15px;
+            border-radius: 9px;
+
+            font-size: 14px;
             cursor: pointer;
+
+            transition: 0.2s;
         }
 
         nav button:hover {
@@ -76,46 +93,127 @@
         /* ===== HERO BAŞLANGIÇ ===== */
 
         .hero {
-            max-width: 1200px;
+            position: relative;
+
+            max-width: 1100px;
             margin: auto;
-            padding: 80px 25px 55px;
+
+            padding: 95px 25px 75px;
+
             text-align: center;
         }
 
+        .hero::before {
+            content: "";
+
+            position: absolute;
+
+            width: 220px;
+            height: 220px;
+
+            left: 50%;
+            top: 50%;
+
+            transform: translate(-50%, -50%);
+
+            background: rgba(255, 212, 59, 0.08);
+
+            filter: blur(70px);
+
+            border-radius: 50%;
+
+            pointer-events: none;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-icon {
+            font-size: 72px;
+
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
         .hero h1 {
-            margin: 0;
-            font-size: clamp(48px, 8vw, 86px);
+            margin: 10px 0 0;
+
+            font-size: clamp(48px, 9vw, 85px);
+
             font-weight: 900;
-            color: #ffd43b;
-            text-shadow: 0 5px 25px rgba(0,0,0,0.6);
+
+            letter-spacing: -3px;
+
+            background: linear-gradient(
+                90deg,
+                #ffd43b,
+                #fff1a3,
+                #ffd43b
+            );
+
+            background-size: 200% auto;
+
+            -webkit-background-clip: text;
+            background-clip: text;
+
+            color: transparent;
+
+            animation: shine 4s linear infinite;
+        }
+
+        @keyframes shine {
+            to {
+                background-position: 200% center;
+            }
         }
 
         .hero p {
             max-width: 650px;
-            margin: 18px auto 30px;
-            color: #bfc8d0;
-            font-size: 18px;
-            line-height: 1.6;
+
+            margin: 20px auto 30px;
+
+            color: #aeb8c1;
+
+            font-size: 17px;
+
+            line-height: 1.7;
         }
 
         .hero-button {
             display: inline-block;
+
             padding: 14px 28px;
+
             border-radius: 10px;
 
             background: #ffd43b;
             color: #171717;
 
-            font-size: 17px;
             font-weight: 800;
+
             text-decoration: none;
+
+            box-shadow: 0 8px 30px rgba(255,212,59,0.15);
 
             transition: 0.2s;
         }
 
         .hero-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255,212,59,0.25);
+            transform: translateY(-3px);
+
+            box-shadow:
+                0 12px 35px rgba(255,212,59,0.25);
         }
 
         /* ===== HERO BİTİŞ ===== */
@@ -124,9 +222,11 @@
         /* ===== OYUNLAR BAŞLANGIÇ ===== */
 
         .games-section {
-            max-width: 1200px;
+            max-width: 1100px;
+
             margin: auto;
-            padding: 30px 25px 80px;
+
+            padding: 20px 25px 90px;
         }
 
         .section-title {
@@ -135,85 +235,113 @@
 
         .section-title h2 {
             margin: 0;
+
             font-size: 32px;
         }
 
         .section-title p {
             margin-top: 8px;
-            color: #929ca5;
+
+            color: #7f8a94;
         }
 
         .games-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+
+            grid-template-columns:
+                repeat(auto-fit, minmax(270px, 1fr));
+
             gap: 22px;
         }
 
         .game-card {
             overflow: hidden;
 
-            background: rgba(20, 27, 34, 0.94);
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(30,40,48,0.95),
+                    rgba(15,21,27,0.95)
+                );
 
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.09);
 
-            box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+            border-radius: 16px;
+
+            box-shadow:
+                0 12px 35px rgba(0,0,0,0.35);
 
             transition:
-                transform 0.2s,
-                border-color 0.2s,
-                box-shadow 0.2s;
+                transform 0.25s,
+                border-color 0.25s,
+                box-shadow 0.25s;
         }
 
         .game-card:hover {
-            transform: translateY(-6px);
-            border-color: rgba(255,212,59,0.45);
-            box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+            transform: translateY(-7px);
+
+            border-color:
+                rgba(255,212,59,0.45);
+
+            box-shadow:
+                0 20px 45px rgba(0,0,0,0.5);
         }
 
         .game-image {
-            height: 170px;
+            height: 190px;
 
             display: flex;
+
             align-items: center;
             justify-content: center;
 
+            font-size: 80px;
+
             background:
+                radial-gradient(
+                    circle at center,
+                    rgba(255,212,59,0.15),
+                    transparent 65%
+                ),
                 linear-gradient(
                     135deg,
-                    #314c3b,
-                    #17221d
+                    #263e31,
+                    #111b18
                 );
-
-            font-size: 65px;
         }
 
         .game-content {
-            padding: 20px;
+            padding: 21px;
         }
 
         .game-content h3 {
-            margin: 0 0 8px;
+            margin: 0 0 9px;
+
             font-size: 22px;
         }
 
         .game-content p {
             min-height: 45px;
+
             margin: 0 0 18px;
 
-            color: #9da7b0;
+            color: #929da6;
+
             font-size: 14px;
-            line-height: 1.5;
+
+            line-height: 1.55;
         }
 
         .play-button {
             display: block;
 
             width: 100%;
+
             padding: 12px;
 
             border: none;
-            border-radius: 8px;
+
+            border-radius: 9px;
 
             background: #3bb273;
             color: white;
@@ -222,46 +350,74 @@
             font-weight: 800;
 
             text-align: center;
+
             text-decoration: none;
 
             cursor: pointer;
+
+            transition: 0.2s;
         }
 
         .play-button:hover {
-            background: #48c486;
+            background: #49c784;
+
+            transform: translateY(-1px);
+        }
+
+        /* ===== ESEK SIMULATOR BİTİŞ ===== */
+
+
+        /* ===== YAKINDA BAŞLANGIÇ ===== */
+
+        .coming-soon {
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(24,31,38,0.9),
+                    rgba(12,16,21,0.9)
+                );
         }
 
         .coming-soon .game-image {
             background:
-                linear-gradient(
-                    135deg,
-                    #252b31,
-                    #15191d
-                );
+                radial-gradient(
+                    circle,
+                    rgba(120,140,160,0.08),
+                    transparent 65%
+                ),
+                #151b21;
+
+            color: #7d8790;
+
+            font-size: 50px;
         }
 
         .coming-soon .play-button {
-            background: #343b43;
-            color: #9099a2;
+            background: #293139;
+
+            color: #89939c;
+
             cursor: default;
         }
 
-        /* ===== OYUNLAR BİTİŞ ===== */
+        /* ===== YAKINDA BİTİŞ ===== */
 
 
         /* ===== FOOTER BAŞLANGIÇ ===== */
 
         footer {
-            padding: 30px 20px;
+            padding: 32px 20px;
 
-            border-top: 1px solid rgba(255,255,255,0.08);
+            border-top:
+                1px solid rgba(255,255,255,0.07);
 
-            background: rgba(5,8,11,0.7);
+            background: rgba(4,7,10,0.75);
 
             text-align: center;
 
-            color: #707a83;
-            font-size: 14px;
+            color: #69737c;
+
+            font-size: 13px;
         }
 
         footer strong {
@@ -283,13 +439,20 @@
                 font-size: 22px;
             }
 
+            .logo-icon {
+                font-size: 23px;
+            }
+
             nav button {
                 padding: 8px;
-                font-size: 13px;
             }
 
             .hero {
-                padding-top: 60px;
+                padding-top: 65px;
+            }
+
+            .hero-icon {
+                font-size: 58px;
             }
 
             .hero p {
@@ -302,7 +465,7 @@
             }
 
             .game-image {
-                height: 150px;
+                height: 160px;
             }
         }
 
@@ -312,15 +475,18 @@
 
 <body>
 
+
     <!-- ===== HEADER BAŞLANGIÇ ===== -->
 
     <header>
 
         <div class="logo">
+            <span class="logo-icon">🫏</span>
             EsekGames
         </div>
 
         <nav>
+
             <button onclick="goToGames()">
                 Oyunlar
             </button>
@@ -328,6 +494,7 @@
             <button onclick="goToAbout()">
                 Hakkında
             </button>
+
         </nav>
 
     </header>
@@ -339,16 +506,29 @@
 
     <section class="hero">
 
-        <h1>EsekGames</h1>
+        <div class="hero-content">
 
-        <p>
-            Kendi yaptığım oyunları tek bir yerde
-            keşfet, seç ve doğrudan tarayıcıdan oyna.
-        </p>
+            <div class="hero-icon">
+                🫏
+            </div>
 
-        <a href="#games" class="hero-button">
-            Oyunlara Bak
-        </a>
+            <h1>
+                EsekGames
+            </h1>
+
+            <p>
+                Kendi yaptığım oyunları burada bulabilir,
+                seçebilir ve direkt tarayıcıdan oynayabilirsin.
+            </p>
+
+            <a
+                href="#games"
+                class="hero-button"
+            >
+                Oyunları Keşfet
+            </a>
+
+        </div>
 
     </section>
 
@@ -357,14 +537,21 @@
 
     <!-- ===== OYUNLAR BAŞLANGIÇ ===== -->
 
-    <section class="games-section" id="games">
+    <section
+        class="games-section"
+        id="games"
+    >
 
         <div class="section-title">
-            <h2>Oyunlar</h2>
+
+            <h2>
+                Oyunlar
+            </h2>
 
             <p>
-                EsekGames üzerinde bulunan oyunlar
+                EsekGames'teki oyunlar
             </p>
+
         </div>
 
 
@@ -381,11 +568,13 @@
 
                 <div class="game-content">
 
-                    <h3>Esek Simulator</h3>
+                    <h3>
+                        Esek Simulator
+                    </h3>
 
                     <p>
-                        Açık dünyada eşek olarak keşfet,
-                        dolaş ve çevreyi keşfet.
+                        Açık dünyada bir eşek olarak
+                        dolaş, keşfet ve eğlen.
                     </p>
 
                     <a
@@ -402,7 +591,7 @@
             <!-- ===== ESEK SIMULATOR BİTİŞ ===== -->
 
 
-            <!-- ===== YENİ OYUN BAŞLANGIÇ ===== -->
+            <!-- ===== YAKINDA BAŞLANGIÇ ===== -->
 
             <div class="game-card coming-soon">
 
@@ -412,55 +601,27 @@
 
                 <div class="game-content">
 
-                    <h3>Yeni Oyun</h3>
+                    <h3>
+                        Yakında Gelecek...
+                    </h3>
 
                     <p>
-                        Yeni bir oyun üzerinde çalışılıyor.
+                        Yeni bir oyun hazırlanıyor.
+                        Burada yerini alacak.
                     </p>
 
                     <button
                         class="play-button"
                         disabled
                     >
-                        YAKINDA
+                        Yakında Gelecek...
                     </button>
 
                 </div>
 
             </div>
 
-            <!-- ===== YENİ OYUN BİTİŞ ===== -->
-
-
-            <!-- ===== YENİ OYUN 2 BAŞLANGIÇ ===== -->
-
-            <div class="game-card coming-soon">
-
-                <div class="game-image">
-                    🕹️
-                </div>
-
-                <div class="game-content">
-
-                    <h3>Yeni Oyun</h3>
-
-                    <p>
-                        Buraya yaptığın başka bir oyunu
-                        daha ekleyebilirsin.
-                    </p>
-
-                    <button
-                        class="play-button"
-                        disabled
-                    >
-                        YAKINDA
-                    </button>
-
-                </div>
-
-            </div>
-
-            <!-- ===== YENİ OYUN 2 BİTİŞ ===== -->
+            <!-- ===== YAKINDA BİTİŞ ===== -->
 
 
         </div>
@@ -474,7 +635,9 @@
 
     <footer id="about">
 
-        <strong>EsekGames</strong>
+        <strong>
+            EsekGames
+        </strong>
 
         <br><br>
 
