@@ -4960,19 +4960,237 @@ function stepCar(c,dt){
    - Tutulan eşya eşeğin sağ tarafında görünür
    ========================================================= */
 
-const menu=document.getElementById('menu');
-const pauseButtons=document.getElementById('pauseButtons');
-const resumeBtn=document.getElementById('resumeBtn');
-const settingsBtn=document.getElementById('pauseSettingsBtn');
-const gameMenuBtn=document.getElementById('returnGameMenuBtn');
-const exitBtn=document.getElementById('returnMenuBtn');
-const settingsPanel=document.getElementById('settingsPanel');
-const closeSettings=document.getElementById('closeSettings');
-const mobPauseBtn=document.getElementById('mobPauseBtn');
-const prompt=document.getElementById('interactPrompt');
+const menuEl        = document.getElementById('menu');
+const pauseButtons  = document.getElementById('pauseButtons');
+const resumeBtn     = document.getElementById('resumeBtn');
+const settingsBtn   = document.getElementById('pauseSettingsBtn');
+const gameMenuBtn   = document.getElementById('returnGameMenuBtn');
+const exitBtn       = document.getElementById('returnMenuBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const closeSettings = document.getElementById('closeSettings');
+const mainButtons   = document.getElementById('mainButtons');
+const nameCard      = document.getElementById('nameCard');
 
-let pauseOpen=false;
-let pauseWasInGame=false;
+let pauseOpen = false;
+
+// Sol üst menü butonu: yalnızca gerçek oyun sırasında görünür.
+const topMenuBtn = document.createElement('button');
+topMenuBtn.id = 'topMenuBtn';
+topMenuBtn.type = 'button';
+topMenuBtn.title = 'Menü';
+topMenuBtn.textContent = '☰';
+Object.assign(topMenuBtn.style, {
+    position: 'fixed',
+    top: '16px',
+    left: '16px',
+    zIndex: '99999',
+    width: '48px',
+    height: '48px',
+    border: '2px solid #fff',
+    borderRadius: '10px',
+    background: 'rgba(0,0,0,0.75)',
+    color: '#fff',
+    fontSize: '22px',
+    fontWeight: '900',
+    cursor: 'pointer',
+    display: 'none',
+    pointerEvents: 'auto',
+    touchAction: 'manipulation'
+});
+document.body.appendChild(topMenuBtn);
+
+function updateTopButton(){
+    const inGame = (typeof gameStarted !== 'undefined' && gameStarted) &&
+                   !(typeof playerIsDead !== 'undefined' && playerIsDead);
+    topMenuBtn.style.display = (inGame && !pauseOpen) ? 'block' : 'none';
+}
+
+function openPause(){
+    if (pauseOpen) return;
+    pauseOpen = true;
+
+    const inGame = (typeof gameStarted !== 'undefined' && gameStarted) &&
+                   !(typeof playerIsDead !== 'undefined' && playerIsDead);
+
+    menuEl.classList.add('pause-mode');
+    menuEl.classList.toggle('pre-game-pause', !inGame);
+    menuEl.style.display = 'flex';
+    if (nameCard) nameCard.style.display = 'none';
+    if (mainButtons) mainButtons.style.display = 'none';
+    if (pauseButtons) pauseButtons.style.display = 'flex';
+
+    if (inGame) {
+        // Oyun içi: Devam Et + Ayarlar + Menüye Dön
+        if (resumeBtn) resumeBtn.style.display = 'block';
+        if (settingsBtn) settingsBtn.style.display = 'block';
+        if (gameMenuBtn) gameMenuBtn.style.display = 'block';
+        if (exitBtn) exitBtn.style.display = 'none';
+
+        window.__pausePrevGameStarted = true;
+        if (typeof gameStarted !== 'undefined') gameStarted = false;
+        if (typeof releaseFirstPersonPointerLock === 'function') releaseFirstPersonPointerLock();
+
+        const hide = ['hud','info','mobileControls','crosshair','survivalHud','chatPanel','chatReopenBtn','onlineBadge','interactPrompt'];
+        hide.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+        if (typeof playerDonkey !== 'undefined' && playerDonkey) playerDonkey.visible = false;
+    } else {
+        // Menü/pre-game: yalnızca Devam Et + Oyundan Çık
+        if (resumeBtn) resumeBtn.style.display = 'block';
+        if (settingsBtn) settingsBtn.style.display = 'none';
+        if (gameMenuBtn) gameMenuBtn.style.display = 'none';
+        if (exitBtn) {
+            exitBtn.style.display = 'block';
+            exitBtn.textContent = 'OYUNDAN ÇIK';
+        }
+        window.__pausePrevGameStarted = false;
+    }
+
+    if (settingsPanel) settingsPanel.style.zIndex = '20000';
+    updateTopButton();
+}
+
+function closePause(){
+    if (!pauseOpen) return;
+    const wasGame = !!window.__pausePrevGameStarted;
+    pauseOpen = false;
+    window.__pausePrevGameStarted = false;
+
+    menuEl.classList.remove('pause-mode', 'pre-game-pause');
+    menuEl.style.display = 'none';
+    if (pauseButtons) pauseButtons.style.display = 'none';
+
+    if (wasGame) {
+        if (typeof gameStarted !== 'undefined') gameStarted = true;
+        if (typeof playerIsDead !== 'undefined') playerIsDead = false;
+        if (typeof deathScreenShowing !== 'undefined') deathScreenShowing = false;
+
+        const hud = document.getElementById('hud');
+        if (hud) hud.style.display = 'block';
+        const info = document.getElementById('info');
+        if (info) info.style.display = (typeof controlMode !== 'undefined' && controlMode === 'pc') ? 'block' : 'none';
+        const mob = document.getElementById('mobileControls');
+        if (mob) mob.style.display = (typeof controlMode !== 'undefined' && controlMode === 'mobile') ? 'block' : 'none';
+        const cross = document.getElementById('crosshair');
+        if (cross) cross.style.display = (typeof cameraMode !== 'undefined' && cameraMode === 'first') ? 'block' : 'none';
+        if (typeof playerDonkey !== 'undefined' && playerDonkey) {
+            playerDonkey.visible = (typeof cameraMode === 'undefined' || cameraMode !== 'first');
+        }
+        if (typeof setGameUiVisible === 'function') setGameUiVisible(true);
+        if (typeof setChatVisible === 'function' && typeof chatIsManuallyHidden === 'boolean') {
+            setChatVisible(!chatIsManuallyHidden);
+        }
+        if (typeof cameraMode !== 'undefined' && cameraMode === 'first' &&
+            typeof controlMode !== 'undefined' && controlMode === 'pc' &&
+            typeof requestFirstPersonPointerLock === 'function') {
+            requestFirstPersonPointerLock();
+        }
+    } else {
+        if (typeof openMainMenu === 'function') openMainMenu();
+        else {
+            menuEl.style.display = 'flex';
+            if (nameCard) nameCard.style.display = 'block';
+            if (mainButtons) mainButtons.style.display = 'block';
+        }
+    }
+
+    updateTopButton();
+}
+
+function backToGameMenu(){
+    pauseOpen = false;
+    window.__pausePrevGameStarted = false;
+    menuEl.classList.remove('pause-mode', 'pre-game-pause');
+    if (pauseButtons) pauseButtons.style.display = 'none';
+    if (typeof gameStarted !== 'undefined') gameStarted = false;
+    if (typeof releaseFirstPersonPointerLock === 'function') releaseFirstPersonPointerLock();
+    if (typeof sendPresence === 'function') { try { sendPresence(false); } catch(e) {} }
+    if (settingsPanel) settingsPanel.style.display = 'none';
+    if (typeof openMainMenu === 'function') openMainMenu();
+    else {
+        menuEl.style.display = 'flex';
+        if (nameCard) nameCard.style.display = 'block';
+        if (mainButtons) mainButtons.style.display = 'block';
+    }
+    const hide = ['hud','info','mobileControls','crosshair','survivalHud','chatPanel','chatReopenBtn','onlineBadge','interactPrompt'];
+    hide.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    updateTopButton();
+}
+
+function exitToSite(){
+    pauseOpen = false;
+    window.__pausePrevGameStarted = false;
+    if (typeof gameStarted !== 'undefined') gameStarted = false;
+    if (typeof sendPresence === 'function') { try { sendPresence(false); } catch(e) {} }
+    try {
+        if (typeof ws !== 'undefined' && ws && ws.readyState === WebSocket.OPEN) ws.close();
+    } catch(e) {}
+    window.location.assign('/');
+}
+
+if (topMenuBtn) topMenuBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    openPause();
+}, true);
+
+if (resumeBtn) resumeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    closePause();
+}, true);
+if (settingsBtn) settingsBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (settingsPanel) {
+        settingsPanel.style.display = 'block';
+        settingsPanel.style.zIndex = '20000';
+    }
+}, true);
+if (closeSettings) closeSettings.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (settingsPanel) settingsPanel.style.display = 'none';
+}, true);
+if (gameMenuBtn) gameMenuBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    backToGameMenu();
+}, true);
+if (exitBtn) exitBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    exitToSite();
+}, true);
+
+// ESC: bu dosyada pause için tek otorite.
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (e.target && e.target.closest && e.target.closest('input,textarea,[contenteditable="true"]')) return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    if (settingsPanel && settingsPanel.style.display === 'block') {
+        settingsPanel.style.display = 'none';
+        return;
+    }
+
+    if (pauseOpen) {
+        // İkinci ESC: sadece pause kapanır, ana menüye dönülmez, yeniden join yapılmaz.
+        closePause();
+        return;
+    }
+
+    openPause();
+}, true);
+
+setInterval(updateTopButton, 400);
+updateTopButton();
+
+// Eski kodlarla uyumluluk.
+window.openPause = openPause;
+window.closePauseResume = closePause;
+
 let heldItem=null;
 let nearbyPickup=null;
 const worldItems=[];
@@ -4981,111 +5199,6 @@ const campfires=[];
 const ITEM_PICKUP_RANGE=3.4;
 const DROP_KEY='g';
 const CARROT_RESPAWN_MS=5*60*1000;
-
-function hideGameUI(){
-  for(const id of ['onlineBadge','chatPanel','chatReopenBtn','info','mobileControls','hud','crosshair','interactPrompt']){
-    const el=document.getElementById(id); if(el) el.style.display='none';
-  }
-  if(typeof mobOpenBtn!=='undefined'&&mobOpenBtn) mobOpenBtn.style.display='none';
-  if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
-  if(typeof playerDonkey!=='undefined'&&playerDonkey) playerDonkey.visible=false;
-}
-function showGameUI(){
-  if(typeof setGameUiVisible==='function') setGameUiVisible(true);
-  else {
-    const ids=['onlineBadge','hud']; for(const id of ids){const el=document.getElementById(id);if(el)el.style.display='block';}
-  }
-  const info=document.getElementById('info'); if(info) info.style.display=typeof controlMode!=='undefined'&&controlMode==='pc'?'block':'none';
-  const mob=document.getElementById('mobileControls'); if(mob) mob.style.display=typeof controlMode!=='undefined'&&controlMode==='mobile'?'block':'none';
-  const cross=document.getElementById('crosshair'); if(cross) cross.style.display=typeof cameraMode!=='undefined'&&cameraMode==='first'?'block':'none';
-  if(typeof setChatVisible==='function') setChatVisible(typeof chatIsManuallyHidden==='boolean'?!chatIsManuallyHidden:true);
-  if(typeof playerDonkey!=='undefined'&&playerDonkey) playerDonkey.visible=typeof cameraMode==='undefined'||cameraMode!=='first';
-}
-function openPause(preGame){
-  pauseOpen=true; pauseWasInGame=!preGame;
-  menu.classList.add('pause-mode');
-  menu.classList.toggle('pre-game-pause',!!preGame);
-  menu.style.display='flex';
-  const nameCard=document.getElementById('nameCard'), mainButtons=document.getElementById('mainButtons');
-  if(nameCard) nameCard.style.display='none';
-  if(mainButtons) mainButtons.style.display='none';
-  if(pauseButtons) pauseButtons.style.display='flex';
-  if(settingsBtn) settingsBtn.style.display=preGame?'none':'block';
-  if(gameMenuBtn) gameMenuBtn.style.display=preGame?'none':'block';
-  if(exitBtn){
-    exitBtn.style.display='block';
-    exitBtn.textContent=preGame?'OYUNDAN ÇIK':'OYUNDAN ÇIK';
-  }
-  // Ayarlar paneli pause'ın üstünde açılacak.
-  if(settingsPanel) settingsPanel.style.zIndex='20000';
-  if(!preGame) hideGameUI();
-}
-function closePauseResume(){
-  const pre=!pauseWasInGame;
-  pauseOpen=false;
-  pauseWasInGame=false;
-  menu.classList.remove('pause-mode','pre-game-pause');
-  if(pre){
-    if(typeof openMainMenu==='function') openMainMenu();
-    else menu.style.display='flex';
-    return;
-  }
-  menu.style.display='none';
-  if(typeof gameStarted!=='undefined') gameStarted=true;
-  if(typeof playerIsDead!=='undefined') playerIsDead=false;
-  if(typeof deathScreenShowing!=='undefined') deathScreenShowing=false;
-  showGameUI();
-  if(typeof cameraMode!=='undefined'&&cameraMode==='first'&&typeof controlMode!=='undefined'&&controlMode==='pc'&&typeof requestFirstPersonPointerLock==='function') requestFirstPersonPointerLock();
-}
-function exitToSite(){
-  pauseOpen=false; pauseWasInGame=false;
-  if(typeof gameStarted!=='undefined') gameStarted=false;
-  try{if(typeof sendPresence==='function')sendPresence(false);}catch(_){ }
-  try{if(typeof ws!=='undefined'&&ws&&ws.readyState===WebSocket.OPEN)ws.close();}catch(_){ }
-  window.location.assign('/');
-}
-function returnToGameMenu(){
-  pauseOpen=false; pauseWasInGame=false;
-  if(typeof gameStarted!=='undefined')gameStarted=false;
-  if(typeof releaseFirstPersonPointerLock==='function')releaseFirstPersonPointerLock();
-  try{if(typeof sendPresence==='function')sendPresence(false);}catch(_){ }
-  if(settingsPanel)settingsPanel.style.display='none';
-  menu.classList.remove('pause-mode','pre-game-pause');
-  if(typeof openMainMenu==='function')openMainMenu();else menu.style.display='flex';
-}
-
-// Eski ESC dinleyicisini kes: bu listener capture'da tek otorite olur.
-document.addEventListener('keydown',function(e){
-  if(e.key!=='Escape') return;
-  if(e.target&&e.target.closest&&e.target.closest('input,textarea,[contenteditable="true"]')) return;
-  e.preventDefault(); e.stopImmediatePropagation();
-  if(settingsPanel&&settingsPanel.style.display==='block'){
-    settingsPanel.style.display='none';
-    return;
-  }
-  if(typeof playerListPanel!=='undefined'&&playerListPanel&&playerListPanel.style.display==='block'){
-    if(typeof togglePlayerList==='function')togglePlayerList(false);
-    return;
-  }
-  if(pauseOpen){
-    // Pause açıkken ikinci ESC = devam et. Ana menüye geçiş YOK.
-    closePauseResume();
-    return;
-  }
-  if(typeof gameStarted!=='undefined'&&gameStarted&&!playerIsDead){
-    gameStarted=false;
-    openPause(false);
-  }else{
-    openPause(true);
-  }
-},true);
-
-if(resumeBtn)resumeBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();closePauseResume();},true);
-if(settingsBtn)settingsBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();if(settingsPanel){settingsPanel.style.display='block';settingsPanel.style.zIndex='20000';}},true);
-if(closeSettings)closeSettings.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();if(settingsPanel)settingsPanel.style.display='none';},true);
-if(gameMenuBtn)gameMenuBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();returnToGameMenu();},true);
-if(exitBtn)exitBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();exitToSite();},true);
-if(mobPauseBtn)mobPauseBtn.addEventListener('pointerup',e=>{e.preventDefault();e.stopImmediatePropagation();if(pauseOpen)closePauseResume();else if(typeof gameStarted!=='undefined'&&gameStarted&&!playerIsDead){gameStarted=false;openPause(false);}},true);
 
 /* -------------------- yardımcılar -------------------- */
 function groundY(x,z){
