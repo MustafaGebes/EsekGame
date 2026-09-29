@@ -1,0 +1,519 @@
+```html
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>EsekGames</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background:
+                radial-gradient(circle at top, #253a45 0%, #111820 45%, #080b0f 100%);
+            color: white;
+        }
+
+        /* ===== HEADER BAŞLANGIÇ ===== */
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            padding: 16px 35px;
+
+            background: rgba(8, 12, 17, 0.92);
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            backdrop-filter: blur(12px);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            color: #ffd43b;
+        }
+
+        nav {
+            display: flex;
+            gap: 10px;
+        }
+
+        nav button {
+            border: none;
+            background: transparent;
+            color: #ddd;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        nav button:hover {
+            background: rgba(255,255,255,0.08);
+            color: white;
+        }
+
+        /* ===== HEADER BİTİŞ ===== */
+
+
+        /* ===== HERO BAŞLANGIÇ ===== */
+
+        .hero {
+            max-width: 1200px;
+            margin: auto;
+            padding: 80px 25px 55px;
+            text-align: center;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: clamp(48px, 8vw, 86px);
+            font-weight: 900;
+            color: #ffd43b;
+            text-shadow: 0 5px 25px rgba(0,0,0,0.6);
+        }
+
+        .hero p {
+            max-width: 650px;
+            margin: 18px auto 30px;
+            color: #bfc8d0;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        .hero-button {
+            display: inline-block;
+            padding: 14px 28px;
+            border-radius: 10px;
+
+            background: #ffd43b;
+            color: #171717;
+
+            font-size: 17px;
+            font-weight: 800;
+            text-decoration: none;
+
+            transition: 0.2s;
+        }
+
+        .hero-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255,212,59,0.25);
+        }
+
+        /* ===== HERO BİTİŞ ===== */
+
+
+        /* ===== OYUNLAR BAŞLANGIÇ ===== */
+
+        .games-section {
+            max-width: 1200px;
+            margin: auto;
+            padding: 30px 25px 80px;
+        }
+
+        .section-title {
+            margin-bottom: 25px;
+        }
+
+        .section-title h2 {
+            margin: 0;
+            font-size: 32px;
+        }
+
+        .section-title p {
+            margin-top: 8px;
+            color: #929ca5;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+            gap: 22px;
+        }
+
+        .game-card {
+            overflow: hidden;
+
+            background: rgba(20, 27, 34, 0.94);
+
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+
+            box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+
+            transition:
+                transform 0.2s,
+                border-color 0.2s,
+                box-shadow 0.2s;
+        }
+
+        .game-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(255,212,59,0.45);
+            box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+        }
+
+        .game-image {
+            height: 170px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #314c3b,
+                    #17221d
+                );
+
+            font-size: 65px;
+        }
+
+        .game-content {
+            padding: 20px;
+        }
+
+        .game-content h3 {
+            margin: 0 0 8px;
+            font-size: 22px;
+        }
+
+        .game-content p {
+            min-height: 45px;
+            margin: 0 0 18px;
+
+            color: #9da7b0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .play-button {
+            display: block;
+
+            width: 100%;
+            padding: 12px;
+
+            border: none;
+            border-radius: 8px;
+
+            background: #3bb273;
+            color: white;
+
+            font-size: 15px;
+            font-weight: 800;
+
+            text-align: center;
+            text-decoration: none;
+
+            cursor: pointer;
+        }
+
+        .play-button:hover {
+            background: #48c486;
+        }
+
+        .coming-soon .game-image {
+            background:
+                linear-gradient(
+                    135deg,
+                    #252b31,
+                    #15191d
+                );
+        }
+
+        .coming-soon .play-button {
+            background: #343b43;
+            color: #9099a2;
+            cursor: default;
+        }
+
+        /* ===== OYUNLAR BİTİŞ ===== */
+
+
+        /* ===== FOOTER BAŞLANGIÇ ===== */
+
+        footer {
+            padding: 30px 20px;
+
+            border-top: 1px solid rgba(255,255,255,0.08);
+
+            background: rgba(5,8,11,0.7);
+
+            text-align: center;
+
+            color: #707a83;
+            font-size: 14px;
+        }
+
+        footer strong {
+            color: #ffd43b;
+        }
+
+        /* ===== FOOTER BİTİŞ ===== */
+
+
+        /* ===== MOBİL BAŞLANGIÇ ===== */
+
+        @media (max-width: 650px) {
+
+            header {
+                padding: 14px 18px;
+            }
+
+            .logo {
+                font-size: 22px;
+            }
+
+            nav button {
+                padding: 8px;
+                font-size: 13px;
+            }
+
+            .hero {
+                padding-top: 60px;
+            }
+
+            .hero p {
+                font-size: 15px;
+            }
+
+            .games-section {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            .game-image {
+                height: 150px;
+            }
+        }
+
+        /* ===== MOBİL BİTİŞ ===== */
+    </style>
+</head>
+
+<body>
+
+    <!-- ===== HEADER BAŞLANGIÇ ===== -->
+
+    <header>
+
+        <div class="logo">
+            EsekGames
+        </div>
+
+        <nav>
+            <button onclick="goToGames()">
+                Oyunlar
+            </button>
+
+            <button onclick="goToAbout()">
+                Hakkında
+            </button>
+        </nav>
+
+    </header>
+
+    <!-- ===== HEADER BİTİŞ ===== -->
+
+
+    <!-- ===== HERO BAŞLANGIÇ ===== -->
+
+    <section class="hero">
+
+        <h1>EsekGames</h1>
+
+        <p>
+            Kendi yaptığım oyunları tek bir yerde
+            keşfet, seç ve doğrudan tarayıcıdan oyna.
+        </p>
+
+        <a href="#games" class="hero-button">
+            Oyunlara Bak
+        </a>
+
+    </section>
+
+    <!-- ===== HERO BİTİŞ ===== -->
+
+
+    <!-- ===== OYUNLAR BAŞLANGIÇ ===== -->
+
+    <section class="games-section" id="games">
+
+        <div class="section-title">
+            <h2>Oyunlar</h2>
+
+            <p>
+                EsekGames üzerinde bulunan oyunlar
+            </p>
+        </div>
+
+
+        <div class="games-grid">
+
+
+            <!-- ===== ESEK SIMULATOR BAŞLANGIÇ ===== -->
+
+            <div class="game-card">
+
+                <div class="game-image">
+                    🫏
+                </div>
+
+                <div class="game-content">
+
+                    <h3>Esek Simulator</h3>
+
+                    <p>
+                        Açık dünyada eşek olarak keşfet,
+                        dolaş ve çevreyi keşfet.
+                    </p>
+
+                    <a
+                        class="play-button"
+                        href="/games/eseksimulator/"
+                    >
+                        OYNA
+                    </a>
+
+                </div>
+
+            </div>
+
+            <!-- ===== ESEK SIMULATOR BİTİŞ ===== -->
+
+
+            <!-- ===== YENİ OYUN BAŞLANGIÇ ===== -->
+
+            <div class="game-card coming-soon">
+
+                <div class="game-image">
+                    🎮
+                </div>
+
+                <div class="game-content">
+
+                    <h3>Yeni Oyun</h3>
+
+                    <p>
+                        Yeni bir oyun üzerinde çalışılıyor.
+                    </p>
+
+                    <button
+                        class="play-button"
+                        disabled
+                    >
+                        YAKINDA
+                    </button>
+
+                </div>
+
+            </div>
+
+            <!-- ===== YENİ OYUN BİTİŞ ===== -->
+
+
+            <!-- ===== YENİ OYUN 2 BAŞLANGIÇ ===== -->
+
+            <div class="game-card coming-soon">
+
+                <div class="game-image">
+                    🕹️
+                </div>
+
+                <div class="game-content">
+
+                    <h3>Yeni Oyun</h3>
+
+                    <p>
+                        Buraya yaptığın başka bir oyunu
+                        daha ekleyebilirsin.
+                    </p>
+
+                    <button
+                        class="play-button"
+                        disabled
+                    >
+                        YAKINDA
+                    </button>
+
+                </div>
+
+            </div>
+
+            <!-- ===== YENİ OYUN 2 BİTİŞ ===== -->
+
+
+        </div>
+
+    </section>
+
+    <!-- ===== OYUNLAR BİTİŞ ===== -->
+
+
+    <!-- ===== FOOTER BAŞLANGIÇ ===== -->
+
+    <footer id="about">
+
+        <strong>EsekGames</strong>
+
+        <br><br>
+
+        Kendi oyunlarım, tek bir platformda.
+
+    </footer>
+
+    <!-- ===== FOOTER BİTİŞ ===== -->
+
+
+    <script>
+
+        // ===== SAYFA GEÇİŞLERİ BAŞLANGIÇ =====
+
+        function goToGames() {
+
+            document
+                .getElementById("games")
+                .scrollIntoView({
+                    behavior: "smooth"
+                });
+
+        }
+
+
+        function goToAbout() {
+
+            document
+                .getElementById("about")
+                .scrollIntoView({
+                    behavior: "smooth"
+                });
+
+        }
+
+        // ===== SAYFA GEÇİŞLERİ BİTİŞ =====
+
+    </script>
+
+</body>
+</html>
+```
