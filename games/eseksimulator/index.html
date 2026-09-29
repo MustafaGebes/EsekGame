@@ -4581,7 +4581,7 @@ function stepCar(c,dt){
         function sendPendingJoin() {
             if (!joinPending || joinPending.sent || !ws || ws.readyState !== WebSocket.OPEN) return;
             joinPending.sent = true;
-            sendSocketMessage('join_request',{token:getAuthToken(),platform:joinPending.mode});
+            sendSocketMessage('join_request',{token:getAuthToken(),name:getPlayerName(),platform:joinPending.mode});
         }
         function beginJoin(mode,isResume=false) {
             setNameError('Sunucuya bağlanılıyor…',true);
@@ -4593,32 +4593,6 @@ function stepCar(c,dt){
         }
         pcSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('pc',false);},true);
         mobileSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('mobile',false);},true);
-        resumeBtn.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            menuEl.classList.remove('pause-mode');
-            menuEl.style.display = 'none';
-            pauseButtons.style.display = 'none';
-            gameStarted = true;
-            playerIsDead = false;
-            deathScreenShowing = false;
-            hudEl.style.display = 'block';
-            playerDonkey.visible = cameraMode !== 'first';
-            for (const other of Object.values(otherPlayers)) other.visible = true;
-            setDonkeyNameTag(playerDonkey, getPlayerName());
-            setGameUiVisible(true);
-            setChatVisible(!chatIsManuallyHidden);
-            infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
-            mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
-            crosshairEl.style.display = cameraMode === 'first' ? 'block' : 'none';
-            document.getElementById('onlineBadge').style.display = 'none';
-            if (cameraMode === 'first' && controlMode === 'pc') {
-                document.body.style.cursor = 'none';
-                requestFirstPersonPointerLock();
-            } else {
-                document.body.style.cursor = 'default';
-            }
-        }, true);
         document.getElementById('chatHideBtn').addEventListener
 ('click',()=>setChatVisible(false));
         chatReopenBtn.addEventListener('click',()=>setChatVisible(true));
@@ -4673,10 +4647,27 @@ function stepCar(c,dt){
         deathMenuBtnEl.addEventListener('click',leaveAfterDeath);
         function onExtendedMessage(event) {
             let data;try{data=JSON.parse(event.data);}catch(e){return;}
-            if(data.type==='join_accepted'){
-                const pending=joinPending||{mode:controlMode,isResume:false};joinPending=null;currentPlayerName=String((data.state&&data.state.name)||'Guest-000');setNameError('');applyNeeds(data.state||{});
-                if(pending.isResume)completeResume(pending.mode);else startGameOriginal(pending.mode);
-                setGameUiVisible(true);sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
+            if(data.type==='join_accepted'||data.type==='joined'){
+                const pending=joinPending||{mode:controlMode,isResume:false};
+                joinPending=null;
+                if(data.id) myId=data.id;
+                currentPlayerName=String((data.state&&data.state.name)||'Guest-000');
+                setNameError('');
+                applyNeeds(data.state||{});
+                try {
+                    if(pending.isResume) completeResume(pending.mode);
+                    else startGameOriginal(pending.mode);
+                    menuEl.classList.remove('pause-mode','pre-game-pause');
+                    menuEl.style.display='none';
+                    pauseButtons.style.display='none';
+                    document.getElementById('onlineBadge').style.display='none';
+                } catch(error) {
+                    console.error('Oyuna giriş hatası:',error);
+                    setNameError('Oyun başlatılamadı. F12 > Console bölümünde hata var.');
+                    return;
+                }
+                setGameUiVisible(true);
+                sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
                 sendSocketMessage('apple_state_request',{trees:orchardTrees.map(t=>({id:t.id,x:t.x,z:t.z}))});
             } else if(data.type==='join_denied'){
                 if(joinPending&&joinPending.isResume){gameStarted=false;releaseFirstPersonPointerLock();}
