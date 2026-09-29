@@ -3395,7 +3395,7 @@ function stepCar(c,dt){
             donkey.userData.displayName = safeName;
         }
 
-        const DONKEY_BASE_SCALE = 0.90;
+        const DONKEY_BASE_SCALE = 0.85; // Oyuncu eşeği önceki boyuttan biraz daha küçük.
         const playerDonkey = createDonkeyModel();
         playerDonkey.scale.setScalar(DONKEY_BASE_SCALE);
         playerDonkey.visible = false;
@@ -4348,8 +4348,9 @@ function stepCar(c,dt){
 
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
-                let baseSpeed = isCrouching ? 0.10 : 0.22;
-                if (isSprinting && !isCrouching) baseSpeed = 0.45;
+                // PC ve mobil aynı hız tablosunu kullanır; hızlar hafifçe azaltıldı.
+                let baseSpeed = isCrouching ? 0.09 : 0.20;
+                if (isSprinting && !isCrouching) baseSpeed = 0.38;
                 // ===== GÖLET HAREKET/FİZİK DÜZENLEMESİ BAŞLANGIÇ =====
                 // farmRoot 180 derece döndüğü için local (16,-11), dünya (FARM_CX-19.2,FARM_CZ+13.2) olur.
                 const pondWX = FARM_CX - 16 * 1.20;
@@ -4363,20 +4364,25 @@ function stepCar(c,dt){
                 let speed = baseSpeed;
                 if (inPond) speed *= 0.55;
                 let moveX = 0, moveZ = 0, isMoving = false;
-
+                // Klavye ve joystick aynı ileri/yan vektörünü üretir; ikisi de aynı azami hıza sahiptir.
+                let forwardInput = 0, strafeInput = 0;
                 if (controlMode === 'pc') {
-                    if (keys.w) { moveX += Math.sin(yaw) * speed; moveZ += Math.cos(yaw) * speed; isMoving = true; }
-                    if (keys.s) { moveX -= Math.sin(yaw) * speed; moveZ -= Math.cos(yaw) * speed; isMoving = true; }
-                    if (keys.a) { moveX += Math.cos(yaw) * speed; moveZ -= Math.sin(yaw) * speed; isMoving = true; }
-                    if (keys.d) { moveX -= Math.cos(yaw) * speed; moveZ += Math.sin(yaw) * speed; isMoving = true; }
-                } else {
-                    if (joystickActive) {
-                        const ileriGeri = -joystickMoveZ;
-                        const sagSol = -joystickMoveX;
-                        moveX = (Math.sin(yaw) * ileriGeri + Math.cos(yaw) * sagSol) * speed * 1.5;
-                        moveZ = (Math.cos(yaw) * ileriGeri - Math.sin(yaw) * sagSol) * speed * 1.5;
-                        isMoving = true;
-                    }
+                    forwardInput = (keys.w ? 1 : 0) - (keys.s ? 1 : 0);
+                    strafeInput = (keys.a ? 1 : 0) - (keys.d ? 1 : 0);
+                } else if (joystickActive) {
+                    forwardInput = -joystickMoveZ;
+                    strafeInput = -joystickMoveX;
+                }
+                // Çapraz tuş basışında PC hızının artmasını önle; joystick zaten bu sınırda tutulur.
+                const inputLength = Math.hypot(forwardInput, strafeInput);
+                if (inputLength > 1) {
+                    forwardInput /= inputLength;
+                    strafeInput /= inputLength;
+                }
+                if (inputLength > 0.001) {
+                    moveX = (Math.sin(yaw) * forwardInput + Math.cos(yaw) * strafeInput) * speed;
+                    moveZ = (Math.cos(yaw) * forwardInput - Math.sin(yaw) * strafeInput) * speed;
+                    isMoving = true;
                 }
 
                 const newX = playerDonkey.position.x + moveX;
@@ -4425,7 +4431,7 @@ function stepCar(c,dt){
                 }
 
                 const isJumping = !isGrounded;
-                updateDonkeyAnimation(playerDonkey, isMoving, isJumping, isCrouching, isSprinting ? 1.5 : 1);
+                updateDonkeyAnimation(playerDonkey, isMoving, isJumping, isCrouching, isSprinting ? 1.35 : 1);
 
                 // ===== KAFA BAKIŞ ANİMASYONU BAŞLANGIÇ =====
                 // Kamera yukarı/aşağı hareket ederken kafa aynı yönde, yumuşak ve animasyonlu tepki verir.
