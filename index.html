@@ -3983,8 +3983,8 @@ function stepCar(c,dt){
             if (cameraMode === 'third' && !isMouseDown) return;
             const dx = pointerLocked ? (e.movementX || 0) : e.clientX - mouseX;
             const dy = pointerLocked ? (e.movementY || 0) : e.clientY - mouseY;
-            // 1. şahısta sağ fare hareketi sağa bakar; 3. şahısta yaw eşeği ve arkadaki kamerayı birlikte döndürür.
-            yaw += (cameraMode === 'first' ? dx : -dx) * CAMERA_ROTATE_SPEED * sensitivity;
+            // İstek üzerine 1. şahısta yatay fare yönü ters çevrildi; 3. şahıs dönüşü korunur.
+            yaw -= dx * CAMERA_ROTATE_SPEED * sensitivity;
             pitch += dy * CAMERA_ROTATE_SPEED * sensitivity;
             pitch = cameraMode === 'first'
                 ? Math.max(-1.4, Math.min(1.2, pitch))
@@ -4093,8 +4093,8 @@ function stepCar(c,dt){
             if (!touch) return;
             const dx = touch.clientX - cameraLastX;
             const dy = touch.clientY - cameraLastY;
-            yaw += (cameraMode === 'first' ? dx : -dx) * CAMERA_ROTATE_SPEED * sensitivity;
-            // 3. şahısta eşek ve kamera birlikte döner; 1. şahısta sağ sürükleme sağa baktırır.
+            yaw -= dx * CAMERA_ROTATE_SPEED * sensitivity;
+            // 1. şahısta yatay dokunmatik yön de ters; 3. şahısta eşek/kamera dönüşü korunur.
             // Birinci şahısta aşağı sürükle = yukarı bakış olacak şekilde eksen terslenir.
             pitch += dy * CAMERA_ROTATE_SPEED * sensitivity;
             pitch = cameraMode === 'third'
