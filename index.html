@@ -4348,9 +4348,9 @@ function stepCar(c,dt){
 
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
-                // PC ve mobil aynı hız tablosunu kullanır; hızlar hafifçe azaltıldı.
-                let baseSpeed = isCrouching ? 0.09 : 0.20;
-                if (isSprinting && !isCrouching) baseSpeed = 0.38;
+                // PC ve mobil aynı hız tablosunu kullanır; kullanıcı isteğiyle belirgin biçimde yavaşlatıldı.
+                let baseSpeed = isCrouching ? 0.06 : 0.12;
+                if (isSprinting && !isCrouching) baseSpeed = 0.21;
                 // ===== GÖLET HAREKET/FİZİK DÜZENLEMESİ BAŞLANGIÇ =====
                 // farmRoot 180 derece döndüğü için local (16,-11), dünya (FARM_CX-19.2,FARM_CZ+13.2) olur.
                 const pondWX = FARM_CX - 16 * 1.20;
