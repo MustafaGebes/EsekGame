@@ -193,7 +193,7 @@
         </div>
     </div>
 
-    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık: Saldır / Sürükle: Bak | E: Ye/İç | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
+    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık: Saldır / Sürükle: Bak | E: Al / Etkileşim | G: Bırak | Sol Tık: Saldır/Ateş | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
 
     <div id="hud">
         <div><span class="label">Saat:</span> <span id="hudTime">00:00</span></div>
@@ -3872,36 +3872,6 @@ function stepCar(c,dt){
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                if (settingsPanel.style.display === 'block') { closeSettingsPanel(); return; }
-                if (playerListPanel.style.display === 'block') { togglePlayerList(false); return; }
-                if (e.target.closest('input,textarea,[contenteditable="true"]')) return;
-
-                e.preventDefault();
-
-                /* Menüdeyken ESC de aynı duraklatma menüsünü açar. */
-                if (!gameStarted) {
-                    openPauseMenu();
-                    return;
-                }
-
-                /* Oyunun içindeyken sadece duraklatır; sunucuya çıkış göndermez. */
-                gameStarted = false;
-                releaseFirstPersonPointerLock();
-                document.getElementById('onlineBadge').style.display = 'none';
-                chatPanelEl.style.display = 'none';
-                chatReopenBtn.style.display = 'none';
-                openPauseMenu();
-                infoEl.style.display = 'none';
-                mobileControlsEl.style.display = 'none';
-                hudEl.style.display = 'none';
-                crosshairEl.style.display = 'none';
-                interactPromptEl.style.display = 'none';
-                mobOpenBtn.style.display = 'none';
-                document.body.style.cursor = 'default';
-                playerDonkey.visible = false;
-                return;
-            }
             if (!gameStarted) return;
             if (e.key === 'Tab' && controlMode === 'pc' && !e.target.closest('input,textarea,button')) {
                 e.preventDefault(); togglePlayerList(); return;
@@ -4980,264 +4950,375 @@ function stepCar(c,dt){
 <!-- ===== SON OYUN DÜZELTMELERİ: PAUSE / SU / ÇARPIŞMA / ELMA / HAVUÇ / CAN ===== -->
 <script>
 (function(){
-    'use strict';
+'use strict';
 
-    // ------------------------------------------------------------
-    // 1) ESC MENÜSÜ: ana menü ve oyun içi menü birbirinden ayrılır.
-    // Ayarlar, pause overlay'in ARKASINDA kalmaz.
-    // ------------------------------------------------------------
-    const menuEl2=document.getElementById('menu');
-    const pauseButtons2=document.getElementById('pauseButtons');
-    const pauseSettingsBtn2=document.getElementById('pauseSettingsBtn');
-    const returnGameMenuBtn2=document.getElementById('returnGameMenuBtn');
-    const returnMenuBtn2=document.getElementById('returnMenuBtn');
-    const resumeBtn2=document.getElementById('resumeBtn');
-    const settingsPanel2=document.getElementById('settingsPanel');
-    const closeSettings2=document.getElementById('closeSettings');
-    const mobilePauseBtn2=document.getElementById('mobPauseBtn');
+/* =========================================================
+   SON OYUN PAKETİ
+   - ESC: menüde 2 buton, oyunda 3 buton
+   - ESC ikinci kez basılırsa pause kapanır, ana menüye geçmez
+   - Kamp ateşleri + çevredeki mevcut ağaçlar korunur
+   - 10 havuç yerde; alınca 5 dk sonra yeniden çıkar
+   - Kılıç + tabanca pickup/drop sistemi
+   - G ile bırak, E ile yaklaşınca al
+   - Tutulan eşya eşeğin sağ tarafında görünür
+   ========================================================= */
 
-    if(menuEl2){
-        menuEl2.style.zIndex='9999';
-        menuEl2.style.pointerEvents='auto';
-    }
-    if(settingsPanel2){
-        settingsPanel2.style.position='fixed';
-        settingsPanel2.style.zIndex='20000';
-        settingsPanel2.style.pointerEvents='auto';
-    }
+const menu=document.getElementById('menu');
+const pauseButtons=document.getElementById('pauseButtons');
+const resumeBtn=document.getElementById('resumeBtn');
+const settingsBtn=document.getElementById('pauseSettingsBtn');
+const gameMenuBtn=document.getElementById('returnGameMenuBtn');
+const exitBtn=document.getElementById('returnMenuBtn');
+const settingsPanel=document.getElementById('settingsPanel');
+const closeSettings=document.getElementById('closeSettings');
+const mobPauseBtn=document.getElementById('mobPauseBtn');
+const prompt=document.getElementById('interactPrompt');
 
-    function pauseOverlay(preGame){
-        if(!menuEl2) return;
-        menuEl2.classList.add('pause-mode');
-        menuEl2.classList.toggle('pre-game-pause',!!preGame);
-        menuEl2.style.display='flex';
-        const nameCard=document.getElementById('nameCard');
-        const mainButtons=document.getElementById('mainButtons');
-        if(nameCard) nameCard.style.display='none';
-        if(mainButtons) mainButtons.style.display='none';
-        if(pauseButtons2) pauseButtons2.style.display='flex';
-        if(pauseSettingsBtn2) pauseSettingsBtn2.style.display=preGame?'none':'block';
-        if(returnGameMenuBtn2) returnGameMenuBtn2.style.display=preGame?'none':'block';
-        if(returnMenuBtn2){
-            returnMenuBtn2.style.display='block';
-            returnMenuBtn2.textContent=preGame?'OYUNDAN ÇIK':'OYUNDAN ÇIK';
-        }
-    }
-    function resumeFromPause2(){
-        const pre=menuEl2 && menuEl2.classList.contains('pre-game-pause');
-        if(pre){
-            if(typeof openMainMenu==='function') openMainMenu();
-            else {
-                menuEl2.classList.remove('pause-mode','pre-game-pause');
-                menuEl2.style.display='flex';
-                if(pauseButtons2) pauseButtons2.style.display='none';
-                const main=document.getElementById('mainButtons'); if(main) main.style.display='block';
-                const name=document.getElementById('nameCard'); if(name) name.style.display='block';
-            }
-            return;
-        }
-        // Oyuncu zaten server'da aynı oturumla oyundadır. Yeniden join_request YOK.
-        gameStarted=true;
-        playerIsDead=false;
-        deathScreenShowing=false;
-        menuEl2.classList.remove('pause-mode','pre-game-pause');
-        menuEl2.style.display='none';
-        if(pauseButtons2) pauseButtons2.style.display='none';
-        if(typeof setGameUiVisible==='function') setGameUiVisible(true);
-        if(typeof setChatVisible==='function') setChatVisible(!chatIsManuallyHidden);
-        const info=document.getElementById('info'); if(info) info.style.display=controlMode==='pc'?'block':'none';
-        const mob=document.getElementById('mobileControls'); if(mob) mob.style.display=controlMode==='mobile'?'block':'none';
-        const hud=document.getElementById('hud'); if(hud) hud.style.display='block';
-        const cross=document.getElementById('crosshair'); if(cross) cross.style.display=cameraMode==='first'?'block':'none';
-        if(typeof setDonkeyNameTag==='function') setDonkeyNameTag(playerDonkey,getPlayerName());
-        playerDonkey.visible=cameraMode!=='first';
-        if(cameraMode==='first' && controlMode==='pc' && typeof requestFirstPersonPointerLock==='function') requestFirstPersonPointerLock();
-        else document.body.style.cursor='default';
-    }
+let pauseOpen=false;
+let pauseWasInGame=false;
+let heldItem=null;
+let nearbyPickup=null;
+const worldItems=[];
+const carrotItems=[];
+const campfires=[];
+const ITEM_PICKUP_RANGE=3.4;
+const DROP_KEY='g';
+const CARROT_RESPAWN_MS=5*60*1000;
 
-    // Capture listener: eski ESC listener'larının yanlış davranışını tamamen keser.
-    document.addEventListener('keydown',function(e){
-        if(e.key!=='Escape') return;
-        if(e.target && e.target.closest && e.target.closest('input,textarea,[contenteditable="true"]')) return;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        if(settingsPanel2 && settingsPanel2.style.display==='block'){
-            settingsPanel2.style.display='none';
-            return;
-        }
-        if(typeof playerListPanel!=='undefined' && playerListPanel && playerListPanel.style.display==='block'){
-            if(typeof togglePlayerList==='function') togglePlayerList(false);
-            return;
-        }
-        if(typeof gameStarted!=='undefined' && gameStarted && !playerIsDead){
-            gameStarted=false;
-            if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
-            const badge=document.getElementById('onlineBadge'); if(badge) badge.style.display='none';
-            const chat=document.getElementById('chatPanel'); if(chat) chat.style.display='none';
-            const reopen=document.getElementById('chatReopenBtn'); if(reopen) reopen.style.display='none';
-            const info=document.getElementById('info'); if(info) info.style.display='none';
-            const mob=document.getElementById('mobileControls'); if(mob) mob.style.display='none';
-            const hud=document.getElementById('hud'); if(hud) hud.style.display='none';
-            const cross=document.getElementById('crosshair'); if(cross) cross.style.display='none';
-            const prompt=document.getElementById('interactPrompt'); if(prompt) prompt.style.display='none';
-            if(typeof mobOpenBtn!=='undefined' && mobOpenBtn) mobOpenBtn.style.display='none';
-            playerDonkey.visible=false;
-            pauseOverlay(false);
-        }else{
-            pauseOverlay(true);
-        }
-    },true);
+function hideGameUI(){
+  for(const id of ['onlineBadge','chatPanel','chatReopenBtn','info','mobileControls','hud','crosshair','interactPrompt']){
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  }
+  if(typeof mobOpenBtn!=='undefined'&&mobOpenBtn) mobOpenBtn.style.display='none';
+  if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
+  if(typeof playerDonkey!=='undefined'&&playerDonkey) playerDonkey.visible=false;
+}
+function showGameUI(){
+  if(typeof setGameUiVisible==='function') setGameUiVisible(true);
+  else {
+    const ids=['onlineBadge','hud']; for(const id of ids){const el=document.getElementById(id);if(el)el.style.display='block';}
+  }
+  const info=document.getElementById('info'); if(info) info.style.display=typeof controlMode!=='undefined'&&controlMode==='pc'?'block':'none';
+  const mob=document.getElementById('mobileControls'); if(mob) mob.style.display=typeof controlMode!=='undefined'&&controlMode==='mobile'?'block':'none';
+  const cross=document.getElementById('crosshair'); if(cross) cross.style.display=typeof cameraMode!=='undefined'&&cameraMode==='first'?'block':'none';
+  if(typeof setChatVisible==='function') setChatVisible(typeof chatIsManuallyHidden==='boolean'?!chatIsManuallyHidden:true);
+  if(typeof playerDonkey!=='undefined'&&playerDonkey) playerDonkey.visible=typeof cameraMode==='undefined'||cameraMode!=='first';
+}
+function openPause(preGame){
+  pauseOpen=true; pauseWasInGame=!preGame;
+  menu.classList.add('pause-mode');
+  menu.classList.toggle('pre-game-pause',!!preGame);
+  menu.style.display='flex';
+  const nameCard=document.getElementById('nameCard'), mainButtons=document.getElementById('mainButtons');
+  if(nameCard) nameCard.style.display='none';
+  if(mainButtons) mainButtons.style.display='none';
+  if(pauseButtons) pauseButtons.style.display='flex';
+  if(settingsBtn) settingsBtn.style.display=preGame?'none':'block';
+  if(gameMenuBtn) gameMenuBtn.style.display=preGame?'none':'block';
+  if(exitBtn){
+    exitBtn.style.display='block';
+    exitBtn.textContent=preGame?'OYUNDAN ÇIK':'OYUNDAN ÇIK';
+  }
+  // Ayarlar paneli pause'ın üstünde açılacak.
+  if(settingsPanel) settingsPanel.style.zIndex='20000';
+  if(!preGame) hideGameUI();
+}
+function closePauseResume(){
+  const pre=!pauseWasInGame;
+  pauseOpen=false;
+  pauseWasInGame=false;
+  menu.classList.remove('pause-mode','pre-game-pause');
+  if(pre){
+    if(typeof openMainMenu==='function') openMainMenu();
+    else menu.style.display='flex';
+    return;
+  }
+  menu.style.display='none';
+  if(typeof gameStarted!=='undefined') gameStarted=true;
+  if(typeof playerIsDead!=='undefined') playerIsDead=false;
+  if(typeof deathScreenShowing!=='undefined') deathScreenShowing=false;
+  showGameUI();
+  if(typeof cameraMode!=='undefined'&&cameraMode==='first'&&typeof controlMode!=='undefined'&&controlMode==='pc'&&typeof requestFirstPersonPointerLock==='function') requestFirstPersonPointerLock();
+}
+function exitToSite(){
+  pauseOpen=false; pauseWasInGame=false;
+  if(typeof gameStarted!=='undefined') gameStarted=false;
+  try{if(typeof sendPresence==='function')sendPresence(false);}catch(_){ }
+  try{if(typeof ws!=='undefined'&&ws&&ws.readyState===WebSocket.OPEN)ws.close();}catch(_){ }
+  window.location.assign('/');
+}
+function returnToGameMenu(){
+  pauseOpen=false; pauseWasInGame=false;
+  if(typeof gameStarted!=='undefined')gameStarted=false;
+  if(typeof releaseFirstPersonPointerLock==='function')releaseFirstPersonPointerLock();
+  try{if(typeof sendPresence==='function')sendPresence(false);}catch(_){ }
+  if(settingsPanel)settingsPanel.style.display='none';
+  menu.classList.remove('pause-mode','pre-game-pause');
+  if(typeof openMainMenu==='function')openMainMenu();else menu.style.display='flex';
+}
 
-    // Mobilde PC'deki ESC'nin birebir karşılığı.
-    if(mobilePauseBtn2){
-        mobilePauseBtn2.addEventListener('pointerup',function(e){
-            e.preventDefault(); e.stopImmediatePropagation();
-            if(typeof gameStarted!=='undefined' && gameStarted && !playerIsDead){
-                gameStarted=false;
-                if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
-                playerDonkey.visible=false;
-                pauseOverlay(false);
-            }
-        },true);
-    }
+// Eski ESC dinleyicisini kes: bu listener capture'da tek otorite olur.
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape') return;
+  if(e.target&&e.target.closest&&e.target.closest('input,textarea,[contenteditable="true"]')) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if(settingsPanel&&settingsPanel.style.display==='block'){
+    settingsPanel.style.display='none';
+    return;
+  }
+  if(typeof playerListPanel!=='undefined'&&playerListPanel&&playerListPanel.style.display==='block'){
+    if(typeof togglePlayerList==='function')togglePlayerList(false);
+    return;
+  }
+  if(pauseOpen){
+    // Pause açıkken ikinci ESC = devam et. Ana menüye geçiş YOK.
+    closePauseResume();
+    return;
+  }
+  if(typeof gameStarted!=='undefined'&&gameStarted&&!playerIsDead){
+    gameStarted=false;
+    openPause(false);
+  }else{
+    openPause(true);
+  }
+},true);
 
-    // Devam Et: ana menüde sadece menüyü kapatır; oyunda aynı oturumu sürdürür.
-    if(resumeBtn2){
-        resumeBtn2.addEventListener('click',function(e){
-            e.preventDefault(); e.stopImmediatePropagation();
-            resumeFromPause2();
-        },true);
-    }
-    if(pauseSettingsBtn2){
-        pauseSettingsBtn2.addEventListener('click',function(e){
-            e.preventDefault(); e.stopImmediatePropagation();
-            if(settingsPanel2){
-                settingsPanel2.style.display='block';
-                settingsPanel2.style.zIndex='20000';
-                settingsPanel2.style.pointerEvents='auto';
-            }
-        },true);
-    }
-    if(closeSettings2){
-        closeSettings2.addEventListener('click',function(e){
-            e.preventDefault(); e.stopImmediatePropagation();
-            if(settingsPanel2) settingsPanel2.style.display='none';
-            // Pause devam eder; oyun kendiliğinden başlamaz.
-            if(typeof gameStarted!=='undefined' && !gameStarted) pauseOverlay(false);
-        },true);
-    }
-    if(returnGameMenuBtn2){
-        returnGameMenuBtn2.addEventListener('click',function(e){
-            e.preventDefault(); e.stopImmediatePropagation();
-            gameStarted=false;
-            if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
-            if(typeof sendPresence==='function') sendPresence(false);
-            if(typeof openMainMenu==='function') openMainMenu();
-            else menuEl2.style.display='flex';
-            if(settingsPanel2) settingsPanel2.style.display='none';
-        },true);
-    }
-    if(returnMenuBtn2){
-        returnMenuBtn2.addEventListener('click',function(e){
-            e.preventDefault(); e.stopImmediatePropagation();
-            gameStarted=false;
-            if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
-            try{ if(typeof sendPresence==='function') sendPresence(false); }catch(_){ }
-            try{ if(typeof ws!=='undefined' && ws && ws.readyState===WebSocket.OPEN) ws.close(); }catch(_){ }
-            window.location.assign('/');
-        },true);
-    }
+if(resumeBtn)resumeBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();closePauseResume();},true);
+if(settingsBtn)settingsBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();if(settingsPanel){settingsPanel.style.display='block';settingsPanel.style.zIndex='20000';}},true);
+if(closeSettings)closeSettings.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();if(settingsPanel)settingsPanel.style.display='none';},true);
+if(gameMenuBtn)gameMenuBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();returnToGameMenu();},true);
+if(exitBtn)exitBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();exitToSite();},true);
+if(mobPauseBtn)mobPauseBtn.addEventListener('pointerup',e=>{e.preventDefault();e.stopImmediatePropagation();if(pauseOpen)closePauseResume();else if(typeof gameStarted!=='undefined'&&gameStarted&&!playerIsDead){gameStarted=false;openPause(false);}},true);
 
-    // ------------------------------------------------------------
-    // 2) AKARSU: yatağı gerçekten aşağı al, suyu üstte görünür yap.
-    // ------------------------------------------------------------
-    if(typeof riverPaths!=='undefined' && typeof terrainGeo!=='undefined' && typeof distanceToRiver==='function'){
-        const oldTerrain=terrainHeightAt;
-        function riverBedHeight(x,z){
-            let d=Infinity, half=0;
-            for(const r of riverPaths){
-                const rd=riverDistance(x,z,r);
-                if(rd<d){ d=rd; half=r.width/2; }
-            }
-            if(d < half + 1.8){
-                const edge=Math.max(0,Math.min(1,(half+1.8-d)/1.8));
-                return oldTerrain(x,z) - (0.65 + edge*0.9);
-            }
-            return oldTerrain(x,z);
-        }
-        terrainHeightAt=riverBedHeight;
-        const tp=terrainGeo.attributes.position;
-        for(let i=0;i<tp.count;i++){
-            const x=tp.getX(i),z=tp.getZ(i),d=distanceToRiver(x,z);
-            let half=0;
-            for(const r of riverPaths){ if(riverDistance(x,z,r)<=d) half=r.width/2; }
-            if(d<half+1.8) tp.setY(i,riverBedHeight(x,z));
-        }
-        tp.needsUpdate=true; terrainGeo.computeVertexNormals();
-        // Su şeridinin her verteksi artık yeni yatağın hemen üzerinde.
-        for(const r of riverPaths){
-            const pos=r.mesh.geometry.attributes.position;
-            for(let i=0;i<pos.count;i++){
-                const x=pos.getX(i),z=pos.getZ(i);
-                pos.setY(i,riverBedHeight(x,z)+0.10);
-            }
-            pos.needsUpdate=true; r.mesh.geometry.computeVertexNormals();
-        }
-    }
+/* -------------------- yardımcılar -------------------- */
+function groundY(x,z){
+  try{return typeof terrainHeightAt==='function'?terrainHeightAt(x,z)+0.18:0.18;}catch(_){return 0.18;}
+}
+function makeMat(color){return new THREE.MeshStandardMaterial({color,roughness:.8,metalness:.05});}
+function itemLabel(type){return type==='sword'?'Kılıç':type==='gun'?'Silah':'Havuç';}
+function makeSword(){
+  const g=new THREE.Group();
+  const blade=new THREE.Mesh(new THREE.BoxGeometry(.10,1.15,.035),makeMat(0xd9e0e8));blade.position.y=.58;g.add(blade);
+  const guard=new THREE.Mesh(new THREE.BoxGeometry(.42,.06,.06),makeMat(0xb07a32));guard.position.y=.05;g.add(guard);
+  const grip=new THREE.Mesh(new THREE.BoxGeometry(.08,.34,.08),makeMat(0x4b2d1b));grip.position.y=-.16;g.add(grip);
+  g.rotation.z=-.18; return g;
+}
+function makeGun(){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.55,.16,.16),makeMat(0x2c3035));body.position.x=.18;g.add(body);
+  const barrel=new THREE.Mesh(new THREE.BoxGeometry(.45,.07,.07),makeMat(0x17191c));barrel.position.x=.62;g.add(barrel);
+  const grip=new THREE.Mesh(new THREE.BoxGeometry(.12,.34,.12),makeMat(0x3b2418));grip.position.set(.02,-.20,0);grip.rotation.z=-.18;g.add(grip);
+  return g;
+}
+function makeCarrot(){
+  const g=new THREE.Group();
+  const root=new THREE.Mesh(new THREE.ConeGeometry(.13,.48,8),makeMat(0xf28c18));root.position.y=.25;g.add(root);
+  const leaf=new THREE.Mesh(new THREE.ConeGeometry(.13,.25,6),makeMat(0x3d9b38));leaf.position.y=.58;g.add(leaf);
+  return g;
+}
+function makeCampfire(){
+  const g=new THREE.Group();
+  for(let i=0;i<3;i++){const log=new THREE.Mesh(new THREE.CylinderGeometry(.09,.11,1.0,8),makeMat(0x6b3e20));log.rotation.z=Math.PI/2;log.rotation.y=i*Math.PI/3;log.position.y=.10;g.add(log);}
+  const flame=new THREE.Mesh(new THREE.ConeGeometry(.28,.65,8),new THREE.MeshBasicMaterial({color:0xff7a16,transparent:true,opacity:.9}));flame.position.y=.48;g.add(flame);
+  g.userData.flame=flame; return g;
+}
 
-    // ------------------------------------------------------------
-    // 3) Şehir parkı çimleri gerçek zemin collider olsun.
-    // ------------------------------------------------------------
-    if(typeof cityParkZones!=='undefined'){
-        const oldCollision=checkMountainCollision;
-        checkMountainCollision=function(x,z,radius){
-            if(oldCollision(x,z,radius)) return true;
-            for(const park of cityParkZones){
-                if(x+radius>park.x-park.half && x-radius<park.x+park.half && z+radius>park.z-park.half && z-radius<park.z+park.half){
-                    // Parkın içindeki çimen düz bir zemin; içine bina gibi gömülme olmasın.
-                    return false;
-                }
-            }
-            return false;
-        };
-        // Not: park zemini üstüne çıkmak engellenmez; arazi yüksekliği y=0.58'e zaten oturur.
-    }
+/* -------------------- kamp ateşleri -------------------- */
+(function createCampfires(){
+  const spots=[[265,-30],[330,45],[245,75],[360,-70]];
+  for(const [x,z] of spots){const g=makeCampfire();g.position.set(x,groundY(x,z),z);g.name='Kamp ateşi';scene.add(g);campfires.push(g);}
+})();
 
-    // ------------------------------------------------------------
-    // 4) Eşek boyu biraz küçültülsün: tüm platformlarda aynı oran.
-    // ------------------------------------------------------------
-    if(typeof DONKEY_BASE_SCALE!=='undefined' && playerDonkey){
-        const smallScale=DONKEY_BASE_SCALE*0.94;
-        playerDonkey.scale.set(smallScale,smallScale,smallScale);
-    }
+/* -------------------- havuçlar -------------------- */
+(function createCarrots(){
+  const spots=[[150,155],[170,170],[195,150],[220,180],[245,160],[275,190],[305,165],[335,185],[365,155],[390,175]];
+  spots.forEach(([x,z],i)=>{
+    const g=makeCarrot();g.position.set(x,groundY(x,z),z);g.userData={kind:'carrot',id:'carrot-'+i,available:true,respawnAt:0};scene.add(g);carrotItems.push(g);worldItems.push(g);
+  });
+  if(typeof ws!=='undefined'&&ws&&ws.readyState===WebSocket.OPEN){
+    sendSocketMessage('carrot_state_request',{carrots:carrotItems.map(c=>({id:c.userData.id,x:c.position.x,z:c.position.z}))});
+  }
+})();
 
-    // ------------------------------------------------------------
-    // 5) Elmalar: ağaca daha yakın + maksimum 20; 5 dk / +5 zaten server'da.
-    // ------------------------------------------------------------
-    if(typeof setTreeAppleCount==='function' && typeof orchardTrees!=='undefined'){
-        // Mevcut sayıları değiştirmiyoruz; sadece görsel konumları tekrar hesaplıyoruz.
-        for(const tree of orchardTrees){
-            if(typeof tree.apples!=='number') tree.apples=10;
-        }
-    }
+/* Sunucudan gelen havuç durumunu mevcut nesnelere uygula. */
+const oldCarrotMessageHook=window.__esekCarrotHook;
+window.__esekCarrotHook=function(data){
+  if(data&&data.type==='carrot_states')for(const c of carrotItems)if(Object.prototype.hasOwnProperty.call(data.states,c.userData.id))c.userData.available=!!data.states[c.userData.id],c.visible=c.userData.available;
+  if(data&&data.type==='carrot_update'){const c=carrotItems.find(x=>x.userData.id===data.carrotId);if(c){c.userData.available=!!data.available;c.visible=c.userData.available;}}
+  if(typeof oldCarrotMessageHook==='function')oldCarrotMessageHook(data);
+};
 
-    // ------------------------------------------------------------
-    // 6) Havuçlar: her nokta 5 dk sonra geri gelir. Mobil/PC etkileşimi aynı.
-    // ------------------------------------------------------------
-    if(typeof groundCarrots!=='undefined'){
-        setInterval(function(){
-            for(const c of groundCarrots){
-                // Sunucu dolu/boş durumunu yönetir; burada yalnızca görsel senkron istenir.
-                if(c && c.available && c.group) c.group.visible=true;
-            }
-        },30000);
-    }
+// Eğer mevcut websocket mesaj işleyicisi window hook'u çağırmıyorsa küçük bir periyodik senkron yeterlidir.
+setInterval(()=>{
+  const now=Date.now();
+  for(const c of carrotItems){
+    if(!c.userData.available&&c.userData.respawnAt&&now>=c.userData.respawnAt){c.userData.available=true;c.visible=true;c.userData.respawnAt=0;}
+  }
+},1000);
 
-    // ------------------------------------------------------------
-    // 7) Mobil/PC hareket hızı aynı: joystick girişini normalize edip PC tablosunu kullan.
-    // Mevcut animate() zaten aynı baseSpeed kullanıyor; burada yalnızca güvenlik çarpanı 1.
-    // ------------------------------------------------------------
-    try{ window.__sameSpeedPCMobile=true; }catch(_){ }
+/* -------------------- silah/kılıç pickup -------------------- */
+function addWorldWeapon(type,x,z){
+  const g=type==='sword'?makeSword():makeGun();
+  g.position.set(x,groundY(x,z),z);
+  g.rotation.y=Math.random()*Math.PI*2;
+  g.userData={kind:'pickup',itemType:type,id:'pickup-'+type+'-'+Math.random().toString(36).slice(2)};
+  scene.add(g);worldItems.push(g);return g;
+}
+addWorldWeapon('sword',205,125);
+addWorldWeapon('sword',290,115);
+addWorldWeapon('sword',345,135);
+addWorldWeapon('gun',230,105);
+addWorldWeapon('gun',375,120);
+
+function heldVisual(){
+  if(!heldItem||typeof playerDonkey==='undefined'||!playerDonkey)return;
+  if(heldItem.group){heldItem.group.removeFromParent();heldItem.group=null;}
+  const g=heldItem.type==='sword'?makeSword():makeGun();
+  // Eşeğin sağ tarafı.
+  g.position.set(.72,.75,.28);
+  g.rotation.set(0,0,heldItem.type==='sword'?.35:0);
+  playerDonkey.add(g); heldItem.group=g;
+}
+function clearHeld(){if(heldItem&&heldItem.group)heldItem.group.removeFromParent();heldItem=null;}
+function pickupItem(item){
+  if(!item||!item.visible)return;
+  if(item.userData.kind==='carrot'){
+    if(!ws||ws.readyState!==WebSocket.OPEN)return;
+    sendSocketMessage('carrot_pick',{carrotId:item.userData.id});
+    item.visible=false;item.userData.available=false;item.userData.respawnAt=Date.now()+CARROT_RESPAWN_MS;
+    return;
+  }
+  if(item.userData.kind==='pickup'){
+    if(heldItem)dropHeld();
+    heldItem={type:item.userData.itemType,ammo:item.userData.itemType==='gun'?12:0,group:null};
+    item.visible=false; heldVisual();
+    try{if(typeof sendSocketMessage==='function')sendSocketMessage('weapon_equip',{weapon:heldItem.type});}catch(_){ }
+  }
+}
+function dropHeld(){
+  if(!heldItem||!heldItem.type||typeof playerDonkey==='undefined')return;
+  const type=heldItem.type;
+  const yaw=typeof playerDonkey.rotation!=='undefined'?playerDonkey.rotation.y:0;
+  const x=playerDonkey.position.x+Math.sin(yaw)*1.0;
+  const z=playerDonkey.position.z+Math.cos(yaw)*1.0;
+  const g=type==='sword'?makeSword():makeGun();
+  g.position.set(x,playerDonkey.position.y+1.2,z);g.userData={kind:'pickup',itemType:type,id:'dropped-'+type+'-'+Date.now()};scene.add(g);worldItems.push(g);
+  // Yere düşür, zeminin içine girme.
+  const targetY=groundY(x,z);
+  g.userData.dropY=targetY+0.08;g.userData.falling=true;g.userData.vy=.04;
+  clearHeld();
+  try{if(typeof sendSocketMessage==='function')sendSocketMessage('weapon_equip',{weapon:'none'});}catch(_){ }
+}
+function findNearby(){
+  if(!gameStarted||playerIsDead)return null;
+  const px=playerDonkey.position.x,pz=playerDonkey.position.z;
+  let best=null,bd=ITEM_PICKUP_RANGE;
+  for(const it of worldItems){
+    if(!it.visible)continue;
+    if(it.userData.kind==='carrot'&&!it.userData.available)continue;
+    const d=Math.hypot(it.position.x-px,it.position.z-pz);
+    if(d<bd){bd=d;best=it;}
+  }
+  return best;
+}
+function updatePickupPrompt(){
+  nearbyPickup=findNearby();
+  if(nearbyPickup){
+    prompt.textContent='E · '+(nearbyPickup.userData.kind==='carrot'?'Havuç al':'Al: '+itemLabel(nearbyPickup.userData.itemType));prompt.style.display='block';
+  }
+}
+
+// E: eşya al; G: bırak. Capture ile eski E etkileşimini sadece eşya yakındaysa kesiyoruz.
+document.addEventListener('keydown',e=>{
+  if(!gameStarted||playerIsDead||e.target.closest('input,textarea,#chatPanel'))return;
+  const k=(e.key||'').toLowerCase();
+  if(k==='g'){
+    e.preventDefault();dropHeld();return;
+  }
+  if(k==='e'){
+    const n=findNearby();
+    if(n){e.preventDefault();e.stopImmediatePropagation();pickupItem(n);return;}
+  }
+},true);
+
+/* -------------------- silah saldırısı -------------------- */
+function nearestWeaponTarget(range){
+  const px=playerDonkey.position.x,pz=playerDonkey.position.z;
+  let best=null,bd=range+0.001;
+  for(const [id,o] of Object.entries(otherPlayers||{})){
+    const p=latestServerPlayers[id];if(!p||!p.inGame||p.alive===false||!o.visible)continue;
+    const d=Math.hypot(o.position.x-px,o.position.z-pz);if(d<bd){bd=d;best={type:'player',id,d};}
+  }
+  for(const a of wildlife||[]){if(!a.userData.alive)continue;const d=Math.hypot(a.position.x-px,a.position.z-pz);if(d<bd){bd=d;best={type:'animal',animal:a,d};}}
+  return best;
+}
+function useHeldWeapon(){
+  if(!heldItem||!ws||ws.readyState!==WebSocket.OPEN)return;
+  if(heldItem.type==='gun'){
+    if(heldItem.ammo<=0){if(typeof appendChatMessage==='function')appendChatMessage({system:true,text:'Mermi bitti.'});return;}
+    heldItem.ammo--;
+    const target=nearestWeaponTarget(30);
+    sendSocketMessage('weapon_attack',{weapon:'gun',targetId:target&&target.type==='player'?target.id:null,targetAnimalId:target&&target.type==='animal'?target.animal.userData.id:null,x:target&&target.type==='animal'?target.animal.position.x:playerDonkey.position.x,z:target&&target.type==='animal'?target.animal.position.z:playerDonkey.position.z,yaw:playerDonkey.rotation.y});
+  }else if(heldItem.type==='sword'){
+    const target=nearestWeaponTarget(4.8);
+    if(!target)return;
+    if(target.type==='player')sendSocketMessage('weapon_attack',{weapon:'sword',targetId:target.id});
+    else sendSocketMessage('weapon_attack',{weapon:'sword',targetAnimalId:target.animal.userData.id,x:target.animal.position.x,z:target.animal.position.z});
+  }
+  actionAnimationType='attack';actionAnimationUntil=performance.now()+440;
+}
+// Capture click: elde silah varsa eski eşek saldırısını çalıştırma.
+document.addEventListener('click',e=>{
+  if(!heldItem||!gameStarted||controlMode!=='pc'||e.button!==0)return;
+  if(e.target.closest('button,input,textarea,#menu,#settingsPanel,#chatPanel,#playerListPanel,#deathOverlay,#mobileControls'))return;
+  e.preventDefault();e.stopImmediatePropagation();useHeldWeapon();
+},true);
+if(typeof mobAttackBtnEl!=='undefined'&&mobAttackBtnEl)mobAttackBtnEl.addEventListener('pointerdown',e=>{if(heldItem){e.preventDefault();e.stopImmediatePropagation();useHeldWeapon();}},true);
+
+/* -------------------- düşen item fiziği + kamp ateşi animasyonu -------------------- */
+// Sunucu yeniden bağlandığında havuç ve silah durumlarını eşitle.
+let __itemSocketBound=null;
+function bindItemSocket(){
+  if(typeof ws==='undefined'||!ws||ws===__itemSocketBound)return;
+  __itemSocketBound=ws;
+  ws.addEventListener('message',ev=>{
+    try{const data=JSON.parse(ev.data);
+      if(data.type==='carrot_states'){
+        for(const c of carrotItems)if(Object.prototype.hasOwnProperty.call(data.states||{},c.userData.id)){c.userData.available=!!data.states[c.userData.id];c.visible=c.userData.available;}
+      }else if(data.type==='carrot_update'){
+        const c=carrotItems.find(x=>x.userData.id===data.carrotId);if(c){c.userData.available=!!data.available;c.visible=c.userData.available;if(!c.userData.available)c.userData.respawnAt=Date.now()+CARROT_RESPAWN_MS;}
+      }else if(data.type==='carrot_pick_result'){
+        const c=carrotItems.find(x=>x.userData.id===data.carrotId);if(c&&!data.ok){c.userData.available=true;c.visible=true;c.userData.respawnAt=0;}
+      }else if(data.type==='weapon_result'){
+        if(heldItem&&heldItem.type==='gun'&&Number.isFinite(Number(data.ammo)))heldItem.ammo=Number(data.ammo);
+        if(!data.ok&&typeof appendChatMessage==='function')appendChatMessage({system:true,text:data.message||'Silah kullanılamadı.'});
+      }else if(data.type==='weapon_equipped'){
+        if(heldItem&&heldItem.type===data.weapon&&Number.isFinite(Number(data.ammo)))heldItem.ammo=Number(data.ammo);
+      }
+    }catch(_){ }
+  });
+}
+setInterval(bindItemSocket,500);
+
+function updateExtraWorld(){
+  for(const it of worldItems){
+    if(!it||!it.visible)continue;
+    if(it.userData.falling){
+      it.userData.vy-=.0025;it.position.y+=it.userData.vy;
+      if(it.position.y<=it.userData.dropY){it.position.y=it.userData.dropY;it.userData.falling=false;it.userData.vy=0;}
+    }
+  }
+  const t=performance.now()*0.004;
+  campfires.forEach((f,i)=>{if(f.userData.flame)f.userData.flame.scale.y=.9+.15*Math.sin(t+i*1.7);});
+  if(gameStarted)updatePickupPrompt();
+}
+const oldAnimateExtra=typeof animate==='function'?animate:null;
+if(oldAnimateExtra){
+  animate=function(){updateExtraWorld();oldAnimateExtra();};
+}
+
+/* Eski final paketin bazı görsel düzeltmeleri */
+if(typeof DONKEY_BASE_SCALE!=='undefined'&&playerDonkey){const smallScale=DONKEY_BASE_SCALE*.94;playerDonkey.scale.set(smallScale,smallScale,smallScale);}
 
 })();
 </script>
