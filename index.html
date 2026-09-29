@@ -727,12 +727,8 @@
 
             <!-- ===== PROFİL BUTONU BAŞLANGIÇ ===== -->
 
-            <button
-                class="profile-button"
-                onclick="profileClicked()"
-                aria-label="Profil"
-            >
-                👤
+            <button class="account-button" onclick="openAccountMenu()">
+    Hesap Oluştur / Giriş Yap
             </button>
 
             <!-- ===== PROFİL BUTONU BİTİŞ ===== -->
@@ -933,16 +929,109 @@
 
         // ===== PROFİL BAŞLANGIÇ =====
 
-        function profileClicked() {
+        function openAccountMenu() {
+    const menu = document.getElementById("accountMenu");
 
-            // Şimdilik profil butonu hiçbir şey yapmıyor.
-            // Profil sistemi daha sonra buraya eklenecek.
+    menu.style.display =
+        menu.style.display === "none"
+            ? "block"
+            : "none";
+}
 
-        }
+function register() {
+
+    const user =
+        document.getElementById("registerUser").value;
+
+    const pass1 =
+        document.getElementById("registerPass1").value;
+
+    const pass2 =
+        document.getElementById("registerPass2").value;
+
+    if(pass1 !== pass2){
+        alert("Şifreler aynı değil.");
+        return;
+    }
+
+    localStorage.setItem(
+        "esekAccount",
+        JSON.stringify({
+            username:user,
+            password:pass1
+        })
+    );
+
+    alert("Hesap oluşturuldu.");
+}
+
+function login(){
+
+    const user =
+        document.getElementById("loginUser").value;
+
+    const pass =
+        document.getElementById("loginPass").value;
+
+    const acc =
+        JSON.parse(
+            localStorage.getItem("esekAccount")
+        );
+
+    if(
+        acc &&
+        acc.username === user &&
+        acc.password === pass
+    ){
+        localStorage.setItem(
+            "loggedUser",
+            user
+        );
+
+        alert("Giriş yapıldı.");
+    }else{
+        alert("Kullanıcı adı veya şifre hatalı.");
+    }
+}
 
         // ===== PROFİL BİTİŞ =====
 
     </script>
+    <div id="accountMenu" class="account-menu" style="display:none;">
+    <div class="account-box">
+
+        <h2>Hesap Girişi</h2>
+
+        <input type="text" id="loginUser" placeholder="Kullanıcı Adı">
+        <input type="password" id="loginPass" placeholder="Şifre">
+
+        <button onclick="login()">Giriş Yap</button>
+
+        <hr>
+
+        <h2>Hesap Oluştur</h2>
+
+        <input type="text" id="registerUser" placeholder="Kullanıcı Adı">
+
+        <input type="password"
+               id="registerPass1"
+               placeholder="Şifre">
+
+        <input type="password"
+               id="registerPass2"
+               placeholder="Şifre Tekrar">
+
+        <button onclick="register()">
+            Hesap Oluştur
+        </button>
+
+        <p style="color:red;font-weight:bold;">
+            Uyarı: Hesabınızın şifresini unutursanız
+            hesabınız gidebilir.
+        </p>
+
+    </div>
+</div>
 
 </body>
 </html>
