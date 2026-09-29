@@ -19,53 +19,25 @@
     <style>
         body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: Arial, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
         #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.5); z-index: 20; }
-        /* ===== DURAKLATMA MENÜSÜ ===== */
+        /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BAŞLANGIÇ ===== */
         #menu.pause-mode {
-            position: fixed !important;
-            inset: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            transform: none !important;
-            margin: 0 !important;
-            padding: 20px !important;
-            box-sizing: border-box;
-            border-radius: 0 !important;
-            background: rgba(0,0,0,.88) !important;
-            border: 0 !important;
-            box-shadow: none !important;
+            display: flex !important;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,.90);
             backdrop-filter: blur(5px);
-            z-index: 9999 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-            align-items: center !important;
         }
-        #menu.pause-mode h1,
-        #menu.pause-mode h2,
-        #menu.pause-mode #nameCard,
-        #menu.pause-mode #mainButtons { display: none !important; }
-        #menu.pause-mode #pauseButtons {
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 8px;
-            width: min(330px, 90vw) !important;
-        }
-        #menu.pause-mode #pauseTitle {
-            display: block !important;
-            color: #fff;
-            font-size: 30px;
-            margin: 0 0 18px;
-            text-shadow: 0 2px 10px #000;
-        }
-        #menu.pause-mode #pauseButtons .btn {
-            width: min(300px, 82vw) !important;
-            min-width: 0 !important;
-            margin: 4px 0 !important;
-        }
-        #pauseSettingsBtn.menu-only-hidden { display:none !important; }
-        /* ===== DURAKLATMA MENÜSÜ BİTİŞ ===== */
+        #menu.pause-mode h1, #menu.pause-mode h2, #menu.pause-mode #nameCard, #menu.pause-mode #mainButtons { display: none !important; }
+        #menu.pause-mode #pauseButtons { display: flex !important; width: auto; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+        /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ ===== */
         h1 { color: #ffd700; font-size: 64px; margin: 0; text-shadow: 3px 3px 6px #000; }
         h2 { color: #ffffff; font-size: 24px; margin: 10px 0 20px 0; font-weight: 300; }
         .section-title { color: #aaaaaa; font-size: 18px; margin: 15px 0 5px 0; }
@@ -77,6 +49,9 @@
         #info { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #ffffff; font-size: 16px; pointer-events: none; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); display: none; z-index: 15; }
         #mobileControls { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; pointer-events: none; z-index: 10; }
         #mobMenuBtn { position: absolute; top: 20px; left: 20px; width: 50px; height: 50px; background: rgba(0, 0, 0, 0.6); border: 2px solid #ffffff; color: #ffffff; font-size: 24px; border-radius: 50%; display: flex; justify-content: center; align-items: center; pointer-events: auto; cursor: pointer; z-index: 25; }
+        /* MOBİL PAUSE BUTONU: PC'deki ESC karşılığı. */
+        #mobPauseBtn { position:absolute; top:20px; left:200px; width:50px; height:50px; border:2px solid #fff; border-radius:50%; background:rgba(0,0,0,.62); color:#fff; font-size:22px; font-weight:800; display:flex; align-items:center; justify-content:center; pointer-events:auto; cursor:pointer; z-index:25; touch-action:none; box-shadow:0 4px 10px rgba(0,0,0,.5); }
+        #mobPauseBtn:active { background:rgba(255,255,255,.42); transform:scale(.96); }
         #mobViewBtn { position: absolute; top: 20px; left: 80px; width: 50px; height: 50px; background: rgba(0, 0, 0, 0.6); border: 2px solid #ffffff; color: #ffffff; font-size: 22px; border-radius: 50%; display: flex; justify-content: center; align-items: center; pointer-events: auto; cursor: pointer; z-index: 25; }
         #mobOpenBtn { position: absolute; bottom: 130px; right: 40px; width: 90px; height: 90px; background: rgba(255, 200, 0, 0.9); border: 3px solid #ffffff; color: #000000; font-size: 18px; font-weight: bold; border-radius: 50%; display: none; justify-content: center; align-items: center; pointer-events: auto; cursor: pointer; z-index: 25; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
         #joystickZone { position: absolute; bottom: 40px; left: 40px; width: 130px; height: 130px; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; pointer-events: auto; touch-action: none; }
@@ -213,11 +188,10 @@
             <button id="mobileSelectBtn" class="btn" style="background-color: #ff9800;">📱 MOBİL KONTROLÜ</button>
         </div>
         <div id="pauseButtons" style="display: none; flex-direction: column; align-items: center;">
-            <div id="pauseTitle">Oyun Duraklatıldı</div>
-            <button id="resumeBtn" class="btn">DEVAM ET</button>
+            <div style="font-size:28px;font-weight:800;margin-bottom:18px;">OYUN DURAKLATILDI</div>
+            <button id="resumeBtn" class="btn">OYUNA DEVAM ET</button>
             <button id="pauseSettingsBtn" class="btn btn-yellow">⚙️ AYARLAR</button>
-            <button id="returnMenuBtn" class="btn btn-red">MENÜYE DÖN</button>
-            <button id="exitGameBtn" class="btn btn-red" style="display:none;">OYUNDAN ÇIK</button>
+            <button id="returnMenuBtn" class="btn btn-red">OYUNDAN ÇIK</button>
         </div>
     </div>
 
@@ -2119,8 +2093,15 @@
               }
               const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=heightMap?THREE.NoColorSpace:THREE.SRGBColorSpace;t.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),4);t.needsUpdate=true;return t;
             }
+            // ÇİM DOKUSU: çiftlikteki açık/tek renkli yeşil yüzeyler artık ana dünyanın
+            // kullandığı grassTexture ile aynı dokuyu kullanır. Böylece farklı bir çim şeridi oluşmaz.
+            const sharedGrassTexture = grassTexture.clone();
+            sharedGrassTexture.wrapS = sharedGrassTexture.wrapT = THREE.RepeatWrapping;
+            sharedGrassTexture.repeat.set(8, 8);
+            sharedGrassTexture.needsUpdate = true;
             const farmSurfaces={};for(const kind of ['micro','wood','leather','straw','fabric','denim','tile','metal','stone','grass','soil','hay','leaf'])farmSurfaces[kind]={map:farmTextureCanvas(kind),bump:farmTextureCanvas(kind,true)};
-            function applyFarmSurface(material,kind='micro',bump=.012){if(!material||!material.isMeshStandardMaterial)return material;const t=farmSurfaces[kind]||farmSurfaces.micro;material.map=t.map;material.bumpMap=t.bump;material.bumpScale=bump;material.needsUpdate=true;return material}
+            farmSurfaces.grass = { map: sharedGrassTexture, bump: null };
+            function applyFarmSurface(material,kind='micro',bump=.012){if(!material||!material.isMeshStandardMaterial)return material;const t=farmSurfaces[kind]||farmSurfaces.micro;material.map=t.map;material.bumpMap=t.bump;material.bumpScale=t.bump?bump:0;material.needsUpdate=true;return material}
             for(const [m,k,b] of [[mats.grass,'grass',.035],[mats.grass2,'grass',.025],[mats.earth,'soil',.032],[mats.soil,'soil',.04],[mats.wood,'wood',.025],[mats.fence,'wood',.022],[mats.red,'leather',.012],[mats.redLight,'leather',.012],[mats.roof,'tile',.024],[mats.roof2,'tile',.024],[mats.stone,'stone',.027],[mats.metal,'metal',.016],[mats.hay,'hay',.022],[mats.leaf,'leaf',.018],[mats.leaf2,'leaf',.018]])applyFarmSurface(m,k,b);
 
             // Twenty adult farm workers. Workwear: plaid shirts, denim bibs,
@@ -2324,18 +2305,33 @@
             window.__farmReplacement={root:farmRoot,workers:farmWorkers,animals:farmWorkers.length,center:{x:FARM_CX,z:FARM_CZ}};
         })(farmModelRoot);
 
-        // Straight 6 m access road: it continues the supplied farm lane through its gate
-        // to the existing city road at x=210. The roadside parking stays clear to the east.
-        const farmAccessRoad=new THREE.Mesh(new THREE.PlaneGeometry(26,7),connectorRoadMat);
-        farmAccessRoad.rotation.x=-Math.PI/2;
-        farmAccessRoad.position.set(197,.095,FARM_CZ-9);
-        farmAccessRoad.name='Yeni çiftlik giriş bağlantısı';
-        scene.add(farmAccessRoad);
-        const farmAccessMark=new THREE.MeshBasicMaterial({color:0xf4f0d9});
-        for(let x=186;x<=208;x+=6){
-            const dash=new THREE.Mesh(new THREE.PlaneGeometry(2.4,.22),farmAccessMark);
-            dash.rotation.x=-Math.PI/2;dash.position.set(x,.105,FARM_CZ-9);scene.add(dash);
+        // ============================================================
+        // ÇİFTLİK GİRİŞİ -> ŞEHİR YOLU BAĞLANTISI
+        // Çiftlik kapısı kuzey sınırında (FARM_CZ + 50). Eski bağlantı
+        // kapıya denk gelmediği için yol havada/yanlış yerde kalıyordu.
+        // Bu yol doğrudan kapıdan x=210'daki şehir ana yoluna bağlanır.
+        // ============================================================
+        const farmGateRoadY = 0.095;
+        const farmGateRoad = new THREE.Mesh(
+            new THREE.PlaneGeometry(60, 8.5),
+            connectorRoadMat
+        );
+        farmGateRoad.rotation.x = -Math.PI / 2;
+        farmGateRoad.position.set(FARM_CX + 30, farmGateRoadY, FARM_CZ + 50);
+        farmGateRoad.name = 'Çiftlik kapısı şehir yol bağlantısı';
+        scene.add(farmGateRoad);
+
+        const farmGateRoadMark = new THREE.MeshBasicMaterial({color:0xf4f0d9});
+        for (let x = FARM_CX - 25; x <= FARM_CX + 25; x += 6) {
+            const dash = new THREE.Mesh(new THREE.PlaneGeometry(2.8, .22), farmGateRoadMark);
+            dash.rotation.x = -Math.PI / 2;
+            dash.position.set(x, farmGateRoadY + .01, FARM_CZ + 50);
+            scene.add(dash);
         }
+
+        // Kapıdan şehir ana yoluna kadar kuzey-güney devam eden bölüm.
+        createSegmentRoad(210, FARM_CZ + 50, 210, 70, 13, connectorShoulderMat, 0.065);
+        createSegmentRoad(210, FARM_CZ + 50, 210, 70, 8.5, connectorRoadMat, 0.085);
 
         // ==========================================
         // EŞEK SPAWN (Çiftlik girişinde)
@@ -2911,14 +2907,31 @@ inst(new THREE.BoxGeometry(.4,.04,3),new THREE.MeshBasicMaterial({color:0xf2e6a0
 
 // ---------- Blocks, buildings, trees ----------
 var slabMat=new THREE.MeshStandardMaterial({map:walkT,roughness:.9}),tl=[],trees=0,bldg=0,maxH=0;
-// ===== ŞEHİR SAĞ-ÜST AĞAÇLARI DÜZENLEMESİ BAŞLANGIÇ =====
-function addTree(x,z){
-  // Şehrin sağ-üst bölgesindeki eski koyu ağaç kümesini biraz daha doğuya taşıyoruz.
-  if(x>20 && z<-20){x+=62;z-=8;}
-  var s=R(.8,1.4),i=rnd()<.5?0:1;
-  tl.push([x,z,s,i,pick([0xffffff,0xd8f0c0,0xb8d89a])]);trees++
+// ============================================================
+// ŞEHİR AĞAÇLARI
+// Yol ve kaldırımın içine ağaç bırakma. Şehir modelinin lokal
+// koordinatlarında yol merkezleri pk(k), yol yarıçapı RD/2'dir.
+// 12 m tampon ile ağaçları yol/kaldırımdan uzak tutuyoruz.
+// ============================================================
+function cityRoadClearance(x,z){
+  var nearest = Infinity;
+  for(var rk=0; rk<=N; rk++){
+    var roadPos = pk(rk);
+    nearest = Math.min(nearest, Math.abs(x-roadPos), Math.abs(z-roadPos));
+  }
+  return nearest;
 }
-// ===== ŞEHİR SAĞ-ÜST AĞAÇLARI DÜZENLEMESİ BİTİŞ =====
+function addTree(x,z){
+  // Eski sağ-üst ağaç kümesini doğuya taşıma davranışı korunuyor.
+  if(x>20 && z<-20){x+=62;z-=8;}
+
+  // Yol + kaldırım güvenlik alanı. Uygun değilse ağaç hiç oluşturulmaz.
+  if(cityRoadClearance(x,z) < 12) return;
+
+  var s=R(.8,1.4),i=rnd()<.5?0:1;
+  tl.push([x,z,s,i,pick([0xffffff,0xd8f0c0,0xb8d89a])]);trees++;
+}
+
 for(var i=0;i<N;i++)for(var j=0;j<N;j++){
   var cx=(i-(N-1)/2)*P,cz=(j-(N-1)/2)*P,d=Math.hypot(i-3.5,j-3.5);
   var slab=new THREE.Mesh(new THREE.BoxGeometry(B,.4,B),slabMat);slab.position.set(cx,.1,cz);slab.receiveShadow=true;cityRoot.add(slab);
@@ -3034,6 +3047,21 @@ function stepCar(c,dt){
   c.off+=((c.axis?c.dir:-c.dir)*2.6-c.off)*Math.min(1,dt*1.6);
   var g2=c.g;if(c.axis===0){g2.position.set(c.base+c.off,.1,c.pos);g2.rotation.y=c.dir>0?0:Math.PI}else{g2.position.set(c.pos,.1,c.base+c.off);g2.rotation.y=c.dir>0?Math.PI/2:-Math.PI/2}}
 
+
+        // ============================================================
+        // ŞEHİR COLLIDER VERİSİ
+        // cityRoot/tl/tp/lp IIFE içinde olduğu için dışarıdaki hareket
+        // sistemi bunlara doğrudan erişemiyordu. Global bir veri köprüsü
+        // oluşturarak ağaç, trafik ışığı ve sokak lambası colliderlarını
+        // gerçek şehir koordinatına taşıyoruz.
+        // ============================================================
+        window.__cityColliderData = {
+            root: cityRoot,
+            trees: tl,
+            trafficLights: tp,
+            streetLamps: lp,
+            cars: cars
+        };
 
         // Modelin kendi animasyonları ana oyun döngüsüne bağlanır.
         let cityClock = 0, cityTt = 0;
@@ -3540,12 +3568,13 @@ function stepCar(c,dt){
         const pauseButtons = document.getElementById('pauseButtons');
         const resumeBtn = document.getElementById('resumeBtn');
         const returnMenuBtn = document.getElementById('returnMenuBtn');
-        const exitGameBtn = document.getElementById('exitGameBtn');
         const pauseSettingsBtn = document.getElementById('pauseSettingsBtn');
         const pcSelectBtn = document.getElementById('pcSelectBtn');
         const mobileSelectBtn = document.getElementById('mobileSelectBtn');
         const infoEl = document.getElementById('info');
         const mobileControlsEl = document.getElementById('mobileControls');
+        // MOBİL BUTONLAR: Buraya yeni dokunmatik butonlar eklenebilir.
+        // mobPauseBtn = PC ESC/pause, mobOpenBtn = E/etkileşim, mobSprintBtn = Shift/koş.
         const hudEl = document.getElementById('hud');
         const hudTimeEl = document.getElementById('hudTime');
         const hudFpsEl = document.getElementById('hudFps');
@@ -3671,6 +3700,32 @@ function stepCar(c,dt){
         mobileUiTap(chatReopenBtn, showChat);
         mobileUiTap(document.getElementById('playerListClose'), () => togglePlayerList(false));
         mobileUiTap(document.getElementById('mobPlayersBtn'), () => togglePlayerList());
+
+        // MOBİL PAUSE BUTONU: PC'deki ESC davranışının dokunmatik karşılığı.
+        function pauseFromGameplay(){
+            if(!gameStarted || playerIsDead) return;
+            if(settingsPanel.style.display === 'block'){ closeSettingsPanel(); return; }
+            if(playerListPanel.style.display === 'block'){ togglePlayerList(false); return; }
+
+            // Pause sırasında server'a presence:false gönderilmez. Böylece
+            // oyuncu oyundan çıkmış sayılmaz ve Guest numarası değişmez.
+            gameStarted = false;
+            releaseFirstPersonPointerLock();
+            document.getElementById('onlineBadge').style.display = 'none';
+            chatPanelEl.style.display = 'none';
+            chatReopenBtn.style.display = 'none';
+            openPauseMenu();
+            infoEl.style.display = 'none';
+            mobileControlsEl.style.display = 'none';
+            hudEl.style.display = 'none';
+            crosshairEl.style.display = 'none';
+            interactPromptEl.style.display = 'none';
+            mobOpenBtn.style.display = 'none';
+            document.body.style.cursor = 'default';
+            playerDonkey.visible = false;
+        }
+
+        mobileUiTap(document.getElementById('mobPauseBtn'), pauseFromGameplay);
         document.getElementById('onlineBadge').style.display = 'block';
         setDonkeyNameTag(playerDonkey, getPlayerName());
         applyRenderScale();
@@ -3687,57 +3742,22 @@ function stepCar(c,dt){
             if (!autoFpsEnabled) { renderScale = renderScaleTarget; applyRenderScale(); }
         });
 
-        // ===== DURAKLATMA MENÜSÜ =====
-        let pauseOpenedFromGame = false;
-        function openPauseMenu(fromGame = false) {
-            pauseOpenedFromGame = !!fromGame;
+        // ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BAŞLANGIÇ =====
+        function openPauseMenu() {
             menuEl.classList.add('pause-mode');
             menuEl.style.display = 'flex';
             nameCardEl.style.display = 'none';
             mainButtons.style.display = 'none';
             pauseButtons.style.display = 'flex';
-            pauseSettingsBtn.style.display = fromGame ? 'block' : 'none';
-            returnMenuBtn.style.display = fromGame ? 'block' : 'none';
-            exitGameBtn.style.display = fromGame ? 'none' : 'block';
         }
         function openMainMenu() {
-            pauseOpenedFromGame = false;
             menuEl.classList.remove('pause-mode');
             menuEl.style.display = 'flex';
             nameCardEl.style.display = 'block';
             mainButtons.style.display = 'block';
             pauseButtons.style.display = 'none';
-            pauseSettingsBtn.style.display = 'none';
-            returnMenuBtn.style.display = 'none';
-            exitGameBtn.style.display = 'none';
         }
-        function resumePausedGame() {
-            if (!pauseOpenedFromGame) {
-                openMainMenu();
-                document.body.style.cursor = 'default';
-                return;
-            }
-            gameStarted = true;
-            menuEl.classList.remove('pause-mode');
-            menuEl.style.display = 'none';
-            pauseButtons.style.display = 'none';
-            playerDonkey.visible = cameraMode !== 'first';
-            hudEl.style.display = 'block';
-            infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
-            mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
-            crosshairEl.style.display = cameraMode === 'first' ? 'block' : 'none';
-            interactPromptEl.style.display = 'none';
-            document.getElementById('onlineBadge').style.display = 'none';
-            chatPanelEl.style.display = chatUserHidden ? 'none' : 'flex';
-            chatReopenBtn.style.display = chatUserHidden ? 'block' : 'none';
-            for (const other of Object.values(otherPlayers)) other.visible = true;
-            setDonkeyNameTag(playerDonkey, getPlayerName());
-            document.body.style.cursor = (cameraMode === 'first' && controlMode === 'pc') ? 'none' : 'default';
-            if (cameraMode === 'first' && controlMode === 'pc') requestFirstPersonPointerLock();
-            setGameplayCameraImmediate();
-            sendPresence(true);
-        }
-        // ===== DURAKLATMA MENÜSÜ BİTİŞ =====
+        // ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ =====
 
         function openSettings() { settingsPanel.style.display = 'block'; }
         function closeSettingsPanel() { settingsPanel.style.display = 'none'; }
@@ -3909,71 +3929,20 @@ function stepCar(c,dt){
         pcSelectBtn.addEventListener('click', () => startGame('pc'));
         mobileSelectBtn.addEventListener('click', () => startGame('mobile'));
 
-        // Pause butonları tek bir yerde yönetilir; yeniden join_request gönderilmez.
-        resumeBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            resumePausedGame();
-        });
-
-        returnMenuBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+        returnMenuBtn.addEventListener('click', () => {
             gameStarted = false;
             releaseFirstPersonPointerLock();
             sendPresence(false);
-            openMainMenu();
-            document.getElementById('onlineBadge').style.display = 'block';
-            chatPanelEl.style.display = 'none';
-            chatReopenBtn.style.display = 'none';
-            togglePlayerList(false);
-            infoEl.style.display = 'none';
-            mobileControlsEl.style.display = 'none';
-            hudEl.style.display = 'none';
-            settingsPanel.style.display = 'none';
-            crosshairEl.style.display = 'none';
-            interactPromptEl.style.display = 'none';
-            mobOpenBtn.style.display = 'none';
-            document.body.style.cursor = 'default';
-            playerDonkey.visible = false;
-            for (const other of Object.values(otherPlayers)) other.visible = false;
-        });
-
-        exitGameBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            gameStarted = false;
-            releaseFirstPersonPointerLock();
-            sendPresence(false);
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                try { ws.close(); } catch (_) {}
-            }
+            try { if (ws && ws.readyState === WebSocket.OPEN) ws.close(); } catch (e) {}
             window.location.href = '/';
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
+            if (e.key === 'Escape' && gameStarted) {
                 if (settingsPanel.style.display === 'block') { closeSettingsPanel(); return; }
                 if (playerListPanel.style.display === 'block') { togglePlayerList(false); return; }
                 e.preventDefault();
-                if (gameStarted) {
-                    gameStarted = false;
-                    releaseFirstPersonPointerLock();
-                    document.getElementById('onlineBadge').style.display = 'block';
-                    chatPanelEl.style.display = 'none';
-                    chatReopenBtn.style.display = 'none';
-                    infoEl.style.display = 'none';
-                    mobileControlsEl.style.display = 'none';
-                    hudEl.style.display = 'none';
-                    crosshairEl.style.display = 'none';
-                    interactPromptEl.style.display = 'none';
-                    mobOpenBtn.style.display = 'none';
-                    document.body.style.cursor = 'default';
-                    playerDonkey.visible = false;
-                    openPauseMenu(true);
-                } else {
-                    openPauseMenu(false);
-                }
+                pauseFromGameplay();
                 return;
             }
             if (!gameStarted) return;
@@ -4071,11 +4040,11 @@ function stepCar(c,dt){
             if (gameStarted) {
                 gameStarted = false;
                 releaseFirstPersonPointerLock();
+                sendPresence(false);
                 document.getElementById('onlineBadge').style.display = 'block';
-                chatPanelEl.style.display = 'none';
-                chatReopenBtn.style.display = 'none';
+                chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
                 togglePlayerList(false);
-                openPauseMenu(true);
+                openPauseMenu();
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
                 hudEl.style.display = 'none';
@@ -4213,14 +4182,48 @@ function stepCar(c,dt){
                 if(!worker||!worker.visible)continue;const wp=worker.getWorldPosition(new THREE.Vector3());
                 if(Math.hypot(x-wp.x,z-wp.z)<radius+.48)return true;
             }
-            // Şehir maketindeki ağaçlar ve trafik lambaları için sabit collider.
-            if (typeof cityRoot !== 'undefined' && typeof tl !== 'undefined') {
-                const sx=cityRoot.scale.x||1,sz=cityRoot.scale.z||1;
-                for(const t of tl){const wx=cityRoot.position.x+t[0]*sx,wz=cityRoot.position.z+t[1]*sz;if(Math.hypot(x-wx,z-wz)<radius+1.25)return true;}
-            }
-            if (typeof cityRoot !== 'undefined' && typeof tp !== 'undefined') {
-                const sx=cityRoot.scale.x||1,sz=cityRoot.scale.z||1;
-                for(const t of tp){const wx=cityRoot.position.x+t[0]*sx,wz=cityRoot.position.z+t[2]*sz;if(Math.hypot(x-wx,z-wz)<radius+.65)return true;}
+            // ============================================================
+            // ŞEHİR NESNE COLLIDERLARI
+            // Eski kod cityRoot/tl/tp değişkenlerine IIFE dışından erişmeye
+            // çalışıyordu ve bu yüzden collider kontrolü fiilen çalışmıyordu.
+            // Şimdi expose edilen şehir verisini kullanıyoruz.
+            // ============================================================
+            const cityColliderData = window.__cityColliderData;
+            if (cityColliderData && cityColliderData.root) {
+                const root = cityColliderData.root;
+                const sx = root.scale.x || 1;
+                const sz = root.scale.z || 1;
+                const ox = root.position.x || 0;
+                const oz = root.position.z || 0;
+
+                // Ağaç gövdeleri / taçları.
+                for (const t of (cityColliderData.trees || [])) {
+                    const wx = ox + t[0] * sx;
+                    const wz = oz + t[1] * sz;
+                    const treeRadius = 0.72 * (t[2] || 1);
+                    if (Math.hypot(x - wx, z - wz) < radius + treeRadius) return true;
+                }
+
+                // Trafik ışığı direkleri.
+                for (const t of (cityColliderData.trafficLights || [])) {
+                    const wx = ox + t[0] * sx;
+                    const wz = oz + t[2] * sz;
+                    if (Math.hypot(x - wx, z - wz) < radius + 0.75) return true;
+                }
+
+                // Sokak lambaları.
+                for (const t of (cityColliderData.streetLamps || [])) {
+                    const wx = ox + t[0] * sx;
+                    const wz = oz + t[2] * sz;
+                    if (Math.hypot(x - wx, z - wz) < radius + 0.55) return true;
+                }
+
+                // Hareketli şehir araçları.
+                for (const car of (cityColliderData.cars || [])) {
+                    if (!car || !car.g || !car.g.visible) continue;
+                    const wp = car.g.position;
+                    if (Math.hypot(x - wp.x, z - wp.z) < radius + 2.25) return true;
+                }
             }
             return false;
         }
@@ -4406,11 +4409,18 @@ function stepCar(c,dt){
                 updateFarmAnimals(deltaSec, now * 0.001);
                 if (farmModelRoot && farmModelRoot.userData.updateWalkers) farmModelRoot.userData.updateWalkers(now);
 
+                // ============================================================
+                // EŞEK HIZI — PC VE MOBİL AYNI
+                // Tek bir hız tablosu kullanılır. Mobil joystick daha az ileri
+                // değer üretse bile hız limiti PC ile birebir aynıdır.
+                // ============================================================
+                const DONKEY_WALK_SPEED = 0.12;
+                const DONKEY_CROUCH_SPEED = 0.06;
+                const DONKEY_SPRINT_SPEED = 0.21;
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
-                // PC ve mobil aynı hız tablosunu kullanır; kullanıcı isteğiyle belirgin biçimde yavaşlatıldı.
-                let baseSpeed = isCrouching ? 0.06 : 0.12;
-                if (isSprinting && !isCrouching) baseSpeed = 0.21;
+                let baseSpeed = isCrouching ? DONKEY_CROUCH_SPEED : DONKEY_WALK_SPEED;
+                if (isSprinting && !isCrouching) baseSpeed = DONKEY_SPRINT_SPEED;
                 // ===== GÖLET HAREKET/FİZİK DÜZENLEMESİ BAŞLANGIÇ =====
                 // farmRoot 180 derece döndüğü için local (16,-11), dünya (FARM_CX-19.2,FARM_CZ+13.2) olur.
                 const pondWX = FARM_CX - 16 * 1.20;
@@ -4667,7 +4677,30 @@ function stepCar(c,dt){
         }
         pcSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('pc',false);},true);
         mobileSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('mobile',false);},true);
-
+        resumeBtn.addEventListener('click',e=>{
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            gameStarted = true;
+            menuEl.classList.remove('pause-mode');
+            menuEl.style.display = 'none';
+            pauseButtons.style.display = 'none';
+            hudEl.style.display = 'block';
+            playerDonkey.visible = cameraMode !== 'first';
+            for (const other of Object.values(otherPlayers)) other.visible = true;
+            setDonkeyNameTag(playerDonkey, getPlayerName());
+            if (cameraMode === 'first') {
+                crosshairEl.style.display = 'block';
+                if (controlMode === 'pc') { document.body.style.cursor = 'none'; requestFirstPersonPointerLock(); }
+            } else {
+                crosshairEl.style.display = 'none';
+                document.body.style.cursor = 'default';
+            }
+            infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
+            mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
+            chatPanelEl.style.display = chatUserHidden ? 'none' : 'flex';
+            chatReopenBtn.style.display = chatUserHidden ? 'block' : 'none';
+            document.getElementById('onlineBadge').style.display = 'none';
+        },true);
         document.getElementById('chatHideBtn').addEventListener('click',()=>setChatVisible(false));
         chatReopenBtn.addEventListener('click',()=>setChatVisible(true));
         mobileUiTap(mobChatBtnEl, ()=>setChatVisible(chatIsManuallyHidden));
