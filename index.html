@@ -72,6 +72,26 @@
             .need-row { grid-template-columns:63px 1fr 28px; gap:5px; font-size:11px; }
             #mobChatBtn { left:140px; }
         }
+        /* ===== MOBİL YATAY EKRAN DÜZENİ BAŞLANGIÇ ===== */
+        @media (orientation: landscape) and (max-width: 1000px) {
+            #mobMenuBtn { top: 10px; left: 10px; width: 46px; height: 46px; }
+            #mobViewBtn { top: 10px; left: 62px; width: 46px; height: 46px; }
+            #mobChatBtn { top: 10px; left: 114px; width: 46px; height: 46px; }
+            #mobPlayersBtn { top: 10px; left: 166px; width: 46px; height: 46px; }
+            #joystickZone { left: 16px; bottom: 14px; width: 110px; height: 110px; }
+            #joystickKnob { left: 30px; top: 30px; width: 50px; height: 50px; }
+            .mob-btn-group { right: 12px; bottom: 14px; grid-template-columns: repeat(3, 54px); gap: 7px; }
+            .mob-btn { width: 54px; height: 54px; font-size: 11px; }
+            #mobOpenBtn { right: 194px; bottom: 19px; width: 58px; height: 58px; }
+            #survivalHud { left: 10px; bottom: 132px; width: min(260px, 38vw); }
+            #chatPanel { top: 64px; left: 10px; width: min(360px, 46vw); height: 230px; }
+            #playerListPanel { max-width: 70vw; }
+            #settingsPanel { max-height: 88vh; overflow-y: auto; }
+        }
+        @media (orientation: portrait) and (max-width: 700px) {
+            #mobMenuBtn, #mobViewBtn, #mobChatBtn, #mobPlayersBtn { top: 8px; }
+        }
+        /* ===== MOBİL YATAY EKRAN DÜZENİ BİTİŞ ===== */
         #hud { position: absolute; top: 20px; right: 20px; color: #ffffff; font-size: 14px; font-family: monospace; background: rgba(0, 0, 0, 0.5); padding: 8px 12px; border-radius: 8px; pointer-events: none; z-index: 15; text-shadow: 1px 1px 2px #000; display: none; }
         #hud div { margin: 2px 0; }
         #hud .label { color: #ffd700; font-weight: bold; }
@@ -2627,34 +2647,10 @@
         beachSand.rotation.x = -Math.PI / 2;
         beachSand.position.set(BEACH_PARKING_CENTER.x, 0.018, -420);
         scene.add(beachSand);
-        const beachCarPark = new THREE.Mesh(new THREE.PlaneGeometry(38, 22), new THREE.MeshLambertMaterial({ color: 0x35393b }));
-        beachCarPark.rotation.x = -Math.PI / 2;
-        beachCarPark.position.set(BEACH_PARKING_CENTER.x, 0.078, BEACH_PARKING_CENTER.z);
-        scene.add(beachCarPark);
-        const parkLineMat = new THREE.MeshBasicMaterial({ color: 0xf1e6c9 });
-        for (let i = 0; i < 5; i++) {
-            const line = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 8), parkLineMat);
-            line.rotation.x = -Math.PI / 2;
-            line.position.set(BEACH_PARKING_CENTER.x - 12 + i * 6, 0.088, BEACH_PARKING_CENTER.z);
-            scene.add(line);
-        }
-        const beachCarMaterials = [0x4477a8, 0xb54436, 0xe3d7ae, 0x43554d];
-        for (let i = 0; i < 4; i++) {
-            const cx = BEACH_PARKING_CENTER.x - 9 + (i % 2) * 18;
-            const cz = BEACH_PARKING_CENTER.z - 5 + Math.floor(i / 2) * 10;
-            const car = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.15, 2.05), new THREE.MeshLambertMaterial({ color: beachCarMaterials[i] }));
-            body.position.y = 0.9; car.add(body);
-            const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.9, 1.75), new THREE.MeshLambertMaterial({ color: 0x9db6bb }));
-            cabin.position.set(0, 1.78, -0.08); car.add(cabin);
-            const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.22, 10);
-            const wheelMat = new THREE.MeshLambertMaterial({ color: 0x161819 });
-            for (const wx of [-1.5, 1.5]) for (const wz of [-0.86, 0.86]) {
-                const wheel = new THREE.Mesh(wheelGeo, wheelMat); wheel.rotation.z = Math.PI / 2; wheel.position.set(wx, 0.45, wz); car.add(wheel);
-            }
-            car.position.set(cx, 0.08, cz); scene.add(car);
-            buildings.push({ x: cx, z: cz, halfW: 2.5, halfD: 1.45 });
-        }
+        // ===== ESKİ SAHİL OTOPARKI KALDIRILDI BAŞLANGIÇ =====
+        // Ekran görüntüsündeki gri park alanı ve araçlar kaldırıldı.
+        // Sahil yolu, kum ve deniz korunur.
+        // ===== ESKİ SAHİL OTOPARKI KALDIRILDI BİTİŞ =====
         const waterGeo = new THREE.PlaneGeometry(280, 53, 48, 16);
         waterGeo.rotateX(-Math.PI / 2);
         const waterColors = [];
@@ -2963,38 +2959,55 @@ function stepCar(c,dt){
         // Lush forest region: thousands of low-cost instanced trees cover ~90% of the woodland canopy.
         const forestTrees=[]; const orchardTrees=[]; const forestTreeGrid=new Map(); const FOREST_CELL=8;
         function mulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
+        // ===== ORMAN YENİDEN OLUŞTURMA BAŞLANGIÇ =====
+        // Önceki orman çok sık olduğu için oyuncunun geçebileceği koridorlar açıldı.
+        // Ağaçlar yolun içine alınmaz ve aralarında sabit minimum mesafe bırakılır.
         const forestRand=mulberry32(0xE5ECAFFE);
-        for(let attempt=0;attempt<9000 && forestTrees.length<2150;attempt++){
-            const a=forestRand()*Math.PI*2, r=Math.sqrt(forestRand())*94;
+        const FOREST_MIN_SPACING = 8.6;
+        const FOREST_ROAD_CLEARANCE = 18.0;
+        const FOREST_MAX_TREES = 1900;
+        function canPlaceForestTree(x,z){
+            if(distanceToRoadAxis(x,z) < FOREST_ROAD_CLEARANCE) return false;
+            const gx=Math.floor(x/FOREST_CELL), gz=Math.floor(z/FOREST_CELL);
+            for(let ix=gx-1;ix<=gx+1;ix++) for(let iz=gz-1;iz<=gz+1;iz++){
+                const list=forestTreeGrid.get(`${ix},${iz}`); if(!list) continue;
+                for(const t of list) if(Math.hypot(t.x-x,t.z-z) < FOREST_MIN_SPACING) return false;
+            }
+            return true;
+        }
+        function addForestTree(x,z){
+            const scale=.82+forestRand()*.66, groundY=terrainHeightAt(x,z);
+            const tree={x,z,scale,groundY,radius:.68*scale,id:null,apples:6};
+            const gridKey=`${Math.floor(x/FOREST_CELL)},${Math.floor(z/FOREST_CELL)}`;
+            if(!forestTreeGrid.has(gridKey)) forestTreeGrid.set(gridKey,[]);
+            forestTreeGrid.get(gridKey).push(tree);
+            if(forestTrees.length%16===0){tree.id=`apple-forest-${String(orchardTrees.length).padStart(3,'0')}`;orchardTrees.push(tree);}
+            forestTrees.push(tree);
+        }
+        // Çiftliğe/şehre daha yakın orman: daha açık bir çekirdek.
+        for(let attempt=0;attempt<15000 && forestTrees.length<780;attempt++){
+            const a=forestRand()*Math.PI*2, r=Math.sqrt(forestRand())*105;
             const x=220+Math.cos(a)*r, z=-55+Math.sin(a)*r;
             if(Math.hypot(x,z)>326)continue;
-            if(Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<21)continue;
-            if(Math.hypot(x-FARM_CX,z-FARM_CZ)<164)continue;
-            if(Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<CITY_RADIUS+20)continue;
-            if(distanceToRoadAxis(x,z)<8.5)continue;
-            const scale=.82+forestRand()*.66, groundY=terrainHeightAt(x,z);
-            const tree={x,z,scale,groundY,radius:.68*scale,id:null,apples:6};
-            const gridKey=`${Math.floor(x/FOREST_CELL)},${Math.floor(z/FOREST_CELL)}`;
-            if(!forestTreeGrid.has(gridKey))forestTreeGrid.set(gridKey,[]);forestTreeGrid.get(gridKey).push(tree);
-            if(forestTrees.length%27===0){tree.id=`apple-forest-${String(orchardTrees.length).padStart(3,'0')}`;orchardTrees.push(tree);}
-            forestTrees.push(tree);
-        }
-        for(let attempt=0;attempt<12000 && forestTrees.length<3600;attempt++){
-            const a=forestRand()*Math.PI*2, r=190+forestRand()*132;
-            const x=Math.cos(a)*r, z=Math.sin(a)*r;
-            if(Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<22)continue;
-            if(Math.hypot(x-FARM_CX,z-FARM_CZ)<164)continue;
+            if(Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<24)continue;
+            if(Math.hypot(x-FARM_CX,z-FARM_CZ)<170)continue;
             if(Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<CITY_RADIUS+22)continue;
-            if(distanceToRoadAxis(x,z)<10)continue;
-            if(Math.abs(x-BEACH_PARKING_CENTER.x)<135&&z<-382)continue;
-            if(Math.abs(x-BEACH_PARKING_CENTER.x)<20&&z<-305&&z>-372)continue;
-            const scale=.82+forestRand()*.66, groundY=terrainHeightAt(x,z);
-            const tree={x,z,scale,groundY,radius:.68*scale,id:null,apples:6};
-            const gridKey=`${Math.floor(x/FOREST_CELL)},${Math.floor(z/FOREST_CELL)}`;
-            if(!forestTreeGrid.has(gridKey))forestTreeGrid.set(gridKey,[]);forestTreeGrid.get(gridKey).push(tree);
-            if(forestTrees.length%27===0){tree.id=`apple-forest-${String(orchardTrees.length).padStart(3,'0')}`;orchardTrees.push(tree);}
-            forestTrees.push(tree);
+            if(!canPlaceForestTree(x,z))continue;
+            addForestTree(x,z);
         }
+        // Dış orman kuşağı.
+        for(let attempt=0;attempt<25000 && forestTrees.length<FOREST_MAX_TREES;attempt++){
+            const a=forestRand()*Math.PI*2, r=205+forestRand()*130;
+            const x=Math.cos(a)*r, z=Math.sin(a)*r;
+            if(Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<25)continue;
+            if(Math.hypot(x-FARM_CX,z-FARM_CZ)<170)continue;
+            if(Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<CITY_RADIUS+24)continue;
+            if(Math.abs(x-BEACH_PARKING_CENTER.x)<140&&z<-382)continue;
+            if(Math.abs(x-BEACH_PARKING_CENTER.x)<24&&z<-300&&z>-372)continue;
+            if(!canPlaceForestTree(x,z))continue;
+            addForestTree(x,z);
+        }
+        // ===== ORMAN YENİDEN OLUŞTURMA BİTİŞ =====
         const trunkGeometry=new THREE.CylinderGeometry(.38,.53,5,6);
         const trunkMaterial=new THREE.MeshLambertMaterial({map:woodTexture,color:0x93623e});
         const leafGeometry=new THREE.SphereGeometry(1.55,5,4);
@@ -3404,10 +3417,14 @@ function stepCar(c,dt){
             chatInputEl.value = '';
             chatInputEl.focus();
         });
-        document.getElementById('chatHideBtn').addEventListener('click', hideChat);
-        chatReopenBtn.addEventListener('click', showChat);
-        document.getElementById('playerListClose').addEventListener('click', () => togglePlayerList(false));
-        document.getElementById('mobPlayersBtn').addEventListener('click', () => togglePlayerList());
+        function mobileUiTap(el, fn){
+            if(!el) return;
+            el.addEventListener('pointerup', e=>{ e.preventDefault(); e.stopPropagation(); fn(); }, {passive:false});
+        }
+        mobileUiTap(document.getElementById('chatHideBtn'), hideChat);
+        mobileUiTap(chatReopenBtn, showChat);
+        mobileUiTap(document.getElementById('playerListClose'), () => togglePlayerList(false));
+        mobileUiTap(document.getElementById('mobPlayersBtn'), () => togglePlayerList());
         document.getElementById('onlineBadge').style.display = 'block';
         setDonkeyNameTag(playerDonkey, getPlayerName());
         applyRenderScale();
@@ -3460,9 +3477,13 @@ function stepCar(c,dt){
             sensValue.textContent = sensitivity.toFixed(1);
         });
 
+        // ===== BİRİNCİ ŞAHIS KAMERA DÜZELTMESİ BAŞLANGIÇ =====
         function toggleCameraMode() {
             if (cameraMode === 'third') {
                 cameraMode = 'first';
+                // Üçüncü şahıstan birinci şahsa geçerken ters dikey eğim taşınmasın.
+                // Yatay yön korunur; dikey bakış sıfırdan başlar.
+                pitch = 0;
                 hudCamEl.textContent = '1. Şahıs';
                 crosshairEl.style.display = 'block';
                 if (controlMode === 'pc') document.body.style.cursor = 'none';
@@ -3472,7 +3493,9 @@ function stepCar(c,dt){
                 crosshairEl.style.display = 'none';
                 if (controlMode === 'pc') document.body.style.cursor = 'default';
             }
+            setGameplayCameraImmediate();
         }
+        // ===== BİRİNCİ ŞAHIS KAMERA DÜZELTMESİ BİTİŞ =====
 
         mobViewBtn.addEventListener('click', toggleCameraMode);
 
@@ -3498,15 +3521,32 @@ function stepCar(c,dt){
                 const eyeY = playerDonkey.position.y + eyeHeight;
                 const eyeZ = playerDonkey.position.z + Math.cos(yaw) * 0.5;
                 camera.position.set(eyeX, eyeY, eyeZ);
-                const cp = Math.cos(pitch), sp = Math.sin(pitch);
+                // Birinci şahısta dikey eksen oyunlardaki gibi ters tutulur:
+                // fareyi aşağı çek = yukarı bak, fareyi yukarı çek = aşağı bak.
+                const viewPitch = -pitch;
+                const cp = Math.cos(viewPitch), sp = Math.sin(viewPitch);
                 camera.lookAt(new THREE.Vector3(eyeX + Math.sin(yaw) * cp, eyeY + sp, eyeZ + Math.cos(yaw) * cp));
             }
             camera.updateProjectionMatrix();
         }
         // ===== OYUN KAMERASI DÜZENLEMESİ BİTİŞ =====
 
+        // ===== MOBİL YATAY YÖNLENDİRME BAŞLANGIÇ =====
+        function tryLockMobileLandscape() {
+            if (controlMode !== 'mobile') return;
+            try {
+                const orientation = screen.orientation;
+                if (orientation && orientation.lock) {
+                    const lockPromise = orientation.lock('landscape');
+                    if (lockPromise && typeof lockPromise.catch === 'function') lockPromise.catch(() => {});
+                }
+            } catch (e) {}
+        }
+        // ===== MOBİL YATAY YÖNLENDİRME BİTİŞ =====
+
         function startGame(mode) {
             controlMode = mode;
+            tryLockMobileLandscape();
             initWebSocket();
             // Başlangıç noktası doğrudan yeni çiftlik modelindeki ahırın içi.
             const barnSpawnX=FARM_CX+1.2, barnSpawnZ=FARM_CZ+1.2;
@@ -3543,6 +3583,7 @@ function stepCar(c,dt){
         mobileSelectBtn.addEventListener('click', () => startGame('mobile'));
 
         resumeBtn.addEventListener('click', () => {
+            tryLockMobileLandscape();
             initWebSocket();
             gameStarted = true;
             menuEl.classList.remove('pause-mode');
@@ -3657,9 +3698,10 @@ function stepCar(c,dt){
             if (settingsPanel.style.display === 'block') return;
             if (cameraMode === 'first') {
                 yaw -= (e.movementX || 0) * 0.005 * sensitivity;
-                // Fareyi aşağı indirince pitch artar: kamera ve kafa yukarı bakar.
-                pitch += (e.movementY || 0) * 0.005 * sensitivity;
-                pitch = Math.max(-1.2, Math.min(1.4, pitch));
+                // Birinci şahıs: fare aşağı = yukarı bak. viewPitch = -pitch olduğu için
+                // burada pitch aşağı çekişte azalır.
+                pitch -= (e.movementY || 0) * 0.005 * sensitivity;
+                pitch = Math.max(-1.4, Math.min(1.2, pitch));
             } else if (isMouseDown) {
                 const dx = e.clientX - mouseX;
                 const dy = e.clientY - mouseY;
@@ -3681,7 +3723,7 @@ function stepCar(c,dt){
         const mobMenuBtn = document.getElementById('mobMenuBtn');
         let touchStartX = 0, touchStartY = 0;
 
-        mobMenuBtn.addEventListener('click', () => {
+        mobileUiTap(mobMenuBtn, () => {
             if (gameStarted) {
                 gameStarted = false;
                 sendPresence(false);
@@ -3700,52 +3742,35 @@ function stepCar(c,dt){
             }
         });
 
-        joystickZone.addEventListener('touchstart', (e) => {
+        // ===== MOBİL JOYSTICK ÇOKLU DOKUNMATİK BAŞLANGIÇ =====
+        // Joystick kendi pointer'ını tutar; aynı anda sohbet, menü, saldırı veya diğer butonlara basılabilir.
+        let activeJoystickPointer=null,joystickOriginX=0,joystickOriginY=0;
+        joystickZone.addEventListener('pointerdown',e=>{
+            if(e.pointerType==='mouse') return;
+            e.preventDefault(); e.stopPropagation();
+            if(activeJoystickPointer!==null) return;
+            activeJoystickPointer=e.pointerId;
+            joystickZone.setPointerCapture(e.pointerId);
+            const r=joystickZone.getBoundingClientRect();
+            joystickOriginX=r.left+r.width/2; joystickOriginY=r.top+r.height/2;
+            joystickActive=true;
+        },{passive:false});
+        joystickZone.addEventListener('pointermove',e=>{
+            if(e.pointerId!==activeJoystickPointer) return;
             e.preventDefault();
-            if (joystickTouchId !== null) return;
-            const touch = e.changedTouches[0];
-            joystickTouchId = touch.identifier;
-            joystickActive = true;
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-        }, { passive: false });
-
-        joystickZone.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            if (joystickTouchId === null) return;
-            let touch = null;
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === joystickTouchId) { touch = e.changedTouches[i]; break; }
-            }
-            if (!touch) return;
-            let dX = touch.clientX - touchStartX;
-            let dY = touch.clientY - touchStartY;
-            let dist = Math.min(45, Math.sqrt(dX * dX + dY * dY));
-            let angle = Math.atan2(dY, dX);
-            joystickKnob.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
-            joystickMoveX = Math.cos(angle) * (dist / 45);
-            joystickMoveZ = Math.sin(angle) * (dist / 45);
-        }, { passive: false });
-
-        joystickZone.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === joystickTouchId) {
-                    joystickTouchId = null;
-                    joystickActive = false;
-                    joystickKnob.style.transform = `translate(0px, 0px)`;
-                    joystickMoveX = 0; joystickMoveZ = 0;
-                    break;
-                }
-            }
-        }, { passive: false });
-
-        joystickZone.addEventListener('touchcancel', () => {
-            joystickTouchId = null;
-            joystickActive = false;
-            joystickKnob.style.transform = `translate(0px, 0px)`;
-            joystickMoveX = 0; joystickMoveZ = 0;
-        });
+            const dx=e.clientX-joystickOriginX,dy=e.clientY-joystickOriginY;
+            const dist=Math.min(45,Math.hypot(dx,dy)),angle=Math.atan2(dy,dx);
+            joystickKnob.style.transform=`translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px)`;
+            joystickMoveX=Math.cos(angle)*(dist/45); joystickMoveZ=Math.sin(angle)*(dist/45);
+        },{passive:false});
+        function releaseJoystick(e){
+            if(e.pointerId!==activeJoystickPointer) return;
+            activeJoystickPointer=null; joystickActive=false; joystickMoveX=0; joystickMoveZ=0; joystickKnob.style.transform='translate(0,0)';
+        }
+        joystickZone.addEventListener('pointerup',releaseJoystick);
+        joystickZone.addEventListener('pointercancel',releaseJoystick);
+        joystickZone.addEventListener('lostpointercapture',releaseJoystick);
+        // ===== MOBİL JOYSTICK ÇOKLU DOKUNMATİK BİTİŞ =====
 
         // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
         // Mobil kamera: joystick ve butonlardan bağımsız olarak ekranın sağ tarafında sürükleme.
@@ -3760,7 +3785,9 @@ function stepCar(c,dt){
                 if (!rightSide) continue;
                 if (target.closest('#joystickZone') || target.closest('.mob-btn-group') ||
                     target.closest('#mobMenuBtn') || target.closest('#mobViewBtn') ||
+                    target.closest('#mobChatBtn') || target.closest('#mobPlayersBtn') ||
                     target.closest('#mobOpenBtn') || target.closest('#settingsPanel') ||
+                    target.closest('#chatPanel') || target.closest('#playerListPanel') ||
                     target.closest('#menu')) continue;
                 if (cameraTouchId === null) {
                     cameraTouchId = touch.identifier;
@@ -3782,11 +3809,14 @@ function stepCar(c,dt){
             const dx = touch.clientX - cameraLastX;
             const dy = touch.clientY - cameraLastY;
             yaw -= dx * CAMERA_ROTATE_SPEED * sensitivity;
-            // Mobilde de aynı oyun mantığı: aşağı sürükle -> yukarı bakış.
-            pitch += dy * CAMERA_ROTATE_SPEED * sensitivity;
+            // Mobilde üçüncü şahıs eski yörünge davranışını korur.
+            // Birinci şahısta aşağı sürükle = yukarı bakış olacak şekilde eksen terslenir.
+            pitch = cameraMode === 'third'
+                ? pitch + dy * CAMERA_ROTATE_SPEED * sensitivity
+                : pitch - dy * CAMERA_ROTATE_SPEED * sensitivity;
             pitch = cameraMode === 'third'
                 ? Math.max(CAMERA_MIN_PITCH, Math.min(CAMERA_MAX_PITCH, pitch))
-                : Math.max(-1.2, Math.min(1.4, pitch));
+                : Math.max(-1.4, Math.min(1.2, pitch));
             cameraLastX = touch.clientX;
             cameraLastY = touch.clientY;
             e.preventDefault();
@@ -4116,7 +4146,7 @@ function stepCar(c,dt){
                 // ===== KAFA BAKIŞ ANİMASYONU BAŞLANGIÇ =====
                 // Kamera yukarı/aşağı hareket ederken kafa aynı yönde, yumuşak ve animasyonlu tepki verir.
                 if (playerDonkey.userData.neckHeadGroup) {
-                    const headTargetPitch = THREE.MathUtils.clamp(pitch * 0.72, -HEAD_LOOK_LIMIT, HEAD_LOOK_LIMIT);
+                    const headTargetPitch = THREE.MathUtils.clamp((cameraMode === 'first' ? -pitch : pitch) * 0.72, -HEAD_LOOK_LIMIT, HEAD_LOOK_LIMIT);
                     playerDonkey.userData.neckHeadGroup.rotation.x +=
                         (headTargetPitch - playerDonkey.userData.neckHeadGroup.rotation.x) * HEAD_LOOK_SMOOTH;
                 }
@@ -4134,7 +4164,7 @@ function stepCar(c,dt){
                         x: playerDonkey.position.x,
                         y: playerDonkey.position.y,
                         z: playerDonkey.position.z,
-                        yaw: yaw, pitch: pitch,
+                        yaw: yaw, pitch: (cameraMode === 'first' ? -pitch : pitch),
                         isCrouching: isCrouching,
                         isMoving: isMoving,
                         isJumping: isJumping,
@@ -4171,12 +4201,15 @@ function stepCar(c,dt){
                     const eyeY = playerDonkey.position.y + eyeHeight;
                     const eyeZ = playerDonkey.position.z + Math.cos(yaw) * eyeForward;
                     camera.position.set(eyeX, eyeY, eyeZ);
-                    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+                    // ===== BİRİNCİ ŞAHIS BAKIŞ YÖNÜ BAŞLANGIÇ =====
+                    const viewPitch = -pitch;
+                    const cp = Math.cos(viewPitch), sp = Math.sin(viewPitch);
                     camera.lookAt(new THREE.Vector3(
                         eyeX + Math.sin(yaw) * cp,
                         eyeY + sp,
                         eyeZ + Math.cos(yaw) * cp
                     ));
+                    // ===== BİRİNCİ ŞAHIS BAKIŞ YÖNÜ BİTİŞ =====
                 }
                 // ===== OYUN KAMERASI DÜZENLEMESİ BİTİŞ =====
                 
@@ -4293,7 +4326,7 @@ function stepCar(c,dt){
         resumeBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin(controlMode,true);},true);
         document.getElementById('chatHideBtn').addEventListener('click',()=>setChatVisible(false));
         chatReopenBtn.addEventListener('click',()=>setChatVisible(true));
-        mobChatBtnEl.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();setChatVisible(chatIsManuallyHidden);});
+        mobileUiTap(mobChatBtnEl, ()=>setChatVisible(chatIsManuallyHidden));
         document.getElementById('chatForm').addEventListener('submit',e=>{
             e.preventDefault();e.stopImmediatePropagation();
             const text=String(chatInputEl.value||'').trim(); if(!text)return;
@@ -4404,26 +4437,37 @@ function stepCar(c,dt){
         initWebSocket=function(){initWebSocketOriginal();attachExtendedSocket();};
         attachExtendedSocket();
 
-        function getAimedPoint(x,y,z,maxDistance=12) {
-            const origin=new THREE.Vector3(x,y+1.75,z);
-            const cp=Math.cos(pitch),dir=new THREE.Vector3(Math.sin(yaw)*cp,Math.sin(pitch),Math.cos(yaw)*cp).normalize();
-            let best=null,bestScore=Infinity;
-            for(let treeIndex=0;treeIndex<orchardTrees.length;treeIndex++){const tree=orchardTrees[treeIndex];if(tree.apples<=0)continue;
-                for(let i=0;i<tree.apples;i++){
-                    const angle=i*2.399+treeIndex*.7,ring=1.35+(.16*(i%3));
-                    const point=new THREE.Vector3(tree.x+Math.cos(angle)*ring*tree.scale,tree.groundY+(6+((i*7)%5)*.28)*tree.scale,tree.z+Math.sin(angle)*ring*tree.scale);
-                    const v=point.clone().sub(origin),along=v.dot(dir);if(along<0||along>maxDistance)continue;
-                    const side=v.addScaledVector(dir,-along).length();if(side>1.35)continue;
-                    const score=along+side*2;if(score<bestScore){bestScore=score;best={type:'apple',treeId:tree.id,point,distance:along};}
+        // ===== YAKINDAN ELMA / SU ETKİLEŞİMİ BAŞLANGIÇ =====
+        // Elma için ağacın kendisine yaklaşmak yeterlidir; elmayı tek tek nişanlamak gerekmez.
+        // Çiftlik göleti de su içme alanlarına eklendi.
+        function getAimedPoint(x,y,z){
+            let best=null,bestDistance=Infinity;
+            const appleReach=4.2;
+            for(const tree of orchardTrees){
+                if(tree.apples<=0) continue;
+                const distance=Math.hypot(x-tree.x,z-tree.z);
+                if(distance<=appleReach && distance<bestDistance){
+                    bestDistance=distance;
+                    best={type:'apple',treeId:tree.id,distance};
                 }
             }
-            const waterX=Math.max(BEACH_PARKING_CENTER.x-122,Math.min(BEACH_PARKING_CENTER.x+122,x));
-            const waterTargets=[{x:waterX,z:BEACH_WATER_EDGE+1.0},{x:FOREST_POND_CENTER.x,z:FOREST_POND_CENTER.z}];
-            for(const target of waterTargets){const waterPoint=new THREE.Vector3(target.x,0,target.z),waterVec=waterPoint.clone().sub(origin);const waterDistance=Math.hypot(x-target.x,z-target.z),waterFacing=waterVec.normalize().dot(dir);if(waterDistance<6.2&&waterFacing>.28&&(!best||waterDistance<best.distance+.3))best={type:'water',distance:waterDistance};}
+            const farmPond={x:FARM_CX-16*1.20,z:FARM_CZ+11*1.20,radius:5.0};
+            const waterTargets=[
+                {x:FOREST_POND_CENTER.x,z:FOREST_POND_CENTER.z,radius:6.2},
+                {x:farmPond.x,z:farmPond.z,radius:farmPond.radius},
+                {x:Math.max(BEACH_PARKING_CENTER.x-122,Math.min(BEACH_PARKING_CENTER.x+122,x)),z:BEACH_WATER_EDGE+1.0,radius:6.2}
+            ];
+            for(const target of waterTargets){
+                const distance=Math.hypot(x-target.x,z-target.z);
+                if(distance<=target.radius && distance<bestDistance){
+                    bestDistance=distance;
+                    best={type:'water',distance};
+                }
+            }
             return best;
         }
-        function scanInteraction(now) {
-            if(now<nextActionScan)return;nextActionScan=now+120;
+        function scanInteraction(now){
+            if(now<nextActionScan)return; nextActionScan=now+120;
             if(!gameStarted||playerIsDead){currentTargetAction=null;interactPromptEl.style.display='none';mobOpenBtn.style.display='none';return;}
             currentTargetAction=getAimedPoint(playerDonkey.position.x,playerDonkey.position.y,playerDonkey.position.z);
             if(currentTargetAction){
@@ -4501,17 +4545,8 @@ function stepCar(c,dt){
         document.addEventListener('contextmenu',e=>{if(gameStarted&&controlMode==='pc')e.preventDefault();});
         mobAttackBtnEl.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();attackNearestTarget();});
 
-        let activeJoystickPointer=null,joystickOriginX=0,joystickOriginY=0;
-        joystickZone.addEventListener('touchstart',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});
-        joystickZone.addEventListener('touchmove',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});
-        joystickZone.addEventListener('touchend',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});
-        joystickZone.addEventListener('touchcancel',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});
-        joystickZone.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(activeJoystickPointer!==null)return;activeJoystickPointer=e.pointerId;joystickZone.setPointerCapture(e.pointerId);const r=joystickZone.getBoundingClientRect();joystickOriginX=r.left+r.width/2;joystickOriginY=r.top+r.height/2;joystickActive=true;},{passive:false});
-        joystickZone.addEventListener('pointermove',e=>{if(e.pointerId!==activeJoystickPointer)return;e.preventDefault();const dx=e.clientX-joystickOriginX,dy=e.clientY-joystickOriginY,dist=Math.min(45,Math.hypot(dx,dy)),angle=Math.atan2(dy,dx);joystickKnob.style.transform=`translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px)`;joystickMoveX=Math.cos(angle)*dist/45;joystickMoveZ=Math.sin(angle)*dist/45;},{passive:false});
-        function releaseJoystick(e){if(activeJoystickPointer!==e.pointerId)return;activeJoystickPointer=null;joystickActive=false;joystickMoveX=0;joystickMoveZ=0;joystickKnob.style.transform='translate(0,0)';}
-        joystickZone.addEventListener('pointerup',releaseJoystick);joystickZone.addEventListener('pointercancel',releaseJoystick);joystickZone.addEventListener('lostpointercapture',releaseJoystick);
         function blockControlTouch(el){el.addEventListener('touchstart',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});el.addEventListener('touchmove',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});el.addEventListener('touchend',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});}
-        for(const el of [mobMenuBtn,mobViewBtn,document.getElementById('mobPlayersBtn'),mobChatBtnEl,mobOpenBtn,mobAttackBtnEl,mobJumpBtn,mobCrouchBtn,mobSprintBtn])blockControlTouch(el);
+        for(const el of [mobOpenBtn,mobAttackBtnEl,mobJumpBtn,mobCrouchBtn,mobSprintBtn])blockControlTouch(el);
         function bindHoldPointer(el,down,up){let pointer=null;el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(pointer!==null)return;pointer=e.pointerId;el.setPointerCapture(e.pointerId);down();},{passive:false});const release=e=>{if(e.pointerId!==pointer)return;pointer=null;up();};el.addEventListener('pointerup',release);el.addEventListener('pointercancel',release);el.addEventListener('lostpointercapture',release);}
         bindHoldPointer(mobJumpBtn,()=>{if(gameStarted&&isGrounded){velocityY=.35;isGrounded=false;}},()=>{});
         bindHoldPointer(mobCrouchBtn,()=>{isCouchingMobile=true;},()=>{isCouchingMobile=false;});
@@ -4579,7 +4614,7 @@ function stepCar(c,dt){
         function animateNeedsAndInteraction(){const now=performance.now();const dt=Math.min(.07,Math.max(.001,(now-lastNpcUpdate)/1000));lastNpcUpdate=now;updateWater(now);updateTownNpcs(dt,now);updateWildlife(dt,now);updateCityModel(dt);scanInteraction(now);
             if(gameStarted&&playerDonkey.userData.neckHeadGroup&&now<actionAnimationUntil){
                 const pulse=Math.sin((now-(actionAnimationUntil-1100))*.012);
-                const baseHeadPitch=THREE.MathUtils.clamp(pitch*0.72,-HEAD_LOOK_LIMIT,HEAD_LOOK_LIMIT);
+                const baseHeadPitch=THREE.MathUtils.clamp((cameraMode==='first' ? -pitch : pitch)*0.72,-HEAD_LOOK_LIMIT,HEAD_LOOK_LIMIT);
                 let actionOffset=0;
                 if(actionAnimationType==='eat') actionOffset=0.55*Math.max(0,pulse);
                 else if(actionAnimationType==='drink') actionOffset=-.3+.18*pulse;
@@ -4588,7 +4623,7 @@ function stepCar(c,dt){
                 const targetHeadPitch=THREE.MathUtils.clamp(baseHeadPitch+actionOffset,-1.0,1.0);
                 playerDonkey.userData.neckHeadGroup.rotation.x += (targetHeadPitch-playerDonkey.userData.neckHeadGroup.rotation.x)*0.24;
             } else if(playerDonkey.userData.neckHeadGroup&&gameStarted){
-                const targetHeadPitch=THREE.MathUtils.clamp(pitch*0.72,-HEAD_LOOK_LIMIT,HEAD_LOOK_LIMIT);
+                const targetHeadPitch=THREE.MathUtils.clamp((cameraMode==='first' ? -pitch : pitch)*0.72,-HEAD_LOOK_LIMIT,HEAD_LOOK_LIMIT);
                 playerDonkey.userData.neckHeadGroup.rotation.x += (targetHeadPitch-playerDonkey.userData.neckHeadGroup.rotation.x)*0.18;
                 playerDonkey.rotation.z=0;
             }
