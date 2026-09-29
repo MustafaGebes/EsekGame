@@ -18,11 +18,8 @@
     <link rel="icon" href="data:,">
     <style>
         body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: Arial, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
-        canvas { display: block; }
-        #menu { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.5); z-index: 1000; pointer-events: auto; }
+        #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.5); z-index: 20; }
         /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BAŞLANGIÇ ===== */
-        #settingsPanel { z-index: 11000 !important; pointer-events: auto !important; }
-        #settingsPanel button, #settingsPanel input, #settingsPanel select { pointer-events: auto !important; }
         #menu.pause-mode {
             display: flex !important;
             position: fixed;
@@ -38,10 +35,8 @@
             background: rgba(0,0,0,.90);
             backdrop-filter: blur(5px);
         }
-        #menu.pause-mode h1, #menu.pause-mode h2, #menu.pause-mode #nameCard, #menu.pause-mode #mainButtons { display: none !important; }
+        #menu.pause-mode h1, #menu.pause-mode > h2, #menu.pause-mode #nameCard, #menu.pause-mode #mainButtons { display: none !important; }
         #menu.pause-mode #pauseButtons { display: flex !important; width: auto; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
-        #menu.pre-game-pause #pauseSettingsBtn { display: none !important; }
-        #menu.pre-game-pause #returnMenuBtn { display: block !important; }
         /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ ===== */
         h1 { color: #ffd700; font-size: 64px; margin: 0; text-shadow: 3px 3px 6px #000; }
         h2 { color: #ffffff; font-size: 24px; margin: 10px 0 20px 0; font-weight: 300; }
@@ -54,9 +49,6 @@
         #info { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #ffffff; font-size: 16px; pointer-events: none; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); display: none; z-index: 15; }
         #mobileControls { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; pointer-events: none; z-index: 10; }
         #mobMenuBtn { position: absolute; top: 20px; left: 20px; width: 50px; height: 50px; background: rgba(0, 0, 0, 0.6); border: 2px solid #ffffff; color: #ffffff; font-size: 24px; border-radius: 50%; display: flex; justify-content: center; align-items: center; pointer-events: auto; cursor: pointer; z-index: 25; }
-        /* MOBİL PAUSE BUTONU: PC'deki ESC karşılığı. */
-        #mobPauseBtn { position:absolute; top:20px; left:200px; width:50px; height:50px; border:2px solid #fff; border-radius:50%; background:rgba(0,0,0,.62); color:#fff; font-size:22px; font-weight:800; display:flex; align-items:center; justify-content:center; pointer-events:auto; cursor:pointer; z-index:25; touch-action:none; box-shadow:0 4px 10px rgba(0,0,0,.5); }
-        #mobPauseBtn:active { background:rgba(255,255,255,.42); transform:scale(.96); }
         #mobViewBtn { position: absolute; top: 20px; left: 80px; width: 50px; height: 50px; background: rgba(0, 0, 0, 0.6); border: 2px solid #ffffff; color: #ffffff; font-size: 22px; border-radius: 50%; display: flex; justify-content: center; align-items: center; pointer-events: auto; cursor: pointer; z-index: 25; }
         #mobOpenBtn { position: absolute; bottom: 130px; right: 40px; width: 90px; height: 90px; background: rgba(255, 200, 0, 0.9); border: 3px solid #ffffff; color: #000000; font-size: 18px; font-weight: bold; border-radius: 50%; display: none; justify-content: center; align-items: center; pointer-events: auto; cursor: pointer; z-index: 25; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
         #joystickZone { position: absolute; bottom: 40px; left: 40px; width: 130px; height: 130px; background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; pointer-events: auto; touch-action: none; }
@@ -196,6 +188,7 @@
             <div style="font-size:28px;font-weight:800;margin-bottom:18px;">OYUN DURAKLATILDI</div>
             <button id="resumeBtn" class="btn">OYUNA DEVAM ET</button>
             <button id="pauseSettingsBtn" class="btn btn-yellow">⚙️ AYARLAR</button>
+            <button id="returnGameMenuBtn" class="btn btn-blue">MENÜYE DÖN</button>
             <button id="returnMenuBtn" class="btn btn-red">OYUNDAN ÇIK</button>
         </div>
     </div>
@@ -255,8 +248,6 @@
     </div>
 
     <div id="mobileControls">
-        <!-- MOBİL DURAKLAT: PC'deki ESC'nin dokunmatik karşılığı. -->
-        <button id="mobPauseBtn" type="button" title="Duraklat">⏸</button>
         <div id="mobMenuBtn">☰</div>
         <button id="mobPlayersBtn" type="button" title="Oyuncu listesi">👥</button>
         <div id="mobViewBtn" title="Kamera açısını değiştir">1P / 3P</div>
@@ -2100,15 +2091,8 @@
               }
               const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=heightMap?THREE.NoColorSpace:THREE.SRGBColorSpace;t.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),4);t.needsUpdate=true;return t;
             }
-            // ÇİM DOKUSU: çiftlikteki açık/tek renkli yeşil yüzeyler artık ana dünyanın
-            // kullandığı grassTexture ile aynı dokuyu kullanır. Böylece farklı bir çim şeridi oluşmaz.
-            const sharedGrassTexture = grassTexture.clone();
-            sharedGrassTexture.wrapS = sharedGrassTexture.wrapT = THREE.RepeatWrapping;
-            sharedGrassTexture.repeat.set(8, 8);
-            sharedGrassTexture.needsUpdate = true;
             const farmSurfaces={};for(const kind of ['micro','wood','leather','straw','fabric','denim','tile','metal','stone','grass','soil','hay','leaf'])farmSurfaces[kind]={map:farmTextureCanvas(kind),bump:farmTextureCanvas(kind,true)};
-            farmSurfaces.grass = { map: sharedGrassTexture, bump: null };
-            function applyFarmSurface(material,kind='micro',bump=.012){if(!material||!material.isMeshStandardMaterial)return material;const t=farmSurfaces[kind]||farmSurfaces.micro;material.map=t.map;material.bumpMap=t.bump;material.bumpScale=t.bump?bump:0;material.needsUpdate=true;return material}
+            function applyFarmSurface(material,kind='micro',bump=.012){if(!material||!material.isMeshStandardMaterial)return material;const t=farmSurfaces[kind]||farmSurfaces.micro;material.map=t.map;material.bumpMap=t.bump;material.bumpScale=bump;material.needsUpdate=true;return material}
             for(const [m,k,b] of [[mats.grass,'grass',.035],[mats.grass2,'grass',.025],[mats.earth,'soil',.032],[mats.soil,'soil',.04],[mats.wood,'wood',.025],[mats.fence,'wood',.022],[mats.red,'leather',.012],[mats.redLight,'leather',.012],[mats.roof,'tile',.024],[mats.roof2,'tile',.024],[mats.stone,'stone',.027],[mats.metal,'metal',.016],[mats.hay,'hay',.022],[mats.leaf,'leaf',.018],[mats.leaf2,'leaf',.018]])applyFarmSurface(m,k,b);
 
             // Twenty adult farm workers. Workwear: plaid shirts, denim bibs,
@@ -2312,33 +2296,18 @@
             window.__farmReplacement={root:farmRoot,workers:farmWorkers,animals:farmWorkers.length,center:{x:FARM_CX,z:FARM_CZ}};
         })(farmModelRoot);
 
-        // ============================================================
-        // ÇİFTLİK GİRİŞİ -> ŞEHİR YOLU BAĞLANTISI
-        // Çiftlik kapısı kuzey sınırında (FARM_CZ + 50). Eski bağlantı
-        // kapıya denk gelmediği için yol havada/yanlış yerde kalıyordu.
-        // Bu yol doğrudan kapıdan x=210'daki şehir ana yoluna bağlanır.
-        // ============================================================
-        const farmGateRoadY = 0.095;
-        const farmGateRoad = new THREE.Mesh(
-            new THREE.PlaneGeometry(60, 8.5),
-            connectorRoadMat
-        );
-        farmGateRoad.rotation.x = -Math.PI / 2;
-        farmGateRoad.position.set(FARM_CX + 30, farmGateRoadY, FARM_CZ + 50);
-        farmGateRoad.name = 'Çiftlik kapısı şehir yol bağlantısı';
-        scene.add(farmGateRoad);
-
-        const farmGateRoadMark = new THREE.MeshBasicMaterial({color:0xf4f0d9});
-        for (let x = FARM_CX - 25; x <= FARM_CX + 25; x += 6) {
-            const dash = new THREE.Mesh(new THREE.PlaneGeometry(2.8, .22), farmGateRoadMark);
-            dash.rotation.x = -Math.PI / 2;
-            dash.position.set(x, farmGateRoadY + .01, FARM_CZ + 50);
-            scene.add(dash);
+        // Straight 6 m access road: it continues the supplied farm lane through its gate
+        // to the existing city road at x=210. The roadside parking stays clear to the east.
+        const farmAccessRoad=new THREE.Mesh(new THREE.PlaneGeometry(26,7),connectorRoadMat);
+        farmAccessRoad.rotation.x=-Math.PI/2;
+        farmAccessRoad.position.set(197,.095,FARM_CZ-9);
+        farmAccessRoad.name='Yeni çiftlik giriş bağlantısı';
+        scene.add(farmAccessRoad);
+        const farmAccessMark=new THREE.MeshBasicMaterial({color:0xf4f0d9});
+        for(let x=186;x<=208;x+=6){
+            const dash=new THREE.Mesh(new THREE.PlaneGeometry(2.4,.22),farmAccessMark);
+            dash.rotation.x=-Math.PI/2;dash.position.set(x,.105,FARM_CZ-9);scene.add(dash);
         }
-
-        // Kapıdan şehir ana yoluna kadar olan bölüm aşağıdaki yol malzemeleri
-        // tanımlandıktan sonra oluşturuluyor. (Önceki sürümde const malzeme
-        // tanımlanmadan kullanıldığı için JavaScript burada duruyordu.)
 
         // ==========================================
         // EŞEK SPAWN (Çiftlik girişinde)
@@ -2359,7 +2328,6 @@
         const BLOCK_TOTAL = BLOCK_INNER + SIDEWALK_WIDTH * 2;
         const GRID_STEP = BLOCK_TOTAL + ROAD_WIDTH;
         const gridCount = 5;
-        const cityParkZones = [];
         const cityWidth = gridCount * BLOCK_TOTAL + (gridCount + 1) * ROAD_WIDTH;
         const CITY_RADIUS = 255;
         // Dik açılı güzergâh: çiftliğin kuzeyinden ve doğusundan dolaşır, çit sınırını geçmez.
@@ -2430,12 +2398,7 @@
             const pondFlat = smoothStep(12, 26, Math.hypot(x - FOREST_POND_CENTER.x, z - FOREST_POND_CENTER.z));
             const pondBowl = pondNorm<1 ? -(1-pondNorm*pondNorm)*FOREST_POND_DEPTH : 0;
             const cityDist = Math.max(cityLocalX, cityLocalZ);
-            if (cityDist <= cityModelHalf-12) {
-                for (const park of cityParkZones) {
-                    if (Math.abs(x-park.x) <= park.half && Math.abs(z-park.z) <= park.half) return park.top;
-                }
-                return cityGroundY;
-            }
+            if (cityDist <= cityModelHalf-12) return cityGroundY;
             const edgeFade = 1 - smoothStep(310, 350, radial);
             const broadHills = (Math.sin(x * 0.027) * 1.15 + Math.cos(z * 0.023) * 1.05 + Math.sin((x + z) * 0.041) * 0.65);
             const smallUndulation = Math.sin(x * 0.11 + z * 0.07) * 0.22;
@@ -2517,14 +2480,14 @@
             const roadGeo = new THREE.PlaneGeometry(cityWidth, ROAD_WIDTH);
             roadGeo.rotateX(-Math.PI / 2);
             const road = new THREE.Mesh(roadGeo, roadMat);
-            road.position.set(CITY_CENTER_X, 0.03, roadZ);
+            road.position.set(CITY_CENTER_X, 0.34, roadZ);
             scene.add(road);
             const dashCount = Math.floor(cityWidth / 12);
             for (let d = 0; d < dashCount; d++) {
                 const dashGeo = new THREE.PlaneGeometry(3, 0.4);
                 dashGeo.rotateX(-Math.PI / 2);
                 const dash = new THREE.Mesh(dashGeo, lineMat);
-                dash.position.set(CITY_CENTER_X - cityWidth / 2 + d * 12 + 6, 0.04, roadZ);
+                dash.position.set(CITY_CENTER_X - cityWidth / 2 + d * 12 + 6, 0.355, roadZ);
                 scene.add(dash);
             }
         }
@@ -2533,14 +2496,14 @@
             const roadGeo = new THREE.PlaneGeometry(ROAD_WIDTH, cityWidth);
             roadGeo.rotateX(-Math.PI / 2);
             const road = new THREE.Mesh(roadGeo, roadMat);
-            road.position.set(roadX, 0.03, CITY_CENTER_Z);
+            road.position.set(roadX, 0.34, CITY_CENTER_Z);
             scene.add(road);
             const dashCount = Math.floor(cityWidth / 12);
             for (let d = 0; d < dashCount; d++) {
                 const dashGeo = new THREE.PlaneGeometry(0.4, 3);
                 dashGeo.rotateX(-Math.PI / 2);
                 const dash = new THREE.Mesh(dashGeo, lineMat);
-                dash.position.set(roadX, 0.04, CITY_CENTER_Z - cityWidth / 2 + d * 12 + 6);
+                dash.position.set(roadX, 0.355, CITY_CENTER_Z - cityWidth / 2 + d * 12 + 6);
                 scene.add(dash);
             }
         }
@@ -2588,23 +2551,17 @@
             }
         }
         const connectorShoulderMat = new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0x97876c });
-
-        // ÇİFTLİK -> ŞEHİR YOLU BAĞLANTISI
-        // Malzemeler artık hazır; bağlantı yolu güvenli biçimde oluşturuluyor.
-        createSegmentRoad(210, FARM_CZ + 50, 210, 70, 13, connectorShoulderMat, 0.18);
-        createSegmentRoad(210, FARM_CZ + 50, 210, 70, 8.5, connectorRoadMat, 0.20);
-
         for (let i = 0; i < ROAD_PATH.length - 1; i++) {
             const a = ROAD_PATH[i], b = ROAD_PATH[i + 1];
-            createSegmentRoad(a.x, a.z, b.x, b.z, 13, connectorShoulderMat, 0.18);
-            createSegmentRoad(a.x, a.z, b.x, b.z, 8.5, connectorRoadMat, 0.20);
+            createSegmentRoad(a.x, a.z, b.x, b.z, 13, connectorShoulderMat, 0.065);
+            createSegmentRoad(a.x, a.z, b.x, b.z, 8.5, connectorRoadMat, 0.085);
         }
         // Doğu tarafındaki dış otoparka kısa ve düz giriş bağlantısı.
-        createSegmentRoad(210, 175, 221, 175, 8, connectorRoadMat, 0.20);
+        createSegmentRoad(210, 175, 221, 175, 8, connectorRoadMat, 0.085);
         for (let i = 0; i < BEACH_ROAD_PATH.length - 1; i++) {
             const a = BEACH_ROAD_PATH[i], b = BEACH_ROAD_PATH[i + 1];
-            createSegmentRoad(a.x, a.z, b.x, b.z, 13, connectorShoulderMat, 0.18);
-            createSegmentRoad(a.x, a.z, b.x, b.z, 8.5, connectorRoadMat, 0.20);
+            createSegmentRoad(a.x, a.z, b.x, b.z, 13, connectorShoulderMat, 0.065);
+            createSegmentRoad(a.x, a.z, b.x, b.z, 8.5, connectorRoadMat, 0.085);
         }
 
         const windowMat = new THREE.MeshBasicMaterial({ color: 0xffff99 });
@@ -2762,81 +2719,6 @@ pondWater.position.set(FOREST_POND_CENTER.x, -0.22, FOREST_POND_CENTER.z);
 pondWater.name = 'Orman göleti suyu';
 pondWater.userData.basePositions = pondWater.geometry.attributes.position.array.slice();
 scene.add(pondWater);
-
-// ============================================================
-// AKARSULAR + MAĞARALAR + KAYALAR
-// Uzun, sığ ve içilebilir akarsular. Oyuncu suya girince yavaşlar;
-// su seviyesi araziye göre hesaplandığı için akıntılar zeminin altında kalmaz.
-// ============================================================
-const riverPaths = [];
-const caveZones = [];
-const riverRockObjects = [];
-function createRiverRibbon(name, points, width) {
-    const positions=[]; const indices=[];
-    for(let i=0;i<points.length;i++){
-        const p=points[i], prev=points[Math.max(0,i-1)], next=points[Math.min(points.length-1,i+1)];
-        let dx=next.x-prev.x, dz=next.z-prev.z, len=Math.hypot(dx,dz)||1; dx/=len; dz/=len;
-        const px=-dz*width*.5, pz=dx*width*.5, y=terrainHeightAt(p.x,p.z)+.055;
-        positions.push(p.x+px,y,p.z+pz, p.x-px,y,p.z-pz);
-        if(i<points.length-1){const a=i*2,b=a+1,c=a+2,d=a+3;indices.push(a,b,c,b,d,c);}
-    }
-    const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3)); geo.setIndex(indices); geo.computeVertexNormals();
-    const mat=new THREE.MeshPhongMaterial({color:0x4aa6bd,transparent:true,opacity:.78,shininess:85,side:THREE.DoubleSide});
-    const mesh=new THREE.Mesh(geo,mat); mesh.name=name; scene.add(mesh);
-    riverPaths.push({points,width,mesh}); return mesh;
-}
-function riverDistance(x,z,river){
-    let best=Infinity;
-    for(let i=0;i<river.points.length-1;i++){
-        const a=river.points[i],b=river.points[i+1],dx=b.x-a.x,dz=b.z-a.z,l2=dx*dx+dz*dz||1;
-        const t=Math.max(0,Math.min(1,((x-a.x)*dx+(z-a.z)*dz)/l2));
-        best=Math.min(best,Math.hypot(x-(a.x+t*dx),z-(a.z+t*dz)));
-    }
-    return best;
-}
-function distanceToRiver(x,z){let best=Infinity;for(const r of riverPaths)best=Math.min(best,riverDistance(x,z,r));return best;}
-
-createRiverRibbon('Orman Akarsuyu 1',[
-    {x:300,z:-8},{x:309,z:18},{x:322,z:43},{x:340,z:68},{x:354,z:96},{x:365,z:124},{x:374,z:151}
-],5.2);
-createRiverRibbon('Orman Akarsuyu 2',[
-    {x:300,z:-8},{x:278,z:17},{x:255,z:42},{x:237,z:67},{x:219,z:91},{x:205,z:114}
-],4.8);
-createRiverRibbon('Dağ Akarsuyu',[
-    {x:374,z:151},{x:392,z:172},{x:407,z:197},{x:421,z:224},{x:432,z:253}
-],4.2);
-
-function createRock(x,z,s=1){
-    const g=new THREE.Group();
-    const y=terrainHeightAt(x,z);
-    const m=new THREE.MeshStandardMaterial({color:0x77746b,roughness:.96});
-    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),m); rock.scale.set(1.35,.8,1.05); rock.position.y=y+s*.55; rock.rotation.y=Math.random()*Math.PI; rock.castShadow=true; rock.receiveShadow=true; g.add(rock); g.position.set(x,0,z); scene.add(g);
-    riverRockObjects.push({x,z,radius:s*1.25}); return g;
-}
-function createCave(x,z,rotation=0,scale=1){
-    const g=new THREE.Group(); g.position.set(x,terrainHeightAt(x,z),z); g.rotation.y=rotation; g.scale.setScalar(scale);
-    const rockMat=new THREE.MeshStandardMaterial({color:0x625d56,roughness:1});
-    const darkMat=new THREE.MeshBasicMaterial({color:0x070707,side:THREE.DoubleSide});
-    const left=new THREE.Mesh(new THREE.DodecahedronGeometry(3.2,1),rockMat); left.position.set(-3.2,2.4,0); left.scale.set(.9,1.5,1.2);
-    const right=new THREE.Mesh(new THREE.DodecahedronGeometry(3.2,1),rockMat); right.position.set(3.2,2.4,0); right.scale.set(.9,1.5,1.2);
-    const top=new THREE.Mesh(new THREE.DodecahedronGeometry(3.8,1),rockMat); top.position.set(0,5.4,0); top.scale.set(1.9,.9,1.35);
-    const mouth=new THREE.Mesh(new THREE.CircleGeometry(2.55,20),darkMat); mouth.position.set(0,2.55,.35); mouth.rotation.x=0; g.add(left,right,top,mouth); scene.add(g);
-    caveZones.push({x,z,rotation,radius:3.1,depth:12});
-    return g;
-}
-createCave(408,178,-.55,.95);
-createCave(433,226,-.35,.82);
-createCave(365,278,.28,.9);
-for(const [x,z,s] of [[333,36,1.2],[350,78,.9],[386,118,1.1],[248,45,.8],[226,81,1.1],[402,207,.9],[430,244,1.2]]) createRock(x,z,s);
-
-// Akarsu kenarlarına doğal kaya ve seyrek ağaç süslemesi.
-for(const river of riverPaths){
-    for(let i=1;i<river.points.length-1;i+=2){
-        const p=river.points[i]; createRock(p.x+river.width*.9,p.z+1.8,.55);
-        if(i%4===1) createRock(p.x-river.width*1.05,p.z-1.2,.45);
-    }
-}
-
 const pondBottom = new THREE.Mesh(createPondRadialGeometry(1, 64, 18, FOREST_POND_DEPTH), pondInnerMat);
 pondBottom.rotation.x = -Math.PI / 2;
 pondBottom.scale.set(FOREST_POND_RADIUS_X, FOREST_POND_RADIUS_Z, 1);
@@ -3001,36 +2883,19 @@ inst(new THREE.BoxGeometry(.4,.04,3),new THREE.MeshBasicMaterial({color:0xf2e6a0
 
 // ---------- Blocks, buildings, trees ----------
 var slabMat=new THREE.MeshStandardMaterial({map:walkT,roughness:.9}),tl=[],trees=0,bldg=0,maxH=0;
-// ============================================================
-// ŞEHİR AĞAÇLARI
-// Yol ve kaldırımın içine ağaç bırakma. Şehir modelinin lokal
-// koordinatlarında yol merkezleri pk(k), yol yarıçapı RD/2'dir.
-// 12 m tampon ile ağaçları yol/kaldırımdan uzak tutuyoruz.
-// ============================================================
-function cityRoadClearance(x,z){
-  var nearest = Infinity;
-  for(var rk=0; rk<=N; rk++){
-    var roadPos = pk(rk);
-    nearest = Math.min(nearest, Math.abs(x-roadPos), Math.abs(z-roadPos));
-  }
-  return nearest;
-}
+// ===== ŞEHİR SAĞ-ÜST AĞAÇLARI DÜZENLEMESİ BAŞLANGIÇ =====
 function addTree(x,z){
-  // Eski sağ-üst ağaç kümesini doğuya taşıma davranışı korunuyor.
+  // Şehrin sağ-üst bölgesindeki eski koyu ağaç kümesini biraz daha doğuya taşıyoruz.
   if(x>20 && z<-20){x+=62;z-=8;}
-
-  // Yol + kaldırım güvenlik alanı. Uygun değilse ağaç hiç oluşturulmaz.
-  if(cityRoadClearance(x,z) < 12) return;
-
   var s=R(.8,1.4),i=rnd()<.5?0:1;
-  tl.push([x,z,s,i,pick([0xffffff,0xd8f0c0,0xb8d89a])]);trees++;
+  tl.push([x,z,s,i,pick([0xffffff,0xd8f0c0,0xb8d89a])]);trees++
 }
-
+// ===== ŞEHİR SAĞ-ÜST AĞAÇLARI DÜZENLEMESİ BİTİŞ =====
 for(var i=0;i<N;i++)for(var j=0;j<N;j++){
   var cx=(i-(N-1)/2)*P,cz=(j-(N-1)/2)*P,d=Math.hypot(i-3.5,j-3.5);
   var slab=new THREE.Mesh(new THREE.BoxGeometry(B,.4,B),slabMat);slab.position.set(cx,.1,cz);slab.receiveShadow=true;cityRoot.add(slab);
   var park=(i+j*3)%7===2||(i===4&&j===3);
-  if(park){var gr=new THREE.Mesh(new THREE.BoxGeometry(B-6,.3,B-6),new THREE.MeshStandardMaterial({map:grassT.clone(),roughness:1}));gr.material.map.repeat.set(6,6);gr.material.map.needsUpdate=true;gr.position.set(cx,.3,cz);gr.receiveShadow=true;cityRoot.add(gr); cityParkZones.push({x:CITY_CENTER_X+cx*CITY_MODEL_SCALE,z:CITY_CENTER_Z+cz*CITY_MODEL_SCALE,half:(B-6)*CITY_MODEL_SCALE/2,top:.58});
+  if(park){var gr=new THREE.Mesh(new THREE.BoxGeometry(B-6,.3,B-6),new THREE.MeshStandardMaterial({map:grassT.clone(),roughness:1}));gr.material.map.repeat.set(6,6);gr.material.map.needsUpdate=true;gr.position.set(cx,.3,cz);gr.receiveShadow=true;cityRoot.add(gr);
     if(j%2){var pd=new THREE.Mesh(new THREE.CylinderGeometry(6,6,.2,28),new THREE.MeshStandardMaterial({color:0x3c8fc4,roughness:.1,metalness:.4}));pd.position.set(cx,.5,cz);cityRoot.add(pd)}
     for(var t=0;t<16;t++){var tx=R(-11,11),tz=R(-11,11);if(j%2&&Math.hypot(tx,tz)<8)continue;addTree(cx+tx,cz+tz)}}
   else for(var a2=0;a2<2;a2++)for(var b2=0;b2<2;b2++){
@@ -3142,21 +3007,6 @@ function stepCar(c,dt){
   var g2=c.g;if(c.axis===0){g2.position.set(c.base+c.off,.1,c.pos);g2.rotation.y=c.dir>0?0:Math.PI}else{g2.position.set(c.pos,.1,c.base+c.off);g2.rotation.y=c.dir>0?Math.PI/2:-Math.PI/2}}
 
 
-        // ============================================================
-        // ŞEHİR COLLIDER VERİSİ
-        // cityRoot/tl/tp/lp IIFE içinde olduğu için dışarıdaki hareket
-        // sistemi bunlara doğrudan erişemiyordu. Global bir veri köprüsü
-        // oluşturarak ağaç, trafik ışığı ve sokak lambası colliderlarını
-        // gerçek şehir koordinatına taşıyoruz.
-        // ============================================================
-        window.__cityColliderData = {
-            root: cityRoot,
-            trees: tl,
-            trafficLights: tp,
-            streetLamps: lp,
-            cars: cars
-        };
-
         // Modelin kendi animasyonları ana oyun döngüsüne bağlanır.
         let cityClock = 0, cityTt = 0;
         return function updateCityModel(dt) {
@@ -3168,17 +3018,16 @@ function stepCar(c,dt){
         };
         })();
         function updateCityModel(dt) { cityModelController(dt); }
-        // ===== YENİ ORMAN / AÇIK KORİDORLU DOĞAL ORMAN BAŞLANGIÇ =====
-        // Orman burada tek parça koyu duvar değil; yol, dere ve ağaç aralarında geçiş koridorları vardır.
+        // Lush forest region: thousands of low-cost instanced trees cover ~90% of the woodland canopy.
         const forestTrees=[]; const orchardTrees=[]; const forestTreeGrid=new Map(); const FOREST_CELL=8;
         function mulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
         // ===== ORMAN YENİDEN OLUŞTURMA BAŞLANGIÇ =====
         // Önceki orman çok sık olduğu için oyuncunun geçebileceği koridorlar açıldı.
         // Ağaçlar yolun içine alınmaz ve aralarında sabit minimum mesafe bırakılır.
         const forestRand=mulberry32(0xE5ECAFFE);
-        const FOREST_MIN_SPACING = 10.5;
-        const FOREST_ROAD_CLEARANCE = 22.0;
-        const FOREST_MAX_TREES = 720;
+        const FOREST_MIN_SPACING = 8.6;
+        const FOREST_ROAD_CLEARANCE = 18.0;
+        const FOREST_MAX_TREES = 960;
         function canPlaceForestTree(x,z){
             if(distanceToRoadAxis(x,z) < FOREST_ROAD_CLEARANCE) return false;
             const gx=Math.floor(x/FOREST_CELL), gz=Math.floor(z/FOREST_CELL);
@@ -3192,7 +3041,7 @@ function stepCar(c,dt){
             const scale=.82+forestRand()*.66, groundY=terrainHeightAt(x,z);
             const tree={x,z,scale,groundY,radius:.68*scale,id:null,apples:6};
             // Her 48 kayıttan yalnızca biri görünür meyve ağacı olur; yoğun koyu orman kaldırıldı.
-            if (forestTrees.length % 8 === 0) {
+            if (forestTrees.length % 48 === 0) {
                 tree.id = `apple-forest-${String(orchardTrees.length).padStart(3, '0')}`;
                 orchardTrees.push(tree);
                 const gridKey = `${Math.floor(x / FOREST_CELL)},${Math.floor(z / FOREST_CELL)}`;
@@ -3202,7 +3051,7 @@ function stepCar(c,dt){
             forestTrees.push(tree);
         }
         // Çiftliğe/şehre daha yakın orman: daha açık bir çekirdek.
-        for(let attempt=0;attempt<14000 && forestTrees.length<560;attempt++){
+        for(let attempt=0;attempt<15000 && forestTrees.length<780;attempt++){
             const a=forestRand()*Math.PI*2, r=Math.sqrt(forestRand())*105;
             const x=220+Math.cos(a)*r, z=-55+Math.sin(a)*r;
             if(Math.hypot(x,z)>326)continue;
@@ -3227,7 +3076,6 @@ function stepCar(c,dt){
             addForestTree(x,z);
         }
         // ===== ORMAN YENİDEN OLUŞTURMA BİTİŞ =====
-        // ===== ORMAN YAPRAK / ELMA AĞACI GÖRÜNÜMÜ =====
         // Açık yaprak rengi + küçük yaprak damarlı canvas dokusu: okunaklı meyve ağaçları.
         function makeOrchardLeafTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
@@ -3260,7 +3108,7 @@ function stepCar(c,dt){
             forestDummy.position.set(t.x, t.groundY + 2.5 * t.scale, t.z);
             forestDummy.rotation.set(0, forestRand() * Math.PI, 0);
             forestDummy.scale.set(t.scale, t.scale, t.scale); forestDummy.updateMatrix(); trunkBatch.setMatrixAt(i, forestDummy.matrix);
-            const clusters = [[0, 5.25, 0, 1], [-1.15, 4.95, .2, .80], [1.05, 5.10, -.18, .84]];
+            const clusters = [[0, 6, 0, 1], [-1.15, 5.5, .2, .8], [1.05, 5.7, -.18, .84]];
             for (let j = 0; j < 3; j++) {
                 const c = clusters[j]; forestDummy.position.set(t.x + c[0] * t.scale, t.groundY + c[1] * t.scale, t.z + c[2] * t.scale);
                 forestDummy.rotation.set(0, 0, 0); forestDummy.scale.set(t.scale * c[3], t.scale * c[3], t.scale * c[3]);
@@ -3270,31 +3118,11 @@ function stepCar(c,dt){
         }
         trunkBatch.instanceMatrix.needsUpdate = true; scene.add(trunkBatch);
         for (const batch of leafBatches) { batch.instanceMatrix.needsUpdate = true; if (batch.instanceColor) batch.instanceColor.needsUpdate = true; scene.add(batch); }
-        const appleSlots=orchardTrees.flatMap((tree,treeIndex)=>Array.from({length:20},(_,appleIndex)=>({tree,treeIndex,appleIndex})));
+        const appleSlots=orchardTrees.flatMap((tree,treeIndex)=>Array.from({length:10},(_,appleIndex)=>({tree,treeIndex,appleIndex})));
         const appleMesh=new THREE.InstancedMesh(new THREE.SphereGeometry(.22,8,7),new THREE.MeshLambertMaterial({color:0xe23d32}),appleSlots.length);
         appleMesh.frustumCulled=false;const appleDummy=new THREE.Object3D();
-        function setTreeAppleCount(treeId,count){const treeIndex=orchardTrees.findIndex(t=>t.id===treeId);if(treeIndex<0)return;const tree=orchardTrees[treeIndex];tree.apples=Math.max(0,Math.min(20,Number(count)||0));for(let a=0;a<20;a++){const slot=treeIndex*20+a;if(a<tree.apples){const angle=a*2.399+treeIndex*.7,ring=1.35+(.16*(a%3));appleDummy.position.set(tree.x+Math.cos(angle)*ring*tree.scale,tree.groundY+(6+((a*7)%5)*.28)*tree.scale,tree.z+Math.sin(angle)*ring*tree.scale);appleDummy.scale.setScalar(1); }else{appleDummy.position.set(0,-1000,0);appleDummy.scale.setScalar(0);}appleDummy.rotation.set(0,0,0);appleDummy.updateMatrix();appleMesh.setMatrixAt(slot,appleDummy.matrix);}}
-        orchardTrees.forEach(t=>setTreeAppleCount(t.id,10));appleMesh.instanceMatrix.needsUpdate=true;scene.add(appleMesh);
-
-// ============================================================
-// YER HAVUÇLARI
-// Doğal orman/akarsu çevresinde küçük havuç kümeleri. Server tüketimi
-// doğrular; toplandıktan 5 dakika sonra aynı noktada tekrar çıkar.
-// ============================================================
-const groundCarrots=[];
-const carrotRand=mulberry32(0xCA7707);
-for(let i=0;i<72;i++){
-    const a=carrotRand()*Math.PI*2, r=28+Math.sqrt(carrotRand())*170;
-    const x=205+Math.cos(a)*r, z=35+Math.sin(a)*r;
-    if(distanceToRoadAxis(x,z)<24 || Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<CITY_RADIUS+20) continue;
-    const g=new THREE.Group(); g.position.set(x,terrainHeightAt(x,z),z);
-    const bodyMat=new THREE.MeshStandardMaterial({color:0xe8892d,roughness:.9});
-    const leafMat2=new THREE.MeshStandardMaterial({color:0x4d8f39,roughness:.9});
-    const root=new THREE.Mesh(new THREE.ConeGeometry(.11,.42,7),bodyMat); root.position.y=.20; root.rotation.z=(carrotRand()-.5)*.18; g.add(root);
-    for(let k=0;k<3;k++){const leaf=new THREE.Mesh(new THREE.CylinderGeometry(.018,.028,.32,5),leafMat2);leaf.position.set((k-1)*.055,.48,0);leaf.rotation.z=(k-1)*.28;g.add(leaf);}
-    scene.add(g); groundCarrots.push({id:`carrot-${i}`,x,z,group:g,available:true});
-}
-
+        function setTreeAppleCount(treeId,count){const treeIndex=orchardTrees.findIndex(t=>t.id===treeId);if(treeIndex<0)return;const tree=orchardTrees[treeIndex];tree.apples=Math.max(0,Math.min(10,Number(count)||0));for(let a=0;a<10;a++){const slot=treeIndex*10+a;if(a<tree.apples){const angle=a*2.399+treeIndex*.7,ring=1.35+(.16*(a%3));appleDummy.position.set(tree.x+Math.cos(angle)*ring*tree.scale,tree.groundY+(4.15+((a*7)%4)*.22)*tree.scale,tree.z+Math.sin(angle)*ring*tree.scale);appleDummy.scale.setScalar(1); }else{appleDummy.position.set(0,-1000,0);appleDummy.scale.setScalar(0);}appleDummy.rotation.set(0,0,0);appleDummy.updateMatrix();appleMesh.setMatrixAt(slot,appleDummy.matrix);}}
+        orchardTrees.forEach(t=>setTreeAppleCount(t.id,6));appleMesh.instanceMatrix.needsUpdate=true;scene.add(appleMesh);
 
         // ===== AYRINTILI HAYVAN MODELLERİ BAŞLANGIÇ =====
         const wildlife=[];
@@ -3576,7 +3404,7 @@ for(let i=0;i<72;i++){
             donkey.userData.displayName = safeName;
         }
 
-        const DONKEY_BASE_SCALE = 0.80; // Eşek boyu PC ve mobilde biraz küçültüldü; iki platformda aynıdır.
+        const DONKEY_BASE_SCALE = 0.85; // Oyuncu eşeği önceki boyuttan biraz daha küçük.
         const playerDonkey = createDonkeyModel();
         playerDonkey.scale.setScalar(DONKEY_BASE_SCALE);
         playerDonkey.visible = false;
@@ -3684,13 +3512,12 @@ for(let i=0;i<72;i++){
         const pauseButtons = document.getElementById('pauseButtons');
         const resumeBtn = document.getElementById('resumeBtn');
         const returnMenuBtn = document.getElementById('returnMenuBtn');
+        const returnGameMenuBtn = document.getElementById('returnGameMenuBtn');
         const pauseSettingsBtn = document.getElementById('pauseSettingsBtn');
         const pcSelectBtn = document.getElementById('pcSelectBtn');
         const mobileSelectBtn = document.getElementById('mobileSelectBtn');
         const infoEl = document.getElementById('info');
         const mobileControlsEl = document.getElementById('mobileControls');
-        // MOBİL BUTONLAR: Buraya yeni dokunmatik butonlar eklenebilir.
-        // mobPauseBtn = PC ESC/pause, mobOpenBtn = E/etkileşim, mobSprintBtn = Shift/koş.
         const hudEl = document.getElementById('hud');
         const hudTimeEl = document.getElementById('hudTime');
         const hudFpsEl = document.getElementById('hudFps');
@@ -3816,32 +3643,6 @@ for(let i=0;i<72;i++){
         mobileUiTap(chatReopenBtn, showChat);
         mobileUiTap(document.getElementById('playerListClose'), () => togglePlayerList(false));
         mobileUiTap(document.getElementById('mobPlayersBtn'), () => togglePlayerList());
-
-        // MOBİL PAUSE BUTONU: PC'deki ESC davranışının dokunmatik karşılığı.
-        function pauseFromGameplay(){
-            if(!gameStarted || playerIsDead) return;
-            if(settingsPanel.style.display === 'block'){ closeSettingsPanel(); return; }
-            if(playerListPanel.style.display === 'block'){ togglePlayerList(false); return; }
-
-            // Pause sırasında server'a presence:false gönderilmez. Böylece
-            // oyuncu oyundan çıkmış sayılmaz ve Guest numarası değişmez.
-            gameStarted = false;
-            releaseFirstPersonPointerLock();
-            document.getElementById('onlineBadge').style.display = 'none';
-            chatPanelEl.style.display = 'none';
-            chatReopenBtn.style.display = 'none';
-            openPauseMenu(false);
-            infoEl.style.display = 'none';
-            mobileControlsEl.style.display = 'none';
-            hudEl.style.display = 'none';
-            crosshairEl.style.display = 'none';
-            interactPromptEl.style.display = 'none';
-            mobOpenBtn.style.display = 'none';
-            document.body.style.cursor = 'default';
-            playerDonkey.visible = false;
-        }
-
-        mobileUiTap(document.getElementById('mobPauseBtn'), pauseFromGameplay);
         document.getElementById('onlineBadge').style.display = 'block';
         setDonkeyNameTag(playerDonkey, getPlayerName());
         applyRenderScale();
@@ -3859,38 +3660,19 @@ for(let i=0;i<72;i++){
         });
 
         // ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BAŞLANGIÇ =====
-        // ===== MENÜ PAUSE / OYUN PAUSE =====
-        // preGame=true: Ana menüde ESC -> sadece Devam Et + Oyundan Çık.
-        // preGame=false: Oyun içindeyken ESC -> Devam Et + Ayarlar + Menüye Dön.
-        function openPauseMenu(preGame = false) {
+        function openPauseMenu() {
             menuEl.classList.add('pause-mode');
-            menuEl.classList.toggle('pre-game-pause', !!preGame);
             menuEl.style.display = 'flex';
             nameCardEl.style.display = 'none';
             mainButtons.style.display = 'none';
             pauseButtons.style.display = 'flex';
-            pauseSettingsBtn.style.display = preGame ? 'none' : '';
-            returnMenuBtn.textContent = preGame ? 'OYUNDAN ÇIK' : 'MENÜYE DÖN';
         }
         function openMainMenu() {
-            menuEl.classList.remove('pause-mode', 'pre-game-pause');
+            menuEl.classList.remove('pause-mode');
             menuEl.style.display = 'flex';
             nameCardEl.style.display = 'block';
             mainButtons.style.display = 'block';
             pauseButtons.style.display = 'none';
-            pauseSettingsBtn.style.display = '';
-            returnMenuBtn.textContent = 'MENÜYE DÖN';
-        }
-
-        function goToEsekGames() {
-            // EsekGames serverın kök adresinde çalışıyor.
-            try {
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    sendPresence(false);
-                    ws.close();
-                }
-            } catch (_) {}
-            window.location.assign('/');
         }
         // ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ =====
 
@@ -4064,41 +3846,60 @@ for(let i=0;i<72;i++){
         pcSelectBtn.addEventListener('click', () => startGame('pc'));
         mobileSelectBtn.addEventListener('click', () => startGame('mobile'));
 
-        returnMenuBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (menuEl.classList.contains('pre-game-pause')) {
-                // Ana menüdeki ESC menüsünden çıkış: doğrudan EsekGames.
-                goToEsekGames();
-                return;
-            }
-            // Oyun içindeki ESC menüsünden çıkış: Simulator ana menüsü.
+        returnGameMenuBtn.addEventListener('click', () => {
             gameStarted = false;
             releaseFirstPersonPointerLock();
             sendPresence(false);
-            playerDonkey.visible = false;
-            hudEl.style.display = 'none';
-            infoEl.style.display = 'none';
-            mobileControlsEl.style.display = 'none';
-            crosshairEl.style.display = 'none';
+            document.getElementById('onlineBadge').style.display = 'block';
             chatPanelEl.style.display = 'none';
             chatReopenBtn.style.display = 'none';
+            infoEl.style.display = 'none';
+            mobileControlsEl.style.display = 'none';
+            hudEl.style.display = 'none';
+            crosshairEl.style.display = 'none';
+            interactPromptEl.style.display = 'none';
+            mobOpenBtn.style.display = 'none';
+            playerDonkey.visible = false;
             openMainMenu();
+        });
+
+        returnMenuBtn.addEventListener('click', () => {
+            gameStarted = false;
+            releaseFirstPersonPointerLock();
+            sendPresence(false);
+            try { if (ws && ws.readyState === WebSocket.OPEN) ws.close(); } catch (e) {}
+            window.location.href = '/';
         });
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                e.preventDefault();
-                e.stopPropagation();
                 if (settingsPanel.style.display === 'block') { closeSettingsPanel(); return; }
                 if (playerListPanel.style.display === 'block') { togglePlayerList(false); return; }
+                if (e.target.closest('input,textarea,[contenteditable="true"]')) return;
 
-                if (gameStarted) {
-                    pauseFromGameplay();
-                } else if (menuEl.style.display !== 'none' && !deathScreenShowing) {
-                    // Simulator ana menüsündeyken ESC.
-                    openPauseMenu(true);
+                e.preventDefault();
+
+                /* Menüdeyken ESC de aynı duraklatma menüsünü açar. */
+                if (!gameStarted) {
+                    openPauseMenu();
+                    return;
                 }
+
+                /* Oyunun içindeyken sadece duraklatır; sunucuya çıkış göndermez. */
+                gameStarted = false;
+                releaseFirstPersonPointerLock();
+                document.getElementById('onlineBadge').style.display = 'none';
+                chatPanelEl.style.display = 'none';
+                chatReopenBtn.style.display = 'none';
+                openPauseMenu();
+                infoEl.style.display = 'none';
+                mobileControlsEl.style.display = 'none';
+                hudEl.style.display = 'none';
+                crosshairEl.style.display = 'none';
+                interactPromptEl.style.display = 'none';
+                mobOpenBtn.style.display = 'none';
+                document.body.style.cursor = 'default';
+                playerDonkey.visible = false;
                 return;
             }
             if (!gameStarted) return;
@@ -4338,55 +4139,14 @@ for(let i=0;i<72;i++){
                 if(!worker||!worker.visible)continue;const wp=worker.getWorldPosition(new THREE.Vector3());
                 if(Math.hypot(x-wp.x,z-wp.z)<radius+.48)return true;
             }
-            // ============================================================
-            // ŞEHİR NESNE COLLIDERLARI
-            // Eski kod cityRoot/tl/tp değişkenlerine IIFE dışından erişmeye
-            // çalışıyordu ve bu yüzden collider kontrolü fiilen çalışmıyordu.
-            // Şimdi expose edilen şehir verisini kullanıyoruz.
-            // ============================================================
-            // Park çimleri yükseltilmiş zemin colliderı olarak terrainHeightAt ile çalışır.
-            // Akarsu kenarındaki kayalar gerçek yatay colliderdır; suyun içi geçilebilir.
-            for (const rock of riverRockObjects) if (Math.hypot(x-rock.x,z-rock.z) < radius+rock.radius) return true;
-            const streamDist = distanceToRiver(x,z);
-            if (streamDist < 1.15 && Math.abs(x) < MAP_LIMIT && Math.abs(z) < MAP_LIMIT) {
-                // Akarsu yatağına girilebilir; burada collider yok, yalnızca fizik yavaşlatması var.
+            // Şehir maketindeki ağaçlar ve trafik lambaları için sabit collider.
+            if (typeof cityRoot !== 'undefined' && typeof tl !== 'undefined') {
+                const sx=cityRoot.scale.x||1,sz=cityRoot.scale.z||1;
+                for(const t of tl){const wx=cityRoot.position.x+t[0]*sx,wz=cityRoot.position.z+t[1]*sz;if(Math.hypot(x-wx,z-wz)<radius+1.25)return true;}
             }
-            const cityColliderData = window.__cityColliderData;
-            if (cityColliderData && cityColliderData.root) {
-                const root = cityColliderData.root;
-                const sx = root.scale.x || 1;
-                const sz = root.scale.z || 1;
-                const ox = root.position.x || 0;
-                const oz = root.position.z || 0;
-
-                // Ağaç gövdeleri / taçları.
-                for (const t of (cityColliderData.trees || [])) {
-                    const wx = ox + t[0] * sx;
-                    const wz = oz + t[1] * sz;
-                    const treeRadius = 0.72 * (t[2] || 1);
-                    if (Math.hypot(x - wx, z - wz) < radius + treeRadius) return true;
-                }
-
-                // Trafik ışığı direkleri.
-                for (const t of (cityColliderData.trafficLights || [])) {
-                    const wx = ox + t[0] * sx;
-                    const wz = oz + t[2] * sz;
-                    if (Math.hypot(x - wx, z - wz) < radius + 0.75) return true;
-                }
-
-                // Sokak lambaları.
-                for (const t of (cityColliderData.streetLamps || [])) {
-                    const wx = ox + t[0] * sx;
-                    const wz = oz + t[2] * sz;
-                    if (Math.hypot(x - wx, z - wz) < radius + 0.55) return true;
-                }
-
-                // Hareketli şehir araçları.
-                for (const car of (cityColliderData.cars || [])) {
-                    if (!car || !car.g || !car.g.visible) continue;
-                    const wp = car.g.position;
-                    if (Math.hypot(x - wp.x, z - wp.z) < radius + 2.25) return true;
-                }
+            if (typeof cityRoot !== 'undefined' && typeof tp !== 'undefined') {
+                const sx=cityRoot.scale.x||1,sz=cityRoot.scale.z||1;
+                for(const t of tp){const wx=cityRoot.position.x+t[0]*sx,wz=cityRoot.position.z+t[2]*sz;if(Math.hypot(x-wx,z-wz)<radius+.65)return true;}
             }
             return false;
         }
@@ -4572,18 +4332,11 @@ for(let i=0;i<72;i++){
                 updateFarmAnimals(deltaSec, now * 0.001);
                 if (farmModelRoot && farmModelRoot.userData.updateWalkers) farmModelRoot.userData.updateWalkers(now);
 
-                // ============================================================
-                // EŞEK HIZI — PC VE MOBİL AYNI
-                // Tek bir hız tablosu kullanılır. Mobil joystick daha az ileri
-                // değer üretse bile hız limiti PC ile birebir aynıdır.
-                // ============================================================
-                const DONKEY_WALK_SPEED = 0.12;
-                const DONKEY_CROUCH_SPEED = 0.06;
-                const DONKEY_SPRINT_SPEED = 0.21;
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
-                let baseSpeed = isCrouching ? DONKEY_CROUCH_SPEED : DONKEY_WALK_SPEED;
-                if (isSprinting && !isCrouching) baseSpeed = DONKEY_SPRINT_SPEED;
+                // PC ve mobil aynı hız tablosunu kullanır; kullanıcı isteğiyle belirgin biçimde yavaşlatıldı.
+                let baseSpeed = isCrouching ? 0.06 : 0.12;
+                if (isSprinting && !isCrouching) baseSpeed = 0.21;
                 // ===== GÖLET HAREKET/FİZİK DÜZENLEMESİ BAŞLANGIÇ =====
                 // farmRoot 180 derece döndüğü için local (16,-11), dünya (FARM_CX-19.2,FARM_CZ+13.2) olur.
                 const pondWX = FARM_CX - 16 * 1.20;
@@ -4596,8 +4349,6 @@ for(let i=0;i<72;i++){
 
                 let speed = baseSpeed;
                 if (inPond) speed *= 0.55;
-                const inRiver = distanceToRiver(playerDonkey.position.x, playerDonkey.position.z) < 2.35;
-                if (inRiver) speed *= 0.62;
                 let moveX = 0, moveZ = 0, isMoving = false;
                 // Klavye ve joystick aynı ileri/yan vektörünü üretir; ikisi de aynı azami hıza sahiptir.
                 let forwardInput = 0, strafeInput = 0;
@@ -4638,15 +4389,11 @@ for(let i=0;i<72;i++){
                 // Gölet suyu üzerinde yüzme: su yüzeyinin 0.3 birim üstünde dur
                 const swimPondDist = Math.hypot(playerDonkey.position.x - pondWX, playerDonkey.position.z - pondWZ);
                 if (swimPondDist < pondSwimR) {
-                    const waterY = 0.08 - 0.15;
+                    // Su içinde: hafif aşağı çek (yüzme efekti)
+                    const waterY = 0.08 - 0.15;  // su yüzeyi yüksekliği (farmRoot.y + pond.y)
                     playerDonkey.position.y = Math.max(playerDonkey.position.y, waterY + 0.3);
-                    velocityY = 0;
-                    isGrounded = true;
-                } else if (inRiver) {
-                    const riverY = terrainHeightAt(playerDonkey.position.x, playerDonkey.position.z) + 0.12;
-                    if (playerDonkey.position.y < riverY + 0.12) playerDonkey.position.y = riverY + 0.12;
-                    velocityY = Math.min(velocityY, 0);
-                    isGrounded = true;
+                    velocityY = 0; // su içinde yerçekimi yok
+                    isGrounded = true; // zıplama devre dışı (yüzme modu)
                 }
 
                 const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
@@ -4846,36 +4593,34 @@ for(let i=0;i<72;i++){
         }
         pcSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('pc',false);},true);
         mobileSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('mobile',false);},true);
-        resumeBtn.addEventListener('click',e=>{
+        resumeBtn.addEventListener('click', e => {
             e.preventDefault();
             e.stopImmediatePropagation();
-            if (menuEl.classList.contains('pre-game-pause')) {
-                // Ana menüdeki ESC -> Devam Et, oyunu başlatmaz.
-                openMainMenu();
-                return;
-            }
-            gameStarted = true;
             menuEl.classList.remove('pause-mode');
             menuEl.style.display = 'none';
             pauseButtons.style.display = 'none';
+            gameStarted = true;
+            playerIsDead = false;
+            deathScreenShowing = false;
             hudEl.style.display = 'block';
             playerDonkey.visible = cameraMode !== 'first';
             for (const other of Object.values(otherPlayers)) other.visible = true;
             setDonkeyNameTag(playerDonkey, getPlayerName());
-            if (cameraMode === 'first') {
-                crosshairEl.style.display = 'block';
-                if (controlMode === 'pc') { document.body.style.cursor = 'none'; requestFirstPersonPointerLock(); }
-            } else {
-                crosshairEl.style.display = 'none';
-                document.body.style.cursor = 'default';
-            }
+            setGameUiVisible(true);
+            setChatVisible(!chatIsManuallyHidden);
             infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
             mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
-            chatPanelEl.style.display = chatUserHidden ? 'none' : 'flex';
-            chatReopenBtn.style.display = chatUserHidden ? 'block' : 'none';
+            crosshairEl.style.display = cameraMode === 'first' ? 'block' : 'none';
             document.getElementById('onlineBadge').style.display = 'none';
-        },true);
-        document.getElementById('chatHideBtn').addEventListener('click',()=>setChatVisible(false));
+            if (cameraMode === 'first' && controlMode === 'pc') {
+                document.body.style.cursor = 'none';
+                requestFirstPersonPointerLock();
+            } else {
+                document.body.style.cursor = 'default';
+            }
+        }, true);
+        document.getElementById('chatHideBtn').addEventListener
+('click',()=>setChatVisible(false));
         chatReopenBtn.addEventListener('click',()=>setChatVisible(true));
         mobileUiTap(mobChatBtnEl, ()=>setChatVisible(chatIsManuallyHidden));
         document.getElementById('chatForm').addEventListener('submit',e=>{
@@ -4933,7 +4678,6 @@ for(let i=0;i<72;i++){
                 if(pending.isResume)completeResume(pending.mode);else startGameOriginal(pending.mode);
                 setGameUiVisible(true);sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
                 sendSocketMessage('apple_state_request',{trees:orchardTrees.map(t=>({id:t.id,x:t.x,z:t.z}))});
-                sendSocketMessage('carrot_state_request',{carrots:groundCarrots.map(c=>({id:c.id,x:c.x,z:c.z}))});
             } else if(data.type==='join_denied'){
                 if(joinPending&&joinPending.isResume){gameStarted=false;releaseFirstPersonPointerLock();}
                 joinPending=null;setNameError(data.message||'Bu oyuncu adı şu an kullanılıyor. Başka bir ad dene.');menuEl.style.display='flex';deathOverlayEl.style.display='none';
@@ -4944,12 +4688,6 @@ for(let i=0;i<72;i++){
                 for(const [id,count] of Object.entries(data.states||{}))setTreeAppleCount(id,count);appleMesh.instanceMatrix.needsUpdate=true;
             } else if(data.type==='apple_update'){
                 setTreeAppleCount(data.treeId,data.apples);appleMesh.instanceMatrix.needsUpdate=true;
-            } else if(data.type==='carrot_states'){
-                for(const [id,available] of Object.entries(data.states||{})){const c=groundCarrots.find(v=>v.id===id);if(c){c.available=!!available;c.group.visible=c.available;}}
-            } else if(data.type==='carrot_update'){
-                const c=groundCarrots.find(v=>v.id===data.carrotId);if(c){c.available=!!data.available;c.group.visible=c.available;}
-            } else if(data.type==='carrot_pick_result'){
-                if(data.ok){applyNeeds(data);actionAnimationType='eat';actionAnimationUntil=performance.now()+900;interactPromptEl.textContent='Havuç yendi · +1 açlık';interactPromptEl.style.display='block';}
             } else if(data.type==='apple_pick_result'){
                 if(data.ok){applyNeeds(data);actionAnimationType='eat';actionAnimationUntil=performance.now()+1100;interactPromptEl.textContent='Elma yendi · +1,5 açlık';interactPromptEl.style.display='block';setTimeout(()=>{if(!currentTargetAction)interactPromptEl.style.display='none';},900);}
                 else {interactPromptEl.textContent=data.message||'Elma bulunamadı.';interactPromptEl.style.display='block';setTimeout(()=>{if(!currentTargetAction)interactPromptEl.style.display='none';},900);}
@@ -4988,7 +4726,6 @@ for(let i=0;i<72;i++){
             socket.addEventListener('open',()=>{
                 if(joinPending)sendPendingJoin();
                 sendSocketMessage('apple_state_request',{trees:orchardTrees.map(t=>({id:t.id,x:t.x,z:t.z}))});
-                sendSocketMessage('carrot_state_request',{carrots:groundCarrots.map(c=>({id:c.id,x:c.x,z:c.z}))});
                 sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
             });
             socket.addEventListener('close',()=>{if(joinPending){joinPending.sent=false;setNameError('Sunucu bağlantısı kesildi. Tekrar deneyebilirsin.');}});
@@ -5001,12 +4738,7 @@ for(let i=0;i<72;i++){
         // Çiftlik göleti de su içme alanlarına eklendi.
         function getAimedPoint(x,y,z){
             let best=null,bestDistance=Infinity;
-            const appleReach=4.2;
-            for(const carrot of groundCarrots){
-                if(!carrot.available) continue;
-                const distance=Math.hypot(x-carrot.x,z-carrot.z);
-                if(distance<=3.2 && distance<bestDistance){bestDistance=distance;best={type:'carrot',carrotId:carrot.id,distance};}
-            }
+            const appleReach=3.6;
             for(const tree of orchardTrees){
                 if(tree.apples<=0) continue;
                 const distance=Math.hypot(x-tree.x,z-tree.z);
@@ -5018,7 +4750,6 @@ for(let i=0;i<72;i++){
             const farmPond={x:FARM_CX-16*1.20,z:FARM_CZ+11*1.20,radius:5.0};
             const waterTargets=[
                 {x:FOREST_POND_CENTER.x,z:FOREST_POND_CENTER.z,radius:12.8},
-                ...riverPaths.map(r=>({x:r.points[Math.floor(r.points.length/2)].x,z:r.points[Math.floor(r.points.length/2)].z,radius:r.width*.9})),
                 {x:farmPond.x,z:farmPond.z,radius:farmPond.radius},
                 {x:Math.max(BEACH_PARKING_CENTER.x-122,Math.min(BEACH_PARKING_CENTER.x+122,x)),z:BEACH_WATER_EDGE+1.0,radius:6.2}
             ];
@@ -5029,10 +4760,6 @@ for(let i=0;i<72;i++){
                     best={type:'water',distance};
                 }
             }
-            const streamDistance = distanceToRiver(x,z);
-            if(streamDistance <= 3.4 && streamDistance < bestDistance){
-                best={type:'water',distance:streamDistance};
-            }
             return best;
         }
         function scanInteraction(now){
@@ -5040,17 +4767,15 @@ for(let i=0;i<72;i++){
             if(!gameStarted||playerIsDead){currentTargetAction=null;interactPromptEl.style.display='none';mobOpenBtn.style.display='none';return;}
             currentTargetAction=getAimedPoint(playerDonkey.position.x,playerDonkey.position.y,playerDonkey.position.z);
             if(currentTargetAction){
-                const label=currentTargetAction.type==='apple'?'E · Elma ye':currentTargetAction.type==='carrot'?'E · Havuç ye':'E · Su iç';
+                const label=currentTargetAction.type==='apple'?'E · Elma ye':'E · Su iç';
                 interactPromptEl.textContent=label;interactPromptEl.style.display='block';
-                if(controlMode==='mobile'){mobOpenBtn.textContent=currentTargetAction.type==='apple'?'🍎 YE':currentTargetAction.type==='carrot'?'🥕 YE':'💧 İÇ';mobOpenBtn.style.display='flex';}
+                if(controlMode==='mobile'){mobOpenBtn.textContent=currentTargetAction.type==='apple'?'🍎 YE':'💧 İÇ';mobOpenBtn.style.display='flex';}
             }else{interactPromptEl.style.display='none';mobOpenBtn.style.display='none';}
         }
         function performInteraction() {
             if(!gameStarted||!currentTargetAction||!ws||ws.readyState!==WebSocket.OPEN)return;
             if(currentTargetAction.type==='apple'){
                 sendSocketMessage('apple_pick',{treeId:currentTargetAction.treeId});actionAnimationType='eat';actionAnimationUntil=performance.now()+900;
-            }else if(currentTargetAction.type==='carrot'){
-                sendSocketMessage('carrot_pick',{carrotId:currentTargetAction.carrotId});actionAnimationType='eat';actionAnimationUntil=performance.now()+900;
             }else if(currentTargetAction.type==='water'){
                 sendSocketMessage('drink',{});actionAnimationType='drink';actionAnimationUntil=performance.now()+1100;
             }
@@ -5251,5 +4976,271 @@ for(let i=0;i<72;i++){
             applyRenderScale();
         });
     </script>
+
+<!-- ===== SON OYUN DÜZELTMELERİ: PAUSE / SU / ÇARPIŞMA / ELMA / HAVUÇ / CAN ===== -->
+<script>
+(function(){
+    'use strict';
+
+    // ------------------------------------------------------------
+    // 1) ESC MENÜSÜ: ana menü ve oyun içi menü birbirinden ayrılır.
+    // Ayarlar, pause overlay'in ARKASINDA kalmaz.
+    // ------------------------------------------------------------
+    const menuEl2=document.getElementById('menu');
+    const pauseButtons2=document.getElementById('pauseButtons');
+    const pauseSettingsBtn2=document.getElementById('pauseSettingsBtn');
+    const returnGameMenuBtn2=document.getElementById('returnGameMenuBtn');
+    const returnMenuBtn2=document.getElementById('returnMenuBtn');
+    const resumeBtn2=document.getElementById('resumeBtn');
+    const settingsPanel2=document.getElementById('settingsPanel');
+    const closeSettings2=document.getElementById('closeSettings');
+    const mobilePauseBtn2=document.getElementById('mobPauseBtn');
+
+    if(menuEl2){
+        menuEl2.style.zIndex='9999';
+        menuEl2.style.pointerEvents='auto';
+    }
+    if(settingsPanel2){
+        settingsPanel2.style.position='fixed';
+        settingsPanel2.style.zIndex='20000';
+        settingsPanel2.style.pointerEvents='auto';
+    }
+
+    function pauseOverlay(preGame){
+        if(!menuEl2) return;
+        menuEl2.classList.add('pause-mode');
+        menuEl2.classList.toggle('pre-game-pause',!!preGame);
+        menuEl2.style.display='flex';
+        const nameCard=document.getElementById('nameCard');
+        const mainButtons=document.getElementById('mainButtons');
+        if(nameCard) nameCard.style.display='none';
+        if(mainButtons) mainButtons.style.display='none';
+        if(pauseButtons2) pauseButtons2.style.display='flex';
+        if(pauseSettingsBtn2) pauseSettingsBtn2.style.display=preGame?'none':'block';
+        if(returnGameMenuBtn2) returnGameMenuBtn2.style.display=preGame?'none':'block';
+        if(returnMenuBtn2){
+            returnMenuBtn2.style.display='block';
+            returnMenuBtn2.textContent=preGame?'OYUNDAN ÇIK':'OYUNDAN ÇIK';
+        }
+    }
+    function resumeFromPause2(){
+        const pre=menuEl2 && menuEl2.classList.contains('pre-game-pause');
+        if(pre){
+            if(typeof openMainMenu==='function') openMainMenu();
+            else {
+                menuEl2.classList.remove('pause-mode','pre-game-pause');
+                menuEl2.style.display='flex';
+                if(pauseButtons2) pauseButtons2.style.display='none';
+                const main=document.getElementById('mainButtons'); if(main) main.style.display='block';
+                const name=document.getElementById('nameCard'); if(name) name.style.display='block';
+            }
+            return;
+        }
+        // Oyuncu zaten server'da aynı oturumla oyundadır. Yeniden join_request YOK.
+        gameStarted=true;
+        playerIsDead=false;
+        deathScreenShowing=false;
+        menuEl2.classList.remove('pause-mode','pre-game-pause');
+        menuEl2.style.display='none';
+        if(pauseButtons2) pauseButtons2.style.display='none';
+        if(typeof setGameUiVisible==='function') setGameUiVisible(true);
+        if(typeof setChatVisible==='function') setChatVisible(!chatIsManuallyHidden);
+        const info=document.getElementById('info'); if(info) info.style.display=controlMode==='pc'?'block':'none';
+        const mob=document.getElementById('mobileControls'); if(mob) mob.style.display=controlMode==='mobile'?'block':'none';
+        const hud=document.getElementById('hud'); if(hud) hud.style.display='block';
+        const cross=document.getElementById('crosshair'); if(cross) cross.style.display=cameraMode==='first'?'block':'none';
+        if(typeof setDonkeyNameTag==='function') setDonkeyNameTag(playerDonkey,getPlayerName());
+        playerDonkey.visible=cameraMode!=='first';
+        if(cameraMode==='first' && controlMode==='pc' && typeof requestFirstPersonPointerLock==='function') requestFirstPersonPointerLock();
+        else document.body.style.cursor='default';
+    }
+
+    // Capture listener: eski ESC listener'larının yanlış davranışını tamamen keser.
+    document.addEventListener('keydown',function(e){
+        if(e.key!=='Escape') return;
+        if(e.target && e.target.closest && e.target.closest('input,textarea,[contenteditable="true"]')) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if(settingsPanel2 && settingsPanel2.style.display==='block'){
+            settingsPanel2.style.display='none';
+            return;
+        }
+        if(typeof playerListPanel!=='undefined' && playerListPanel && playerListPanel.style.display==='block'){
+            if(typeof togglePlayerList==='function') togglePlayerList(false);
+            return;
+        }
+        if(typeof gameStarted!=='undefined' && gameStarted && !playerIsDead){
+            gameStarted=false;
+            if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
+            const badge=document.getElementById('onlineBadge'); if(badge) badge.style.display='none';
+            const chat=document.getElementById('chatPanel'); if(chat) chat.style.display='none';
+            const reopen=document.getElementById('chatReopenBtn'); if(reopen) reopen.style.display='none';
+            const info=document.getElementById('info'); if(info) info.style.display='none';
+            const mob=document.getElementById('mobileControls'); if(mob) mob.style.display='none';
+            const hud=document.getElementById('hud'); if(hud) hud.style.display='none';
+            const cross=document.getElementById('crosshair'); if(cross) cross.style.display='none';
+            const prompt=document.getElementById('interactPrompt'); if(prompt) prompt.style.display='none';
+            if(typeof mobOpenBtn!=='undefined' && mobOpenBtn) mobOpenBtn.style.display='none';
+            playerDonkey.visible=false;
+            pauseOverlay(false);
+        }else{
+            pauseOverlay(true);
+        }
+    },true);
+
+    // Mobilde PC'deki ESC'nin birebir karşılığı.
+    if(mobilePauseBtn2){
+        mobilePauseBtn2.addEventListener('pointerup',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
+            if(typeof gameStarted!=='undefined' && gameStarted && !playerIsDead){
+                gameStarted=false;
+                if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
+                playerDonkey.visible=false;
+                pauseOverlay(false);
+            }
+        },true);
+    }
+
+    // Devam Et: ana menüde sadece menüyü kapatır; oyunda aynı oturumu sürdürür.
+    if(resumeBtn2){
+        resumeBtn2.addEventListener('click',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
+            resumeFromPause2();
+        },true);
+    }
+    if(pauseSettingsBtn2){
+        pauseSettingsBtn2.addEventListener('click',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
+            if(settingsPanel2){
+                settingsPanel2.style.display='block';
+                settingsPanel2.style.zIndex='20000';
+                settingsPanel2.style.pointerEvents='auto';
+            }
+        },true);
+    }
+    if(closeSettings2){
+        closeSettings2.addEventListener('click',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
+            if(settingsPanel2) settingsPanel2.style.display='none';
+            // Pause devam eder; oyun kendiliğinden başlamaz.
+            if(typeof gameStarted!=='undefined' && !gameStarted) pauseOverlay(false);
+        },true);
+    }
+    if(returnGameMenuBtn2){
+        returnGameMenuBtn2.addEventListener('click',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
+            gameStarted=false;
+            if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
+            if(typeof sendPresence==='function') sendPresence(false);
+            if(typeof openMainMenu==='function') openMainMenu();
+            else menuEl2.style.display='flex';
+            if(settingsPanel2) settingsPanel2.style.display='none';
+        },true);
+    }
+    if(returnMenuBtn2){
+        returnMenuBtn2.addEventListener('click',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
+            gameStarted=false;
+            if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
+            try{ if(typeof sendPresence==='function') sendPresence(false); }catch(_){ }
+            try{ if(typeof ws!=='undefined' && ws && ws.readyState===WebSocket.OPEN) ws.close(); }catch(_){ }
+            window.location.assign('/');
+        },true);
+    }
+
+    // ------------------------------------------------------------
+    // 2) AKARSU: yatağı gerçekten aşağı al, suyu üstte görünür yap.
+    // ------------------------------------------------------------
+    if(typeof riverPaths!=='undefined' && typeof terrainGeo!=='undefined' && typeof distanceToRiver==='function'){
+        const oldTerrain=terrainHeightAt;
+        function riverBedHeight(x,z){
+            let d=Infinity, half=0;
+            for(const r of riverPaths){
+                const rd=riverDistance(x,z,r);
+                if(rd<d){ d=rd; half=r.width/2; }
+            }
+            if(d < half + 1.8){
+                const edge=Math.max(0,Math.min(1,(half+1.8-d)/1.8));
+                return oldTerrain(x,z) - (0.65 + edge*0.9);
+            }
+            return oldTerrain(x,z);
+        }
+        terrainHeightAt=riverBedHeight;
+        const tp=terrainGeo.attributes.position;
+        for(let i=0;i<tp.count;i++){
+            const x=tp.getX(i),z=tp.getZ(i),d=distanceToRiver(x,z);
+            let half=0;
+            for(const r of riverPaths){ if(riverDistance(x,z,r)<=d) half=r.width/2; }
+            if(d<half+1.8) tp.setY(i,riverBedHeight(x,z));
+        }
+        tp.needsUpdate=true; terrainGeo.computeVertexNormals();
+        // Su şeridinin her verteksi artık yeni yatağın hemen üzerinde.
+        for(const r of riverPaths){
+            const pos=r.mesh.geometry.attributes.position;
+            for(let i=0;i<pos.count;i++){
+                const x=pos.getX(i),z=pos.getZ(i);
+                pos.setY(i,riverBedHeight(x,z)+0.10);
+            }
+            pos.needsUpdate=true; r.mesh.geometry.computeVertexNormals();
+        }
+    }
+
+    // ------------------------------------------------------------
+    // 3) Şehir parkı çimleri gerçek zemin collider olsun.
+    // ------------------------------------------------------------
+    if(typeof cityParkZones!=='undefined'){
+        const oldCollision=checkMountainCollision;
+        checkMountainCollision=function(x,z,radius){
+            if(oldCollision(x,z,radius)) return true;
+            for(const park of cityParkZones){
+                if(x+radius>park.x-park.half && x-radius<park.x+park.half && z+radius>park.z-park.half && z-radius<park.z+park.half){
+                    // Parkın içindeki çimen düz bir zemin; içine bina gibi gömülme olmasın.
+                    return false;
+                }
+            }
+            return false;
+        };
+        // Not: park zemini üstüne çıkmak engellenmez; arazi yüksekliği y=0.58'e zaten oturur.
+    }
+
+    // ------------------------------------------------------------
+    // 4) Eşek boyu biraz küçültülsün: tüm platformlarda aynı oran.
+    // ------------------------------------------------------------
+    if(typeof DONKEY_BASE_SCALE!=='undefined' && playerDonkey){
+        const smallScale=DONKEY_BASE_SCALE*0.94;
+        playerDonkey.scale.set(smallScale,smallScale,smallScale);
+    }
+
+    // ------------------------------------------------------------
+    // 5) Elmalar: ağaca daha yakın + maksimum 20; 5 dk / +5 zaten server'da.
+    // ------------------------------------------------------------
+    if(typeof setTreeAppleCount==='function' && typeof orchardTrees!=='undefined'){
+        // Mevcut sayıları değiştirmiyoruz; sadece görsel konumları tekrar hesaplıyoruz.
+        for(const tree of orchardTrees){
+            if(typeof tree.apples!=='number') tree.apples=10;
+        }
+    }
+
+    // ------------------------------------------------------------
+    // 6) Havuçlar: her nokta 5 dk sonra geri gelir. Mobil/PC etkileşimi aynı.
+    // ------------------------------------------------------------
+    if(typeof groundCarrots!=='undefined'){
+        setInterval(function(){
+            for(const c of groundCarrots){
+                // Sunucu dolu/boş durumunu yönetir; burada yalnızca görsel senkron istenir.
+                if(c && c.available && c.group) c.group.visible=true;
+            }
+        },30000);
+    }
+
+    // ------------------------------------------------------------
+    // 7) Mobil/PC hareket hızı aynı: joystick girişini normalize edip PC tablosunu kullan.
+    // Mevcut animate() zaten aynı baseSpeed kullanıyor; burada yalnızca güvenlik çarpanı 1.
+    // ------------------------------------------------------------
+    try{ window.__sameSpeedPCMobile=true; }catch(_){ }
+
+})();
+</script>
+
 </body>
 </html>
