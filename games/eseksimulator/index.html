@@ -186,7 +186,7 @@
         </div>
         <div id="pauseButtons" style="display: none; flex-direction: column; align-items: center;">
             <div style="font-size:28px;font-weight:800;margin-bottom:18px;">OYUN DURAKLATILDI</div>
-            <button id="resumeBtn" class="btn">OYUNA DEVAM ET</button>
+            <button id="resumeBtn" class="btn">🏠 MENÜYE DÖN</button>
             <button id="pauseSettingsBtn" class="btn btn-yellow">⚙️ AYARLAR</button>
             <button id="returnGameMenuBtn" class="btn btn-blue">MENÜYE DÖN</button>
             <button id="returnMenuBtn" class="btn btn-red">OYUNDAN ÇIK</button>
@@ -4522,32 +4522,6 @@ function stepCar(c,dt){
         }
         pcSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('pc',false);},true);
         mobileSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('mobile',false);},true);
-        resumeBtn.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            menuEl.classList.remove('pause-mode');
-            menuEl.style.display = 'none';
-            pauseButtons.style.display = 'none';
-            gameStarted = true;
-            playerIsDead = false;
-            deathScreenShowing = false;
-            hudEl.style.display = 'block';
-            playerDonkey.visible = cameraMode !== 'first';
-            for (const other of Object.values(otherPlayers)) other.visible = true;
-            setDonkeyNameTag(playerDonkey, getPlayerName());
-            setGameUiVisible(true);
-            setChatVisible(!chatIsManuallyHidden);
-            infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
-            mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
-            crosshairEl.style.display = cameraMode === 'first' ? 'block' : 'none';
-            document.getElementById('onlineBadge').style.display = 'none';
-            if (cameraMode === 'first' && controlMode === 'pc') {
-                document.body.style.cursor = 'none';
-                requestFirstPersonPointerLock();
-            } else {
-                document.body.style.cursor = 'default';
-            }
-        }, true);
         document.getElementById('chatHideBtn').addEventListener
 ('click',()=>setChatVisible(false));
         chatReopenBtn.addEventListener('click',()=>setChatVisible(true));
@@ -4982,11 +4956,15 @@ document.body.appendChild(topMenuBtn);
 function setPauseButtonVisibility(inGame) {
     if (!resumeBtn || !settingsBtn || !gameMenuBtn || !exitBtn) return;
 
+    // ANA MENÜDE: bu buton OYUNU BAŞLATMAZ; sadece ana menüde kalır.
+    // OYUN İÇİNDE: aynı buton gerçek devam işlevine sahip olur.
     resumeBtn.style.display = 'block';
+    resumeBtn.textContent = inGame ? '▶ OYUNA DEVAM ET' : '🏠 MENÜYE DÖN';
+
     settingsBtn.style.display = inGame ? 'block' : 'none';
     gameMenuBtn.style.display = inGame ? 'block' : 'none';
     exitBtn.style.display = inGame ? 'none' : 'block';
-    exitBtn.textContent = 'OYUNDAN ÇIK';
+    exitBtn.textContent = '🚪 OYUNDAN ÇIK';
 }
 
 function hideGameUiForPause() {
