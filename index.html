@@ -131,29 +131,15 @@
         .account-actions button { flex:1; padding:12px; border:0; border-radius:9px; font-weight:900; cursor:pointer; }
         #accountSubmit { background:#35b979; color:#fff; } #accountClose { background:#293442; color:#dbe4ec; }
         @media(max-width:650px){ .account-button{padding:8px 10px;font-size:12px;} }
-
-        .profile-wrap { position:relative; display:none; }
-        .profile-button { border:1px solid rgba(255,255,255,.13); border-radius:10px; background:linear-gradient(135deg,#273449,#182131); color:#fff; padding:9px 14px; font-size:14px; font-weight:800; cursor:pointer; }
-        .profile-button .arrow { display:inline-block; margin-left:8px; transition:.2s; }
-        .profile-button.open .arrow { transform:rotate(180deg); }
-        .profile-dropdown { position:absolute; top:calc(100% + 8px); right:0; width:250px; display:none; padding:8px; border:1px solid rgba(255,255,255,.12); border-radius:14px; background:#111923; box-shadow:0 18px 50px rgba(0,0,0,.5); z-index:600; }
-        .profile-dropdown.open { display:block; }
-        .profile-user { padding:10px 12px 12px; color:#ffd43b; font-weight:900; border-bottom:1px solid rgba(255,255,255,.08); margin-bottom:6px; }
-        .profile-item { width:100%; border:0; background:transparent; color:#e6edf4; text-align:left; padding:11px 12px; border-radius:9px; font-weight:800; cursor:pointer; }
-        .profile-item:hover { background:rgba(255,255,255,.08); }
-        .profile-item.logout { color:#ff7777; }
-        .profile-panel { display:none; position:fixed; inset:0; z-index:550; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,.72); backdrop-filter:blur(8px); }
-        .profile-box { width:min(420px,94vw); padding:24px; border-radius:18px; background:#111923; border:1px solid rgba(255,255,255,.12); box-shadow:0 24px 70px rgba(0,0,0,.6); }
-        .profile-box h3 { margin:0 0 16px; color:#ffd43b; }
-        .profile-box label { display:block; margin:10px 0 6px; color:#dbe4ec; font-weight:700; font-size:13px; }
-        .profile-box input { width:100%; box-sizing:border-box; padding:11px; border-radius:9px; border:1px solid #394656; background:#0b1118; color:#fff; outline:none; }
-        .profile-form-actions { display:flex; gap:8px; margin-top:14px; }
-        .profile-form-actions button { flex:1; border:0; border-radius:9px; padding:11px; font-weight:900; cursor:pointer; }
-        .profile-save { background:#35b979; color:white; } .profile-cancel { background:#293442; color:#dbe4ec; }
-        .profile-error { min-height:20px; margin-top:9px; color:#ff7777; font-size:13px; }
-        .update-notice { position:fixed; right:18px; bottom:18px; z-index:900; display:none; width:min(360px,calc(100vw - 36px)); padding:16px; border-radius:14px; background:#111923; border:1px solid #ffd43b66; box-shadow:0 18px 55px rgba(0,0,0,.55); color:#fff; }
-        .update-notice strong { color:#ffd43b; display:block; margin-bottom:5px; }
-        .update-notice button { margin-top:10px; border:0; border-radius:9px; padding:9px 13px; background:#ffd43b; color:#111; font-weight:900; cursor:pointer; }
+        .account-wrap { position:relative; display:flex; align-items:center; }
+        .account-arrow { margin-left:7px; font-size:11px; opacity:.8; }
+        .profile-menu { position:absolute; top:calc(100% + 8px); right:0; width:220px; display:none; padding:8px; border-radius:12px; background:rgba(12,17,24,.98); border:1px solid rgba(255,255,255,.12); box-shadow:0 18px 45px rgba(0,0,0,.45); z-index:600; }
+        .profile-menu.open { display:block; }
+        .profile-menu button { width:100%; border:0; background:transparent; color:#e7edf3; text-align:left; padding:11px 12px; border-radius:8px; cursor:pointer; font-weight:700; }
+        .profile-menu button:hover { background:rgba(255,255,255,.08); }
+        .profile-menu .logout { color:#ff7777; }
+        .update-banner { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); z-index:1000; display:none; align-items:center; gap:12px; padding:12px 15px; border-radius:12px; background:rgba(12,17,24,.97); border:1px solid rgba(0,210,255,.35); box-shadow:0 14px 40px rgba(0,0,0,.45); color:#fff; font-size:14px; }
+        .update-banner button { border:0; border-radius:8px; padding:8px 12px; background:#20a8e8; color:#fff; font-weight:800; cursor:pointer; }
         /* ===== HESAP BUTONU BİTİŞ ===== */
 
 
@@ -716,14 +702,12 @@
             </nav>
 
 
-            <button id="accountButton" class="account-button" type="button">Hesap oluştur / Giriş yap</button>
-            <div id="profileWrap" class="profile-wrap">
-                <button id="profileButton" class="profile-button" type="button">👤 <span id="profileUsername">Kullanıcı</span><span class="arrow">▼</span></button>
-                <div id="profileDropdown" class="profile-dropdown">
-                    <div id="profileUser" class="profile-user"></div>
-                    <button id="changeNameBtn" class="profile-item" type="button">✏️ Ad değiştir</button>
-                    <button id="changePasswordBtn" class="profile-item" type="button">🔑 Şifre değiştir</button>
-                    <button id="logoutBtn" class="profile-item logout" type="button">↪ Hesaptan çık</button>
+            <div class="account-wrap">
+                <button id="accountButton" class="account-button" type="button">Hesap oluştur / Giriş yap</button>
+                <div id="profileMenu" class="profile-menu">
+                    <button id="changeNameBtn">✏️ Ad değiştir</button>
+                    <button id="changePasswordBtn">🔑 Şifre değiştir</button>
+                    <button id="logoutBtn" class="logout">↪ Hesaptan çık</button>
                 </div>
             </div>
 
@@ -875,49 +859,37 @@
     <!-- ===== OYUNLAR BİTİŞ ===== -->
 
 
-    <div id="profileNamePanel" class="profile-panel" aria-hidden="true">
-        <div class="profile-box">
-            <h3>Ad değiştir</h3>
-            <label for="newUsername">Yeni kullanıcı adı</label>
-            <input id="newUsername" maxlength="20" autocomplete="username">
-            <div id="nameChangeError" class="profile-error"></div>
-            <div class="profile-form-actions"><button id="saveNameBtn" class="profile-save" type="button">Kaydet</button><button class="profile-cancel profileCloseBtn" type="button">Kapat</button></div>
-        </div>
-    </div>
-
-    <div id="profilePasswordPanel" class="profile-panel" aria-hidden="true">
-        <div class="profile-box">
-            <h3>Şifre değiştir</h3>
-            <label for="currentPassword">Mevcut şifre</label>
-            <input id="currentPassword" type="password" autocomplete="current-password">
-            <label for="newPassword">Yeni şifre</label>
-            <input id="newPassword" type="password" autocomplete="new-password">
-            <label for="newPassword2">Yeni şifre tekrar</label>
-            <input id="newPassword2" type="password" autocomplete="new-password">
-            <div id="passwordChangeError" class="profile-error"></div>
-            <div class="profile-form-actions"><button id="savePasswordBtn" class="profile-save" type="button">Kaydet</button><button class="profile-cancel profileCloseBtn" type="button">Kapat</button></div>
-        </div>
-    </div>
-
     <div id="accountModal" class="account-modal" aria-hidden="true">
         <div class="account-box" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
-            <h2 id="accountTitle">Hesaba Giriş Yap</h2><p>Hesabın varsa giriş yap. Yoksa kullanıcı adını ve şifreni oluştur.</p>
-            <div class="account-tabs"><button id="loginTab" class="account-tab active" type="button">Hesaba Giriş Yap</button><button id="registerTab" class="account-tab" type="button">Hesap Oluştur</button></div>
+            <h2 id="accountTitle">Hesaba Giriş Yap</h2>
+            <p id="accountDescription">Hesabın varsa giriş yap. Yoksa kullanıcı adını ve şifreni oluştur.</p>
+            <div id="accountTabs" class="account-tabs">
+                <button id="loginTab" class="account-tab active" type="button">Hesaba Giriş Yap</button>
+                <button id="registerTab" class="account-tab" type="button">Hesap Oluştur</button>
+            </div>
             <form id="accountForm">
-                <label for="accountUsername">Kullanıcı adı</label><input id="accountUsername" maxlength="20" autocomplete="username" required>
-                <label for="accountPassword">Şifre</label><input id="accountPassword" type="password" maxlength="128" autocomplete="current-password" required>
-                <div id="confirmPasswordWrap" style="display:none"><label for="accountPassword2">Şifre tekrar</label><input id="accountPassword2" type="password" maxlength="128" autocomplete="new-password"></div>
+                <label for="accountUsername">Kullanıcı adı</label>
+                <input id="accountUsername" maxlength="20" autocomplete="username" required>
+                <label id="currentPasswordLabel" for="accountPassword">Şifre</label>
+                <input id="accountPassword" type="password" maxlength="128" autocomplete="current-password" required>
+                <div id="confirmPasswordWrap" style="display:none">
+                    <label for="accountPassword2">Şifre tekrar</label>
+                    <input id="accountPassword2" type="password" maxlength="128" autocomplete="new-password">
+                </div>
+                <div id="newPasswordWrap" style="display:none">
+                    <label for="newPassword">Yeni şifre</label>
+                    <input id="newPassword" type="password" maxlength="128" autocomplete="new-password">
+                    <label for="newPassword2">Yeni şifre tekrar</label>
+                    <input id="newPassword2" type="password" maxlength="128" autocomplete="new-password">
+                </div>
                 <div class="account-warning">⚠️ Uyarı: Hesabınızın şifresini unutursanız hesabınız gidebilir.</div>
                 <div id="accountError" class="account-error" role="alert"></div>
-                <div class="account-actions"><button id="accountSubmit" type="submit">Giriş Yap</button><button id="accountClose" type="button">Kapat</button></div>
+                <div class="account-actions">
+                    <button id="accountSubmit" type="submit">Giriş Yap</button>
+                    <button id="accountClose" type="button">Kapat</button>
+                </div>
             </form>
         </div>
-    </div>
-
-    <div id="updateNotice" class="update-notice">
-        <strong>Yeni EsekGames sürümü hazır</strong>
-        Yeni sürüme geçmek için sayfayı yenilemen gerekiyor. Oyunun etkilenmemesi için seni otomatik olarak çıkarmıyoruz.
-        <br><button id="reloadForUpdate" type="button">Şimdi yenile</button>
     </div>
 
     <!-- ===== FOOTER BAŞLANGIÇ ===== -->
@@ -967,42 +939,131 @@
 
 
         // ===== HESAP SİSTEMİ =====
-        const accountButton=document.getElementById('accountButton'),profileWrap=document.getElementById('profileWrap'),profileButton=document.getElementById('profileButton'),profileDropdown=document.getElementById('profileDropdown'),profileUsername=document.getElementById('profileUsername'),profileUser=document.getElementById('profileUser');
-        const accountModal=document.getElementById('accountModal'),accountForm=document.getElementById('accountForm'),loginTab=document.getElementById('loginTab'),registerTab=document.getElementById('registerTab'),accountTitle=document.getElementById('accountTitle'),accountSubmit=document.getElementById('accountSubmit'),accountClose=document.getElementById('accountClose'),accountUsername=document.getElementById('accountUsername'),accountPassword=document.getElementById('accountPassword'),accountPassword2=document.getElementById('accountPassword2'),confirmPasswordWrap=document.getElementById('confirmPasswordWrap'),accountError=document.getElementById('accountError');
-        const profileNamePanel=document.getElementById('profileNamePanel'),profilePasswordPanel=document.getElementById('profilePasswordPanel'),newUsername=document.getElementById('newUsername'),nameChangeError=document.getElementById('nameChangeError'),currentPassword=document.getElementById('currentPassword'),newPassword=document.getElementById('newPassword'),newPassword2=document.getElementById('newPassword2'),passwordChangeError=document.getElementById('passwordChangeError');
+        const accountButton=document.getElementById('accountButton');
+        const profileMenu=document.getElementById('profileMenu');
+        const changeNameBtn=document.getElementById('changeNameBtn');
+        const changePasswordBtn=document.getElementById('changePasswordBtn');
+        const logoutBtn=document.getElementById('logoutBtn');
+        const accountModal=document.getElementById('accountModal');
+        const accountForm=document.getElementById('accountForm');
+        const loginTab=document.getElementById('loginTab');
+        const registerTab=document.getElementById('registerTab');
+        const accountTabs=document.getElementById('accountTabs');
+        const accountTitle=document.getElementById('accountTitle');
+        const accountDescription=document.getElementById('accountDescription');
+        const accountSubmit=document.getElementById('accountSubmit');
+        const accountClose=document.getElementById('accountClose');
+        const accountUsername=document.getElementById('accountUsername');
+        const accountPassword=document.getElementById('accountPassword');
+        const accountPassword2=document.getElementById('accountPassword2');
+        const confirmPasswordWrap=document.getElementById('confirmPasswordWrap');
+        const newPasswordWrap=document.getElementById('newPasswordWrap');
+        const newPassword=document.getElementById('newPassword');
+        const newPassword2=document.getElementById('newPassword2');
+        const currentPasswordLabel=document.getElementById('currentPasswordLabel');
+        const accountError=document.getElementById('accountError');
+        const updateBanner=document.getElementById('updateBanner');
+        const updateNowBtn=document.getElementById('updateNowBtn');
         let accountMode='login';
+
         function getStoredAccount(){try{return JSON.parse(localStorage.getItem('esekAuth')||'null')}catch(e){return null}}
-        function updateAccountUI(){const a=getStoredAccount();const logged=!!(a&&a.username&&a.token);accountButton.style.display=logged?'none':'block';profileWrap.style.display=logged?'block':'none';if(logged){profileUsername.textContent=a.username;profileUser.textContent='👤 '+a.username;}}
-        function setAccountMode(mode){accountMode=mode;const r=mode==='register';loginTab.classList.toggle('active',!r);registerTab.classList.toggle('active',r);accountTitle.textContent=r?'Hesap Oluştur':'Hesaba Giriş Yap';accountSubmit.textContent=r?'Hesap Oluştur':'Giriş Yap';confirmPasswordWrap.style.display=r?'block':'none';accountPassword.autocomplete=r?'new-password':'current-password';accountError.textContent='';}
-        function openAccountModal(mode='login'){setAccountMode(mode);accountModal.style.display='flex';accountModal.setAttribute('aria-hidden','false');accountUsername.focus();}
-        function closeAccountModal(){accountModal.style.display='none';accountModal.setAttribute('aria-hidden','true');accountForm.reset();setAccountMode('login');}
-        function closeProfileDropdown(){profileDropdown.classList.remove('open');profileButton.classList.remove('open');}
-        function openProfilePanel(panel){closeProfileDropdown();panel.style.display='flex';panel.setAttribute('aria-hidden','false');}
-        function closeProfilePanels(){for(const panel of [profileNamePanel,profilePasswordPanel]){panel.style.display='none';panel.setAttribute('aria-hidden','true');}}
-        accountButton.addEventListener('click',()=>openAccountModal('login'));
-        profileButton.addEventListener('click',e=>{e.stopPropagation();const open=profileDropdown.classList.toggle('open');profileButton.classList.toggle('open',open);});
-        document.addEventListener('click',e=>{if(!profileWrap.contains(e.target))closeProfileDropdown();});
-        loginTab.addEventListener('click',()=>setAccountMode('login'));registerTab.addEventListener('click',()=>setAccountMode('register'));accountClose.addEventListener('click',closeAccountModal);accountModal.addEventListener('click',e=>{if(e.target===accountModal)closeAccountModal();});
-        accountForm.addEventListener('submit',async e=>{e.preventDefault();accountError.textContent='';const username=accountUsername.value.trim(),password=accountPassword.value;if(!/^[A-Za-z0-9_çğıöşüÇĞİÖŞÜ-]{3,20}$/.test(username)){accountError.textContent='Kullanıcı adı 3-20 karakter olmalı ve yalnızca harf, rakam, _ veya - içermeli.';return;}if(password.length<6){accountError.textContent='Şifre en az 6 karakter olmalı.';return;}if(accountMode==='register'&&password!==accountPassword2.value){accountError.textContent='Şifreler aynı değil.';return;}accountSubmit.disabled=true;try{const r=await fetch(`/api/auth/${accountMode}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,passwordConfirm:accountMode==='register'?accountPassword2.value:password})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.message||'İşlem başarısız.');localStorage.setItem('esekAuth',JSON.stringify({token:d.token,username:d.username}));updateAccountUI();closeAccountModal();}catch(err){accountError.textContent=err.message||'Sunucuya bağlanılamadı.';}finally{accountSubmit.disabled=false;}});
-        document.getElementById('changeNameBtn').addEventListener('click',()=>{const a=getStoredAccount();newUsername.value=a?.username||'';nameChangeError.textContent='';openProfilePanel(profileNamePanel);});
-        document.getElementById('changePasswordBtn').addEventListener('click',()=>{currentPassword.value='';newPassword.value='';newPassword2.value='';passwordChangeError.textContent='';openProfilePanel(profilePasswordPanel);});
-        document.querySelectorAll('.profileCloseBtn').forEach(b=>b.addEventListener('click',closeProfilePanels));
-        [profileNamePanel,profilePasswordPanel].forEach(panel=>panel.addEventListener('click',e=>{if(e.target===panel)closeProfilePanels();}));
-        document.getElementById('logoutBtn').addEventListener('click',()=>{localStorage.removeItem('esekAuth');closeProfileDropdown();updateAccountUI();});
-        document.getElementById('saveNameBtn').addEventListener('click',async()=>{const a=getStoredAccount();const username=newUsername.value.trim();nameChangeError.textContent='';if(!a?.token)return;if(!/^[A-Za-z0-9_çğıöşüÇĞİÖŞÜ-]{3,20}$/.test(username)){nameChangeError.textContent='Kullanıcı adı 3-20 karakter olmalı.';return;}try{const r=await fetch('/api/auth/change-name',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:a.token,username})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.message||'Ad değiştirilemedi.');localStorage.setItem('esekAuth',JSON.stringify({token:d.token,username:d.username}));updateAccountUI();closeProfilePanels();}catch(err){nameChangeError.textContent=err.message||'Ad değiştirilemedi.';}});
-        document.getElementById('savePasswordBtn').addEventListener('click',async()=>{const a=getStoredAccount();passwordChangeError.textContent='';if(!a?.token)return;if(newPassword.value.length<6){passwordChangeError.textContent='Yeni şifre en az 6 karakter olmalı.';return;}if(newPassword.value!==newPassword2.value){passwordChangeError.textContent='Yeni şifreler aynı değil.';return;}try{const r=await fetch('/api/auth/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:a.token,currentPassword:currentPassword.value,newPassword:newPassword.value,newPasswordConfirm:newPassword2.value})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.message||'Şifre değiştirilemedi.');localStorage.setItem('esekAuth',JSON.stringify({token:d.token,username:d.username}));closeProfilePanels();alert('Şifren değiştirildi.');}catch(err){passwordChangeError.textContent=err.message||'Şifre değiştirilemedi.';}});
-        updateAccountUI();
+        function updateAccountButton(){
+            const a=getStoredAccount();
+            if(a&&a.username){
+                accountButton.innerHTML='👤 '+String(a.username)+' <span class="account-arrow">▼</span>';
+            }else{
+                accountButton.textContent='Hesap oluştur / Giriş yap';
+            }
+        }
+        function setAccountMode(mode){
+            accountMode=mode;
+            const isRegister=mode==='register';
+            const isName=mode==='change-name';
+            const isPassword=mode==='change-password';
+            loginTab.classList.toggle('active',!isRegister);
+            registerTab.classList.toggle('active',isRegister);
+            accountTabs.style.display=(isName||isPassword)?'none':'flex';
+            accountTitle.textContent=isRegister?'Hesap Oluştur':isName?'Ad değiştir':isPassword?'Şifre değiştir':'Hesaba Giriş Yap';
+            accountDescription.textContent=isRegister?'Yeni hesabını oluştur.':isName?'Hesabındaki kullanıcı adını değiştir.':isPassword?'Mevcut şifreni doğrula ve yeni şifreni belirle.':'Hesabın varsa giriş yap.';
+            accountSubmit.textContent=isRegister?'Hesap Oluştur':isName?'Adı değiştir':isPassword?'Şifreyi değiştir':'Giriş Yap';
+            accountUsername.parentElement.style.display=isName?'block':'block';
+            accountUsername.disabled=isPassword;
+            accountUsername.required=!isPassword;
+            if(isName){accountUsername.value=getStoredAccount()?.username||'';}
+            confirmPasswordWrap.style.display=isRegister?'block':'none';
+            newPasswordWrap.style.display=isPassword?'block':'none';
+            currentPasswordLabel.textContent=isPassword?'Mevcut şifre':'Şifre';
+            accountPassword.autocomplete=isRegister?'new-password':'current-password';
+            accountError.textContent='';
+        }
+        function openAccountModal(mode='login'){
+            profileMenu.classList.remove('open');
+            setAccountMode(mode); accountModal.style.display='flex'; accountModal.setAttribute('aria-hidden','false');
+            setTimeout(()=>{(mode==='change-password'?accountPassword:accountUsername).focus();},0);
+        }
+        function closeAccountModal(){accountModal.style.display='none';accountModal.setAttribute('aria-hidden','true');accountForm.reset();accountUsername.disabled=false;setAccountMode('login');}
+        accountButton.addEventListener('click',()=>{
+            const a=getStoredAccount();
+            if(a&&a.username) profileMenu.classList.toggle('open');
+            else openAccountModal('login');
+        });
+        document.addEventListener('click',e=>{if(!e.target.closest('.account-wrap'))profileMenu.classList.remove('open');});
+        loginTab.addEventListener('click',()=>setAccountMode('login'));
+        registerTab.addEventListener('click',()=>setAccountMode('register'));
+        accountClose.addEventListener('click',closeAccountModal);
+        accountModal.addEventListener('click',e=>{if(e.target===accountModal)closeAccountModal();});
+        changeNameBtn.addEventListener('click',()=>openAccountModal('change-name'));
+        changePasswordBtn.addEventListener('click',()=>openAccountModal('change-password'));
+        logoutBtn.addEventListener('click',()=>{localStorage.removeItem('esekAuth');profileMenu.classList.remove('open');updateAccountButton();});
 
-        // ===== YENİ SÜRÜM KONTROLÜ =====
-        const updateNotice=document.getElementById('updateNotice');
-        const reloadForUpdate=document.getElementById('reloadForUpdate');
-        let knownAppVersion=null;
-        async function checkForNewVersion(){try{const r=await fetch('/api/version?ts='+Date.now(),{cache:'no-store'});if(!r.ok)return;const d=await r.json();if(!d.version)return;if(knownAppVersion===null){knownAppVersion=d.version;return;}if(d.version!==knownAppVersion){updateNotice.style.display='block';}}catch(e){}}
-        reloadForUpdate.addEventListener('click',()=>location.reload());
-        checkForNewVersion();
-        setInterval(checkForNewVersion,30000);
+        accountForm.addEventListener('submit',async e=>{
+            e.preventDefault(); accountError.textContent='';
+            const username=accountUsername.value.trim();
+            const password=accountPassword.value;
+            if((accountMode==='login'||accountMode==='register'||accountMode==='change-name') && !/^[A-Za-z0-9_çğıöşüÇĞİÖŞÜ-]{3,20}$/.test(username)){
+                accountError.textContent='Kullanıcı adı 3-20 karakter olmalı.'; return;
+            }
+            if(password.length<6){accountError.textContent='Şifre en az 6 karakter olmalı.';return;}
+            if(accountMode==='register'&&password!==accountPassword2.value){accountError.textContent='Şifreler aynı değil.';return;}
+            if(accountMode==='change-password'&&(newPassword.value.length<6||newPassword.value!==newPassword2.value)){accountError.textContent='Yeni şifre en az 6 karakter olmalı ve iki alan aynı olmalı.';return;}
+            const stored=getStoredAccount();
+            accountSubmit.disabled=true;
+            try{
+                let url='/api/auth/'+accountMode;
+                let body={username,password};
+                if(accountMode==='register') body.passwordConfirm=accountPassword2.value;
+                if(accountMode==='change-name') body={token:stored?.token,username};
+                if(accountMode==='change-password') body={token:stored?.token,oldPassword:password,newPassword:newPassword.value,newPasswordConfirm:newPassword2.value};
+                const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+                const d=await r.json().catch(()=>({}));
+                if(!r.ok) throw new Error(d.message||'İşlem başarısız.');
+                if(d.token||d.username){
+                    const old=getStoredAccount()||{};
+                    localStorage.setItem('esekAuth',JSON.stringify({token:d.token||old.token,username:d.username||old.username}));
+                }
+                updateAccountButton(); closeAccountModal();
+            }catch(err){accountError.textContent=err.message||'Sunucuya bağlanılamadı.';}
+            finally{accountSubmit.disabled=false;}
+        });
+        updateAccountButton();
+
+        // Sunucu sürümü değiştiğinde açık sayfayı zorla yenilemez; kullanıcıya bildirim verir.
+        (async function checkForUpdates(){
+            let firstVersion=null;
+            async function check(){
+                try{
+                    const r=await fetch('/api/version?ts='+Date.now(),{cache:'no-store'});
+                    if(!r.ok)return;
+                    const d=await r.json();
+                    if(!firstVersion) firstVersion=d.version;
+                    else if(d.version!==firstVersion) updateBanner.style.display='flex';
+                }catch(e){}
+            }
+            await check();
+            setInterval(check,30000);
+        })();
+        updateNowBtn.addEventListener('click',()=>location.reload());
         // ===== HESAP SİSTEMİ BİTİŞ =====
-
     </script>
 
 </body>
