@@ -18,7 +18,8 @@
     <link rel="icon" href="data:,">
     <style>
         body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: Arial, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
-        #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.5); z-index: 20; }
+        canvas { display: block; }
+        #menu { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.5); z-index: 1000; pointer-events: auto; }
         /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BAŞLANGIÇ ===== */
         #menu.pause-mode {
             display: flex !important;
@@ -250,6 +251,8 @@
     </div>
 
     <div id="mobileControls">
+        <!-- MOBİL DURAKLAT: PC'deki ESC'nin dokunmatik karşılığı. -->
+        <button id="mobPauseBtn" type="button" title="Duraklat">⏸</button>
         <div id="mobMenuBtn">☰</div>
         <button id="mobPlayersBtn" type="button" title="Oyuncu listesi">👥</button>
         <div id="mobViewBtn" title="Kamera açısını değiştir">1P / 3P</div>
@@ -2329,9 +2332,9 @@
             scene.add(dash);
         }
 
-        // Kapıdan şehir ana yoluna kadar kuzey-güney devam eden bölüm.
-        createSegmentRoad(210, FARM_CZ + 50, 210, 70, 13, connectorShoulderMat, 0.065);
-        createSegmentRoad(210, FARM_CZ + 50, 210, 70, 8.5, connectorRoadMat, 0.085);
+        // Kapıdan şehir ana yoluna kadar olan bölüm aşağıdaki yol malzemeleri
+        // tanımlandıktan sonra oluşturuluyor. (Önceki sürümde const malzeme
+        // tanımlanmadan kullanıldığı için JavaScript burada duruyordu.)
 
         // ==========================================
         // EŞEK SPAWN (Çiftlik girişinde)
@@ -2575,6 +2578,12 @@
             }
         }
         const connectorShoulderMat = new THREE.MeshLambertMaterial({ map: dirtTexture, color: 0x97876c });
+
+        // ÇİFTLİK -> ŞEHİR YOLU BAĞLANTISI
+        // Malzemeler artık hazır; bağlantı yolu güvenli biçimde oluşturuluyor.
+        createSegmentRoad(210, FARM_CZ + 50, 210, 70, 13, connectorShoulderMat, 0.065);
+        createSegmentRoad(210, FARM_CZ + 50, 210, 70, 8.5, connectorRoadMat, 0.085);
+
         for (let i = 0; i < ROAD_PATH.length - 1; i++) {
             const a = ROAD_PATH[i], b = ROAD_PATH[i + 1];
             createSegmentRoad(a.x, a.z, b.x, b.z, 13, connectorShoulderMat, 0.065);
