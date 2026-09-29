@@ -10,7 +10,7 @@
         makeOrchardLeafTexture ve orchardTrees bölümünde. Koyu orman tepeleri kaldırıldı.
       • Hayvanlar: tür dokuları makeAnimalTexture(), gövde/siluetler createWildAnimal().
       • Kamera: CAMERA_* ayarları, toggleCameraMode(), resolveCameraBoom() ve
-        animate() içindeki kamera bölümü. PC 3. şahıs: sol/sağ tuşla sürükle; 1. şahıs: imleç kilidiyle fareyi döndür. Mobilde sağ taraftan sürükle.
+        animate() içindeki kamera bölümü. PC 3. şahıs: sağ tuşla sürükle; eşek döner, kamera arkadan takip eder. 1. şahıs: imleç kilidiyle fareyi döndür. Mobilde sağ taraftan sürükle.
       • Göletler: FOREST_POND_DEPTH / pondDepth; createPondRadialGeometry() tabanı,
         updateWater() dalgaları kontrol eder.
       Değişiklikleri tek bir bölümde tutmak için aşağıdaki BAŞLANGIÇ/BİTİŞ yorumlarını izleyin.
@@ -3477,7 +3477,7 @@ function stepCar(c,dt){
 
         // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
         // 3. şahıs kamera artık klasik oyunlardaki gibi oyuncunun etrafında yörüngede döner.
-        // PC 3. şahıs: sol/sağ tuşla sürükle. 1. şahıs: imleç kilidiyle serbest fare bakışı.
+        // PC 3. şahıs: yalnız sağ tuşla sürükle; eşek döner, kamera arkasında takip eder. 1. şahıs: imleç kilidiyle serbest fare bakışı.
         let isMouseDown = false;
         const cameraMouseButtons = new Set();
         let mouseX = 0, mouseY = 0;
@@ -3945,7 +3945,7 @@ function stepCar(c,dt){
         });
 
         // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
-        // 3. şahıs: sol veya sağ tuş basılıyken yatay/dikey kamera yörüngesi.
+        // 3. şahıs: sağ tuş basılıyken eşek ve arkasındaki takip kamerası birlikte döner.
         // 1. şahıs: pointer lock açıkken fareyi tuşa basmadan çevirerek bakış.
         const cameraUiSelector = '#settingsPanel,#chatPanel,#playerListPanel,#nameCard,#onlineBadge,#mobViewBtn,#mobMenuBtn,#mobChatBtn,#mobPlayersBtn,#mobOpenBtn,#mobAttackBtn';
         document.addEventListener('mousedown', (e) => {
@@ -3961,7 +3961,8 @@ function stepCar(c,dt){
                 }
                 return;
             }
-            if (e.button === 0 || e.button === 2) {
+            // 3. şahısta sol tık saldırı içindir; sağ tık kamera/eşek yönünü döndürür.
+            if (e.button === 2) {
                 cameraMouseButtons.add(e.button); isMouseDown = true;
                 mouseX = e.clientX; mouseY = e.clientY;
                 e.preventDefault();
@@ -3982,7 +3983,8 @@ function stepCar(c,dt){
             if (cameraMode === 'third' && !isMouseDown) return;
             const dx = pointerLocked ? (e.movementX || 0) : e.clientX - mouseX;
             const dy = pointerLocked ? (e.movementY || 0) : e.clientY - mouseY;
-            yaw += dx * CAMERA_ROTATE_SPEED * sensitivity;
+            // Birinci şahısta yatay fare yönünü ters eşle: fare sağa = bakış sağa.
+            yaw += (cameraMode === 'first' ? -dx : dx) * CAMERA_ROTATE_SPEED * sensitivity;
             pitch += dy * CAMERA_ROTATE_SPEED * sensitivity;
             pitch = cameraMode === 'first'
                 ? Math.max(-1.4, Math.min(1.2, pitch))
@@ -4409,6 +4411,7 @@ function stepCar(c,dt){
                     playerDonkey.position.z *= scale;
                 }
                 
+                // Kamera ve eşek aynı yaw değerini paylaşır: kamera eşeğin arkasında kalır.
                 playerDonkey.rotation.y = yaw;
                 playerDonkey.scale.y += ((DONKEY_BASE_SCALE * (isCrouching ? 0.6 : 1.0)) - playerDonkey.scale.y) * 0.5;
 
