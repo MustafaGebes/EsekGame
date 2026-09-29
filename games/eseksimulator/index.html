@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Eşek Game - Doğal Keşif</title>
     <!--
-      KODU DÜZENLEME REHBERİ (tek tek aramamak için):
+      KODU DÜZENLEME REHBERİ:
       • Ağaçlar: createTreeOutside devre dışı; seyrek, açık yapraklı meyve ağaçları
         makeOrchardLeafTexture ve orchardTrees bölümünde. Koyu orman tepeleri kaldırıldı.
       • Hayvanlar: tür dokuları makeAnimalTexture(), gövde/siluetler createWildAnimal().
@@ -37,8 +37,6 @@
         }
         #menu.pause-mode h1, #menu.pause-mode > h2, #menu.pause-mode #nameCard, #menu.pause-mode #mainButtons { display: none !important; }
         #menu.pause-mode #pauseButtons { display: flex !important; width: auto; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
-        #menu { pointer-events: auto !important; }
-        #menu.pause-mode { pointer-events: auto !important; }
         /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ ===== */
         h1 { color: #ffd700; font-size: 64px; margin: 0; text-shadow: 3px 3px 6px #000; }
         h2 { color: #ffffff; font-size: 24px; margin: 10px 0 20px 0; font-weight: 300; }
@@ -67,7 +65,6 @@
         .mob-btn { width:56px; height:56px; border:2px solid #fff; border-radius:50%; background:rgba(0,0,0,.62); color:#fff; font-size:12px; font-weight:800; cursor:pointer; display:flex; justify-content:center; align-items:center; box-shadow:0 4px 10px rgba(0,0,0,.5); touch-action:none; }
         .mob-btn:active { background:rgba(255,255,255,.42); transform:scale(.96); }
         #mobAttackBtn { background:rgba(175,42,32,.82); border-color:#ff8f76; }
-        #mobFireBtn { background:rgba(45,95,175,.9); border-color:#86b7ff; }
         #mobMenuBtn, #mobViewBtn, #mobPlayersBtn { touch-action:none; }
         #survivalHud { position:fixed; left:18px; bottom:48px; z-index:16; display:none; width:min(285px,43vw); padding:9px 11px; border:1px solid #ffffff35; border-radius:11px; background:rgba(10,16,20,.76); box-shadow:0 4px 15px #0006; pointer-events:none; }
         .need-row { display:grid; grid-template-columns:72px 1fr 34px; gap:7px; align-items:center; margin:4px 0; color:#fff; font:700 12px Arial,sans-serif; }
@@ -173,53 +170,11 @@
             #chatPanel { top:142px; left:10px; width:min(88vw,350px); height:210px; max-height:29vh; }
             #chatReopenBtn { display:none !important; }
         }
-
-        /* ===== SOL ÜST KÖŞE 3 ÇİZGİ MENÜ ===== */
-        #topLeftMenuBtn {
-            position: fixed;
-            top: 18px;
-            left: 18px;
-            z-index: 99999;
-            width: 44px;
-            height: 44px;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 5px;
-            padding: 0;
-            border: 1px solid rgba(255,255,255,.35);
-            border-radius: 10px;
-            background: rgba(15,20,27,.85);
-            cursor: pointer;
-            pointer-events: auto !important;
-            touch-action: manipulation;
-            box-shadow: 0 4px 14px rgba(0,0,0,.5);
-            transition: transform .12s ease, background .12s ease;
-            -webkit-tap-highlight-color: transparent;
-        }
-        #topLeftMenuBtn:active { transform: scale(.94); background: rgba(40,50,62,.95); }
-        #topLeftMenuBtn span {
-            display: block;
-            width: 22px;
-            height: 3px;
-            border-radius: 2px;
-            background: #f3f5f7;
-        }
-        /* Yeni 3 çizgi butonu mobil/PC menüsünde kullanılıyor. */
-        #mobMenuBtn { display: none !important; }
-        @media (max-width: 700px) {
-            #chatPanel, #chatReopenBtn { top: 74px !important; }
-        }
     </style>
 </head>
 <body>
 
     <div id="onlineBadge"><span class="online-dot"></span><span id="onlineCount">0</span> oyuncu çevrimiçi</div>
-    <!-- Sol üst köşe 3 çizgi butonu -->
-    <div id="topLeftMenuBtn" title="Menü (ESC)" aria-label="Menü (ESC)">
-        <span></span><span></span><span></span>
-    </div>
     <div id="menu">
         <h1>Eşek Game</h1>
         <h2>Cross-Platform Online Modu</h2>
@@ -234,11 +189,11 @@
             <button id="resumeBtn" class="btn">OYUNA DEVAM ET</button>
             <button id="pauseSettingsBtn" class="btn btn-yellow">⚙️ AYARLAR</button>
             <button id="returnGameMenuBtn" class="btn btn-blue">MENÜYE DÖN</button>
-            <button id="returnMenuBtn" class="btn btn-red" style="display:none;">OYUNDAN ÇIK</button>
+            <button id="returnMenuBtn" class="btn btn-red">OYUNDAN ÇIK</button>
         </div>
     </div>
 
-    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık: Saldır / Sürükle: Bak | F: Ateş | E: Ye/İç | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
+    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık: Saldır / Sürükle: Bak | E: Ye/İç | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
 
     <div id="hud">
         <div><span class="label">Saat:</span> <span id="hudTime">00:00</span></div>
@@ -304,7 +259,6 @@
             <button class="mob-btn" id="mobCrouchBtn">Eğil</button>
             <button class="mob-btn" id="mobJumpBtn">Zıpla</button>
             <button class="mob-btn" id="mobAttackBtn">VUR</button>
-            <button class="mob-btn mob-btn-fire" id="mobFireBtn">ATEŞ</button>
         </div>
     </div>
 
@@ -483,7 +437,7 @@
         }, 3, 2);
 
         // Zemin
-        const terrainGeo = new THREE.PlaneGeometry(1200, 1200, 160, 160);
+        const terrainGeo = new THREE.PlaneGeometry(1200, 1200, 80, 80);
         terrainGeo.rotateX(-Math.PI / 2);
         const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ map: grassTexture, color: 0x4f7f38 }));
         scene.add(terrainMesh);
@@ -1850,7 +1804,66 @@
             const ground=new THREE.Mesh(farmGeometry(THREE.PlaneGeometry,100,100,40,40),mats.grass);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;ground.name='Arazi';ground.visible=false;farmRoot.add(ground); // The game already provides seamless terrain beneath the farm.
             // Meyilli, düşük poligonlu ufuk sırtları
             // The game already supplies a distant mountain ring; avoid a second artificial ridge inside this farm.
+            // ===== GÖLET DÜZENLEMESİ BAŞLANGIÇ =====
+            // Aynı eski gölet. Konumu değiştirmiyoruz; yalnızca derinliği artırıyoruz.
+            // Bu bölüm gelecekteki düzeltmelerde sadece gölet için değiştirilecek.
+            const pondOuterR = 5.5, pondInnerR = 3.5, pondDepth = 0;
+            const POND_LOCAL_X = 16, POND_LOCAL_Z = -11;
+            const pondGeo = createPondRadialGeometry(pondInnerR, 32, 12, 0);
 
+            // Çukur duvarı: üst kenar aynı yerde kalır, taban aşağı iner.
+            const pondWallGeo = new THREE.CylinderGeometry(pondOuterR, pondInnerR, pondDepth, 32, 1, true);
+            const pondWallMat = mat('#6b5a3e', .95);
+            const pondWall = new THREE.Mesh(pondWallGeo, pondWallMat);
+            pondWall.name = 'Gölet çukuru';
+            pondWall.position.set(POND_LOCAL_X, -pondDepth / 2 + 0.04, POND_LOCAL_Z);
+            pondWall.receiveShadow = true;
+            farmRoot.add(pondWall);
+
+            // Derin gölet tabanı. Collider eklenmiyor.
+            const pondFloorGeo = createPondRadialGeometry(pondInnerR, 32, 14, pondDepth);
+            const pondFloor = new THREE.Mesh(pondFloorGeo, mat('#4a3a25', .98));
+            pondFloor.name = 'Gölet tabanı';
+            pondFloor.rotation.x = -Math.PI / 2;
+            pondFloor.position.set(POND_LOCAL_X, 0.04, POND_LOCAL_Z);
+            pondFloor.receiveShadow = true;
+            farmRoot.add(pondFloor);
+
+            // Su yüzeyi zeminin hemen altında görünür; kenardan taşmaz.
+            const pond = new THREE.Mesh(pondGeo, mats.water);
+            pond.rotation.x = -Math.PI / 2;
+            pond.position.set(POND_LOCAL_X, 0.055, POND_LOCAL_Z);
+            pond.name = 'Gölet';
+            pond.receiveShadow = true;
+            pond.userData.basePositions = pond.geometry.attributes.position.array.slice();
+            scene.userData.farmPondWater = pond;
+            pond.userData.waterSurfaceY = farmRoot.position.y + pond.position.y;
+            pond.userData.innerRadiusWorld = pondInnerR * farmRoot.scale.x;
+            pond.userData.outerRadiusWorld = pondOuterR * farmRoot.scale.x;
+            pond.userData.depthWorld = pondDepth * farmRoot.scale.y;
+            farmRoot.add(pond);
+
+            // Derinlik hissi: suyun altında koyu dip.
+            const deepWater = new THREE.Mesh(
+                farmGeometry(THREE.CircleGeometry, pondInnerR * .97, 32),
+                mat('#15506a', .18, { transparent: true, opacity: .62 })
+            );
+            deepWater.rotation.x = -Math.PI / 2;
+            deepWater.position.set(POND_LOCAL_X, -pondDepth * .58, POND_LOCAL_Z);
+            deepWater.name = 'Gölet derin su';
+            deepWater.renderOrder = -1;
+            farmRoot.add(deepWater);
+
+            // Kenar şeridi. Göletin dış sınırı büyütülmüyor.
+            const shore = new THREE.Mesh(
+                farmGeometry(THREE.RingGeometry, pondInnerR, pondOuterR, 32),
+                mat('#b2a275')
+            );
+            shore.rotation.x = -Math.PI / 2;
+            shore.position.set(POND_LOCAL_X, 0.05, POND_LOCAL_Z);
+            shore.name = 'Gölet kenarı';
+            farmRoot.add(shore);
+            // ===== GÖLET DÜZENLEMESİ BİTİŞ =====
             // Sıkıştırılmış avlu ve kare çiftlik parseli
             const yard=new THREE.Mesh(farmGeometry(THREE.CircleGeometry,12,48),mat('#b69b72'));yard.rotation.x=-Math.PI/2;yard.scale.set(1.08,.73,1);yard.position.set(0,.025,0);yard.receiveShadow=true;yard.name='Çalışma avlusu';farmRoot.add(yard);
             function path(points,width,material){for(let i=0;i<points.length-1;i++){const a=new THREE.Vector3(...points[i]),b=new THREE.Vector3(...points[i+1]);const d=b.clone().sub(a),mesh=new THREE.Mesh(farmGeometry(THREE.BoxGeometry,width,.055,d.length()+width*.45),material);mesh.position.copy(a.clone().add(b).multiplyScalar(.5));mesh.position.y=.045;mesh.rotation.y=Math.atan2(d.x,d.z);mesh.receiveShadow=true;farmRoot.add(mesh)}}
@@ -2690,7 +2703,36 @@
         beachFoam.rotation.x = -Math.PI / 2;
         beachFoam.position.set(BEACH_PARKING_CENTER.x, 0.005, BEACH_WATER_EDGE + 0.3);
         scene.add(beachFoam);
-
+        // ===== ORMAN GÖLETİ GENİŞLETME + DERİNLEŞTİRME BAŞLANGIÇ =====
+const pondBankMat = new THREE.MeshLambertMaterial({ color: 0x8b896b });
+const pondInnerMat = new THREE.MeshLambertMaterial({ color: 0x4c4032 });
+const pondWaterMat = new THREE.MeshPhongMaterial({ color: 0xffffff, map: createPondRippleTexture(), vertexColors: true, transparent: true, opacity: 0.94, shininess: 82, side: THREE.DoubleSide });
+const pondShore = new THREE.Mesh(new THREE.RingGeometry(.94, 1.12, 64), pondBankMat);
+pondShore.rotation.x = -Math.PI / 2;
+pondShore.scale.set(FOREST_POND_RADIUS_X, FOREST_POND_RADIUS_Z, 1);
+pondShore.position.set(FOREST_POND_CENTER.x, -0.005, FOREST_POND_CENTER.z);
+scene.add(pondShore);
+const pondWater = new THREE.Mesh(createPondRadialGeometry(1, 64, 18, 0), pondWaterMat);
+pondWater.rotation.x = -Math.PI / 2;
+pondWater.scale.set(FOREST_POND_RADIUS_X - 1.3, FOREST_POND_RADIUS_Z - 1.3, 1);
+pondWater.position.set(FOREST_POND_CENTER.x, -0.22, FOREST_POND_CENTER.z);
+pondWater.name = 'Orman göleti suyu';
+pondWater.userData.basePositions = pondWater.geometry.attributes.position.array.slice();
+scene.add(pondWater);
+const pondBottom = new THREE.Mesh(createPondRadialGeometry(1, 64, 18, FOREST_POND_DEPTH), pondInnerMat);
+pondBottom.rotation.x = -Math.PI / 2;
+pondBottom.scale.set(FOREST_POND_RADIUS_X, FOREST_POND_RADIUS_Z, 1);
+pondBottom.position.set(FOREST_POND_CENTER.x, -0.01, FOREST_POND_CENTER.z);
+pondBottom.name = 'Orman göleti kademeli derin dip';
+pondBottom.receiveShadow = true;
+scene.add(pondBottom);
+for(let i=0;i<18;i++){
+  const a=i*Math.PI*2/18, rx=FOREST_POND_RADIUS_X+(.2+((i%3)*.35)), rz=FOREST_POND_RADIUS_Z+(.15+((i%2)*.25));
+  const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.45+.16*(i%3),0),new THREE.MeshLambertMaterial({color:0x666256}));
+  rock.position.set(FOREST_POND_CENTER.x+Math.cos(a)*rx,0.12,FOREST_POND_CENTER.z+Math.sin(a)*rz);
+  rock.scale.y=.65;rock.castShadow=true;rock.receiveShadow=true;scene.add(rock);
+}
+// ===== ORMAN GÖLETİ GENİŞLETME + DERİNLEŞTİRME BİTİŞ =====
         const beachRockMesh = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ vertexColors: true }), 58);
         const beachRockDummy = new THREE.Object3D(), beachRockColor = new THREE.Color(); let beachRockCount = 0;
         for (let i = 0; i < 58; i++) {
@@ -3636,6 +3678,8 @@ function stepCar(c,dt){
 
         function openSettings() { settingsPanel.style.display = 'block'; }
         function closeSettingsPanel() { settingsPanel.style.display = 'none'; }
+        closeSettings.addEventListener('click', closeSettingsPanel);
+        pauseSettingsBtn.addEventListener('click', openSettings);
 
         chunkSlider.addEventListener('input', () => {
             viewDistance = parseInt(chunkSlider.value);
@@ -3802,7 +3846,62 @@ function stepCar(c,dt){
         pcSelectBtn.addEventListener('click', () => startGame('pc'));
         mobileSelectBtn.addEventListener('click', () => startGame('mobile'));
 
+        returnGameMenuBtn.addEventListener('click', () => {
+            gameStarted = false;
+            releaseFirstPersonPointerLock();
+            sendPresence(false);
+            document.getElementById('onlineBadge').style.display = 'block';
+            chatPanelEl.style.display = 'none';
+            chatReopenBtn.style.display = 'none';
+            infoEl.style.display = 'none';
+            mobileControlsEl.style.display = 'none';
+            hudEl.style.display = 'none';
+            crosshairEl.style.display = 'none';
+            interactPromptEl.style.display = 'none';
+            mobOpenBtn.style.display = 'none';
+            playerDonkey.visible = false;
+            openMainMenu();
+        });
+
+        returnMenuBtn.addEventListener('click', () => {
+            gameStarted = false;
+            releaseFirstPersonPointerLock();
+            sendPresence(false);
+            try { if (ws && ws.readyState === WebSocket.OPEN) ws.close(); } catch (e) {}
+            window.location.href = '/';
+        });
+
         document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (settingsPanel.style.display === 'block') { closeSettingsPanel(); return; }
+                if (playerListPanel.style.display === 'block') { togglePlayerList(false); return; }
+                if (e.target.closest('input,textarea,[contenteditable="true"]')) return;
+
+                e.preventDefault();
+
+                /* Menüdeyken ESC de aynı duraklatma menüsünü açar. */
+                if (!gameStarted) {
+                    openPauseMenu();
+                    return;
+                }
+
+                /* Oyunun içindeyken sadece duraklatır; sunucuya çıkış göndermez. */
+                gameStarted = false;
+                releaseFirstPersonPointerLock();
+                document.getElementById('onlineBadge').style.display = 'none';
+                chatPanelEl.style.display = 'none';
+                chatReopenBtn.style.display = 'none';
+                openPauseMenu();
+                infoEl.style.display = 'none';
+                mobileControlsEl.style.display = 'none';
+                hudEl.style.display = 'none';
+                crosshairEl.style.display = 'none';
+                interactPromptEl.style.display = 'none';
+                mobOpenBtn.style.display = 'none';
+                document.body.style.cursor = 'default';
+                playerDonkey.visible = false;
+                return;
+            }
             if (!gameStarted) return;
             if (e.key === 'Tab' && controlMode === 'pc' && !e.target.closest('input,textarea,button')) {
                 e.preventDefault(); togglePlayerList(); return;
@@ -3893,6 +3992,26 @@ function stepCar(c,dt){
         const mobSprintBtn = document.getElementById('mobSprintBtn');
         const mobMenuBtn = document.getElementById('mobMenuBtn');
         let touchStartX = 0, touchStartY = 0;
+
+        mobileUiTap(mobMenuBtn, () => {
+            if (gameStarted) {
+                gameStarted = false;
+                releaseFirstPersonPointerLock();
+                sendPresence(false);
+                document.getElementById('onlineBadge').style.display = 'block';
+                chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
+                togglePlayerList(false);
+                openPauseMenu();
+                infoEl.style.display = 'none';
+                mobileControlsEl.style.display = 'none';
+                hudEl.style.display = 'none';
+                crosshairEl.style.display = 'none';
+                interactPromptEl.style.display = 'none';
+                mobOpenBtn.style.display = 'none';
+                document.body.style.cursor = 'default';
+                playerDonkey.visible = false;
+            }
+        });
 
         // ===== MOBİL JOYSTICK ÇOKLU DOKUNMATİK BAŞLANGIÇ =====
         // Joystick kendi pointer'ını tutar; aynı anda sohbet, menü, saldırı veya diğer butonlara basılabilir.
@@ -4474,6 +4593,32 @@ function stepCar(c,dt){
         }
         pcSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('pc',false);},true);
         mobileSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('mobile',false);},true);
+        resumeBtn.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            menuEl.classList.remove('pause-mode');
+            menuEl.style.display = 'none';
+            pauseButtons.style.display = 'none';
+            gameStarted = true;
+            playerIsDead = false;
+            deathScreenShowing = false;
+            hudEl.style.display = 'block';
+            playerDonkey.visible = cameraMode !== 'first';
+            for (const other of Object.values(otherPlayers)) other.visible = true;
+            setDonkeyNameTag(playerDonkey, getPlayerName());
+            setGameUiVisible(true);
+            setChatVisible(!chatIsManuallyHidden);
+            infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
+            mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
+            crosshairEl.style.display = cameraMode === 'first' ? 'block' : 'none';
+            document.getElementById('onlineBadge').style.display = 'none';
+            if (cameraMode === 'first' && controlMode === 'pc') {
+                document.body.style.cursor = 'none';
+                requestFirstPersonPointerLock();
+            } else {
+                document.body.style.cursor = 'default';
+            }
+        }, true);
         document.getElementById('chatHideBtn').addEventListener
 ('click',()=>setChatVisible(false));
         chatReopenBtn.addEventListener('click',()=>setChatVisible(true));
@@ -4838,332 +4983,207 @@ function stepCar(c,dt){
     'use strict';
 
     // ------------------------------------------------------------
-    // 1) MENÜ / PAUSE: TEK DURUM MAKİNESİ
-    // 0 = kapalı, 1 = ana menü pause, 2 = oyun içi pause
+    // 1) ESC MENÜSÜ: ana menü ve oyun içi menü birbirinden ayrılır.
+    // Ayarlar, pause overlay'in ARKASINDA kalmaz.
     // ------------------------------------------------------------
-    const menuEl2 = document.getElementById('menu');
-    const pauseButtons2 = document.getElementById('pauseButtons');
-    const pauseSettingsBtn2 = document.getElementById('pauseSettingsBtn');
-    const returnGameMenuBtn2 = document.getElementById('returnGameMenuBtn');
-    const returnMenuBtn2 = document.getElementById('returnMenuBtn');
-    const resumeBtn2 = document.getElementById('resumeBtn');
-    const settingsPanel2 = document.getElementById('settingsPanel');
-    const closeSettings2 = document.getElementById('closeSettings');
-    const topLeftMenuBtn2 = document.getElementById('topLeftMenuBtn');
+    const menuEl2=document.getElementById('menu');
+    const pauseButtons2=document.getElementById('pauseButtons');
+    const pauseSettingsBtn2=document.getElementById('pauseSettingsBtn');
+    const returnGameMenuBtn2=document.getElementById('returnGameMenuBtn');
+    const returnMenuBtn2=document.getElementById('returnMenuBtn');
+    const resumeBtn2=document.getElementById('resumeBtn');
+    const settingsPanel2=document.getElementById('settingsPanel');
+    const closeSettings2=document.getElementById('closeSettings');
+    const mobilePauseBtn2=document.getElementById('mobPauseBtn');
 
-    let pauseState2 = 0;
-
-    if (menuEl2) {
-        menuEl2.style.pointerEvents = 'auto';
+    if(menuEl2){
+        menuEl2.style.zIndex='9999';
+        menuEl2.style.pointerEvents='auto';
     }
-    if (settingsPanel2) {
-        settingsPanel2.style.position = 'fixed';
-        settingsPanel2.style.zIndex = '20000';
-        settingsPanel2.style.pointerEvents = 'auto';
-    }
-
-    function setTopLeftMenuVisible(visible) {
-        if (topLeftMenuBtn2) topLeftMenuBtn2.style.display = visible ? 'flex' : 'none';
+    if(settingsPanel2){
+        settingsPanel2.style.position='fixed';
+        settingsPanel2.style.zIndex='20000';
+        settingsPanel2.style.pointerEvents='auto';
     }
 
-    function hideGameUiForPause() {
-        if (typeof releaseFirstPersonPointerLock === 'function') releaseFirstPersonPointerLock();
-        const badge = document.getElementById('onlineBadge'); if (badge) badge.style.display = 'none';
-        const chat = document.getElementById('chatPanel'); if (chat) chat.style.display = 'none';
-        const reopen = document.getElementById('chatReopenBtn'); if (reopen) reopen.style.display = 'none';
-        const info = document.getElementById('info'); if (info) info.style.display = 'none';
-        const mobile = document.getElementById('mobileControls'); if (mobile) mobile.style.display = 'none';
-        const hud = document.getElementById('hud'); if (hud) hud.style.display = 'none';
-        const cross = document.getElementById('crosshair'); if (cross) cross.style.display = 'none';
-        const prompt = document.getElementById('interactPrompt'); if (prompt) prompt.style.display = 'none';
-        const open = document.getElementById('mobOpenBtn'); if (open) open.style.display = 'none';
-        const donkey = typeof playerDonkey !== 'undefined' ? playerDonkey : null;
-        if (donkey) donkey.visible = false;
-        document.body.style.cursor = 'default';
-    }
-
-    function showMainMenuView() {
-        if (!menuEl2) return;
-        menuEl2.classList.remove('pause-mode', 'pre-game-pause');
-        menuEl2.style.display = 'flex';
-        const nameCard = document.getElementById('nameCard');
-        const mainButtons = document.getElementById('mainButtons');
-        if (nameCard) nameCard.style.display = 'block';
-        if (mainButtons) mainButtons.style.display = 'block';
-        if (pauseButtons2) pauseButtons2.style.display = 'none';
-        if (settingsPanel2) settingsPanel2.style.display = 'none';
-        setTopLeftMenuVisible(true);
-    }
-
-    function openMainMenuPause2() {
-        if (!menuEl2) return;
-        pauseState2 = 1;
-        menuEl2.classList.add('pause-mode', 'pre-game-pause');
-        menuEl2.style.display = 'flex';
-        menuEl2.style.zIndex = '9999';
-        const nameCard = document.getElementById('nameCard');
-        const mainButtons = document.getElementById('mainButtons');
-        if (nameCard) nameCard.style.display = 'none';
-        if (mainButtons) mainButtons.style.display = 'none';
-        if (pauseButtons2) pauseButtons2.style.display = 'flex';
-        if (pauseSettingsBtn2) pauseSettingsBtn2.style.display = 'none';
-        if (returnGameMenuBtn2) returnGameMenuBtn2.style.display = 'none';
-        if (returnMenuBtn2) {
-            returnMenuBtn2.style.display = 'block';
-            returnMenuBtn2.textContent = 'OYUNDAN AYRIL';
-        }
-        setTopLeftMenuVisible(true);
-    }
-
-    function openGamePause2() {
-        if (!menuEl2) return;
-        pauseState2 = 2;
-        if (typeof gameStarted !== 'undefined') gameStarted = false;
-        hideGameUiForPause();
+    function pauseOverlay(preGame){
+        if(!menuEl2) return;
         menuEl2.classList.add('pause-mode');
-        menuEl2.classList.remove('pre-game-pause');
-        menuEl2.style.display = 'flex';
-        menuEl2.style.zIndex = '9999';
-        const nameCard = document.getElementById('nameCard');
-        const mainButtons = document.getElementById('mainButtons');
-        if (nameCard) nameCard.style.display = 'none';
-        if (mainButtons) mainButtons.style.display = 'none';
-        if (pauseButtons2) pauseButtons2.style.display = 'flex';
-        if (pauseSettingsBtn2) pauseSettingsBtn2.style.display = 'block';
-        if (returnGameMenuBtn2) returnGameMenuBtn2.style.display = 'block';
-        if (returnMenuBtn2) returnMenuBtn2.style.display = 'none';
-        if (settingsPanel2) settingsPanel2.style.display = 'none';
-        setTopLeftMenuVisible(true);
-    }
-
-    function closePause2() {
-        pauseState2 = 0;
-        if (menuEl2) {
-            menuEl2.classList.remove('pause-mode', 'pre-game-pause');
-            menuEl2.style.display = 'none';
+        menuEl2.classList.toggle('pre-game-pause',!!preGame);
+        menuEl2.style.display='flex';
+        const nameCard=document.getElementById('nameCard');
+        const mainButtons=document.getElementById('mainButtons');
+        if(nameCard) nameCard.style.display='none';
+        if(mainButtons) mainButtons.style.display='none';
+        if(pauseButtons2) pauseButtons2.style.display='flex';
+        if(pauseSettingsBtn2) pauseSettingsBtn2.style.display=preGame?'none':'block';
+        if(returnGameMenuBtn2) returnGameMenuBtn2.style.display=preGame?'none':'block';
+        if(returnMenuBtn2){
+            returnMenuBtn2.style.display='block';
+            returnMenuBtn2.textContent=preGame?'OYUNDAN ÇIK':'OYUNDAN ÇIK';
         }
-        if (pauseButtons2) pauseButtons2.style.display = 'none';
-        if (settingsPanel2) settingsPanel2.style.display = 'none';
     }
-
-    function resumeFromPause2() {
-        const state = pauseState2;
-        if (state === 0) return;
-        closePause2();
-
-        if (state === 1) {
-            // Ana menü pause'ından devam: oyuna girme, join_request gönderme.
-            showMainMenuView();
-            if (typeof gameStarted !== 'undefined') gameStarted = false;
+    function resumeFromPause2(){
+        const pre=menuEl2 && menuEl2.classList.contains('pre-game-pause');
+        if(pre){
+            if(typeof openMainMenu==='function') openMainMenu();
+            else {
+                menuEl2.classList.remove('pause-mode','pre-game-pause');
+                menuEl2.style.display='flex';
+                if(pauseButtons2) pauseButtons2.style.display='none';
+                const main=document.getElementById('mainButtons'); if(main) main.style.display='block';
+                const name=document.getElementById('nameCard'); if(name) name.style.display='block';
+            }
             return;
         }
-
-        // Oyun içi pause: aynı bağlantı / aynı oyuncu oturumu.
-        // Özellikle burada join_request veya presence(false) gönderilmez.
-        if (typeof gameStarted !== 'undefined') gameStarted = true;
-        if (typeof playerIsDead !== 'undefined') playerIsDead = false;
-        if (typeof deathScreenShowing !== 'undefined') deathScreenShowing = false;
-
-        const badge = document.getElementById('onlineBadge'); if (badge) badge.style.display = 'none';
-        const info = document.getElementById('info');
-        const mobile = document.getElementById('mobileControls');
-        const hud = document.getElementById('hud');
-        const cross = document.getElementById('crosshair');
-        const prompt = document.getElementById('interactPrompt');
-        const donkey = typeof playerDonkey !== 'undefined' ? playerDonkey : null;
-
-        if (typeof setGameUiVisible === 'function') setGameUiVisible(true);
-        if (typeof setChatVisible === 'function') setChatVisible(!chatIsManuallyHidden);
-        if (info) info.style.display = (typeof controlMode !== 'undefined' && controlMode === 'pc') ? 'block' : 'none';
-        if (mobile) mobile.style.display = (typeof controlMode !== 'undefined' && controlMode === 'mobile') ? 'block' : 'none';
-        if (hud) hud.style.display = 'block';
-        if (cross) cross.style.display = (typeof cameraMode !== 'undefined' && cameraMode === 'first') ? 'block' : 'none';
-        if (prompt) prompt.style.display = 'none';
-        if (donkey) {
-            donkey.visible = (typeof cameraMode === 'undefined' || cameraMode !== 'first');
-            if (typeof setDonkeyNameTag === 'function' && typeof getPlayerName === 'function') {
-                setDonkeyNameTag(donkey, getPlayerName());
-            }
-        }
-        if (typeof cameraMode !== 'undefined' && cameraMode === 'first' &&
-            typeof controlMode !== 'undefined' && controlMode === 'pc' &&
-            typeof requestFirstPersonPointerLock === 'function') {
-            requestFirstPersonPointerLock();
-        } else {
-            document.body.style.cursor = 'default';
-        }
-
-        if (typeof controlMode !== 'undefined' && controlMode === 'mobile') setTopLeftMenuVisible(true);
-        else setTopLeftMenuVisible(false);
+        // Oyuncu zaten server'da aynı oturumla oyundadır. Yeniden join_request YOK.
+        gameStarted=true;
+        playerIsDead=false;
+        deathScreenShowing=false;
+        menuEl2.classList.remove('pause-mode','pre-game-pause');
+        menuEl2.style.display='none';
+        if(pauseButtons2) pauseButtons2.style.display='none';
+        if(typeof setGameUiVisible==='function') setGameUiVisible(true);
+        if(typeof setChatVisible==='function') setChatVisible(!chatIsManuallyHidden);
+        const info=document.getElementById('info'); if(info) info.style.display=controlMode==='pc'?'block':'none';
+        const mob=document.getElementById('mobileControls'); if(mob) mob.style.display=controlMode==='mobile'?'block':'none';
+        const hud=document.getElementById('hud'); if(hud) hud.style.display='block';
+        const cross=document.getElementById('crosshair'); if(cross) cross.style.display=cameraMode==='first'?'block':'none';
+        if(typeof setDonkeyNameTag==='function') setDonkeyNameTag(playerDonkey,getPlayerName());
+        playerDonkey.visible=cameraMode!=='first';
+        if(cameraMode==='first' && controlMode==='pc' && typeof requestFirstPersonPointerLock==='function') requestFirstPersonPointerLock();
+        else document.body.style.cursor='default';
     }
 
-    function returnToGameMenu2() {
-        closePause2();
-        if (typeof gameStarted !== 'undefined') gameStarted = false;
-        if (typeof releaseFirstPersonPointerLock === 'function') releaseFirstPersonPointerLock();
-        try { if (typeof sendPresence === 'function') sendPresence(false); } catch (_) {}
-        const donkey = typeof playerDonkey !== 'undefined' ? playerDonkey : null;
-        if (donkey) donkey.visible = false;
-        const info = document.getElementById('info'); if (info) info.style.display = 'none';
-        const mobile = document.getElementById('mobileControls'); if (mobile) mobile.style.display = 'none';
-        const hud = document.getElementById('hud'); if (hud) hud.style.display = 'none';
-        const cross = document.getElementById('crosshair'); if (cross) cross.style.display = 'none';
-        const prompt = document.getElementById('interactPrompt'); if (prompt) prompt.style.display = 'none';
-        const badge = document.getElementById('onlineBadge'); if (badge) badge.style.display = 'block';
-        const chat = document.getElementById('chatPanel'); if (chat) chat.style.display = 'none';
-        const reopen = document.getElementById('chatReopenBtn'); if (reopen) reopen.style.display = 'none';
-        if (typeof setGameUiVisible === 'function') setGameUiVisible(false);
-        if (typeof setChatVisible === 'function') setChatVisible(false);
-        if (typeof togglePlayerList === 'function') togglePlayerList(false);
-        showMainMenuView();
-    }
-
-    if (resumeBtn2) {
-        resumeBtn2.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            resumeFromPause2();
-        }, true);
-    }
-
-    if (pauseSettingsBtn2) {
-        pauseSettingsBtn2.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            if (pauseState2 !== 2 || !settingsPanel2) return;
-            settingsPanel2.style.display = 'block';
-            settingsPanel2.style.zIndex = '20000';
-            settingsPanel2.style.pointerEvents = 'auto';
-        }, true);
-    }
-
-    if (closeSettings2) {
-        closeSettings2.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            if (settingsPanel2) settingsPanel2.style.display = 'none';
-        }, true);
-    }
-
-    if (returnGameMenuBtn2) {
-        returnGameMenuBtn2.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            if (pauseState2 !== 2) return;
-            returnToGameMenu2();
-        }, true);
-    }
-
-    if (returnMenuBtn2) {
-        returnMenuBtn2.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            if (pauseState2 !== 1) return;
-            closePause2();
-            if (typeof gameStarted !== 'undefined') gameStarted = false;
-            if (typeof releaseFirstPersonPointerLock === 'function') releaseFirstPersonPointerLock();
-            try { if (typeof sendPresence === 'function') sendPresence(false); } catch (_) {}
-            try {
-                if (typeof ws !== 'undefined' && ws && ws.readyState === WebSocket.OPEN) ws.close();
-            } catch (_) {}
-            window.location.assign('/');
-        }, true);
-    }
-
-    if (topLeftMenuBtn2) {
-        let lastMenuTapAt = 0;
-        function handleMenuBtnTap(e) {
-            const now = performance.now();
-            if (now - lastMenuTapAt < 260) return;
-            lastMenuTapAt = now;
-            if (e) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-            }
-            if (typeof gameStarted !== 'undefined' && gameStarted && !playerIsDead) {
-                if (pauseState2 !== 0) return;
-                openGamePause2();
-            } else if (!(typeof playerIsDead !== 'undefined' && playerIsDead)) {
-                if (pauseState2 !== 0) {
-                    resumeFromPause2();
-                    return;
-                }
-                openMainMenuPause2();
-            }
-        }
-        topLeftMenuBtn2.addEventListener('click', handleMenuBtnTap, true);
-        topLeftMenuBtn2.addEventListener('touchend', handleMenuBtnTap, { capture: true, passive: false });
-    }
-
-    // TEK ESC dinleyicisi. Eski ESC listener'ları bu dosyada kaldırıldı.
-    document.addEventListener('keydown', (e) => {
-        if (e.key !== 'Escape') return;
-        if (e.target && e.target.closest && e.target.closest('input,textarea,[contenteditable="true"]')) return;
-
+    // Capture listener: eski ESC listener'larının yanlış davranışını tamamen keser.
+    document.addEventListener('keydown',function(e){
+        if(e.key!=='Escape') return;
+        if(e.target && e.target.closest && e.target.closest('input,textarea,[contenteditable="true"]')) return;
         e.preventDefault();
         e.stopImmediatePropagation();
-
-        // Ayarlar açıkken ESC yalnızca ayarları kapatır; pause açık kalır.
-        if (settingsPanel2 && settingsPanel2.style.display === 'block') {
-            settingsPanel2.style.display = 'none';
+        if(settingsPanel2 && settingsPanel2.style.display==='block'){
+            settingsPanel2.style.display='none';
             return;
         }
-
-        // Oyuncu listesi açıksa ESC önce listeyi kapatır.
-        if (typeof playerListPanel !== 'undefined' && playerListPanel && playerListPanel.style.display === 'block') {
-            if (typeof togglePlayerList === 'function') togglePlayerList(false);
+        if(typeof playerListPanel!=='undefined' && playerListPanel && playerListPanel.style.display==='block'){
+            if(typeof togglePlayerList==='function') togglePlayerList(false);
             return;
         }
+        if(typeof gameStarted!=='undefined' && gameStarted && !playerIsDead){
+            gameStarted=false;
+            if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
+            const badge=document.getElementById('onlineBadge'); if(badge) badge.style.display='none';
+            const chat=document.getElementById('chatPanel'); if(chat) chat.style.display='none';
+            const reopen=document.getElementById('chatReopenBtn'); if(reopen) reopen.style.display='none';
+            const info=document.getElementById('info'); if(info) info.style.display='none';
+            const mob=document.getElementById('mobileControls'); if(mob) mob.style.display='none';
+            const hud=document.getElementById('hud'); if(hud) hud.style.display='none';
+            const cross=document.getElementById('crosshair'); if(cross) cross.style.display='none';
+            const prompt=document.getElementById('interactPrompt'); if(prompt) prompt.style.display='none';
+            if(typeof mobOpenBtn!=='undefined' && mobOpenBtn) mobOpenBtn.style.display='none';
+            playerDonkey.visible=false;
+            pauseOverlay(false);
+        }else{
+            pauseOverlay(true);
+        }
+    },true);
 
-        // Kritik durum: pause zaten açıksa ikinci ESC ANA MENÜYE GEÇMEZ.
-        // Oyun pause'ıysa aynı oturumla oyuna dönülür.
-        if (pauseState2 !== 0) {
+    // Mobilde PC'deki ESC'nin birebir karşılığı.
+    if(mobilePauseBtn2){
+        mobilePauseBtn2.addEventListener('pointerup',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
+            if(typeof gameStarted!=='undefined' && gameStarted && !playerIsDead){
+                gameStarted=false;
+                if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
+                playerDonkey.visible=false;
+                pauseOverlay(false);
+            }
+        },true);
+    }
+
+    // Devam Et: ana menüde sadece menüyü kapatır; oyunda aynı oturumu sürdürür.
+    if(resumeBtn2){
+        resumeBtn2.addEventListener('click',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
             resumeFromPause2();
-            return;
-        }
-
-        if (typeof gameStarted !== 'undefined' && gameStarted &&
-            !(typeof playerIsDead !== 'undefined' && playerIsDead)) {
-            openGamePause2();
-            return;
-        }
-
-        // Ana menüde ESC -> 2 butonlu ana menü pause'ı.
-        if (!(typeof playerIsDead !== 'undefined' && playerIsDead)) openMainMenuPause2();
-    }, true);
-
-    // Buton görünürlüğü: ana menü + mobil oyun + pause ekranında görünür;
-    // PC oyununda görünmez.
-    function syncTopLeftMenuButton() {
-        if (!topLeftMenuBtn2) return;
-        if (typeof playerIsDead !== 'undefined' && playerIsDead) {
-            setTopLeftMenuVisible(false);
-            return;
-        }
-        if (pauseState2 !== 0) {
-            setTopLeftMenuVisible(true);
-            return;
-        }
-        const inGame = typeof gameStarted !== 'undefined' && gameStarted;
-        if (!inGame) {
-            setTopLeftMenuVisible(true);
-            return;
-        }
-        setTopLeftMenuVisible(typeof controlMode !== 'undefined' && controlMode === 'mobile');
+        },true);
+    }
+    if(pauseSettingsBtn2){
+        pauseSettingsBtn2.addEventListener('click',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
+            if(settingsPanel2){
+                settingsPanel2.style.display='block';
+                settingsPanel2.style.zIndex='20000';
+                settingsPanel2.style.pointerEvents='auto';
+            }
+        },true);
+    }
+    if(closeSettings2){
+        closeSettings2.addEventListener('click',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
+            if(settingsPanel2) settingsPanel2.style.display='none';
+            // Pause devam eder; oyun kendiliğinden başlamaz.
+            if(typeof gameStarted!=='undefined' && !gameStarted) pauseOverlay(false);
+        },true);
+    }
+    if(returnGameMenuBtn2){
+        returnGameMenuBtn2.addEventListener('click',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
+            gameStarted=false;
+            if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
+            if(typeof sendPresence==='function') sendPresence(false);
+            if(typeof openMainMenu==='function') openMainMenu();
+            else menuEl2.style.display='flex';
+            if(settingsPanel2) settingsPanel2.style.display='none';
+        },true);
+    }
+    if(returnMenuBtn2){
+        returnMenuBtn2.addEventListener('click',function(e){
+            e.preventDefault(); e.stopImmediatePropagation();
+            gameStarted=false;
+            if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
+            try{ if(typeof sendPresence==='function') sendPresence(false); }catch(_){ }
+            try{ if(typeof ws!=='undefined' && ws && ws.readyState===WebSocket.OPEN) ws.close(); }catch(_){ }
+            window.location.assign('/');
+        },true);
     }
 
-    if (menuEl2 && typeof MutationObserver !== 'undefined') {
-        const observer = new MutationObserver(syncTopLeftMenuButton);
-        observer.observe(menuEl2, { attributes: true, attributeFilter: ['style', 'class'] });
+    // ------------------------------------------------------------
+    // 2) AKARSU: yatağı gerçekten aşağı al, suyu üstte görünür yap.
+    // ------------------------------------------------------------
+    if(typeof riverPaths!=='undefined' && typeof terrainGeo!=='undefined' && typeof distanceToRiver==='function'){
+        const oldTerrain=terrainHeightAt;
+        function riverBedHeight(x,z){
+            let d=Infinity, half=0;
+            for(const r of riverPaths){
+                const rd=riverDistance(x,z,r);
+                if(rd<d){ d=rd; half=r.width/2; }
+            }
+            if(d < half + 1.8){
+                const edge=Math.max(0,Math.min(1,(half+1.8-d)/1.8));
+                return oldTerrain(x,z) - (0.65 + edge*0.9);
+            }
+            return oldTerrain(x,z);
+        }
+        terrainHeightAt=riverBedHeight;
+        const tp=terrainGeo.attributes.position;
+        for(let i=0;i<tp.count;i++){
+            const x=tp.getX(i),z=tp.getZ(i),d=distanceToRiver(x,z);
+            let half=0;
+            for(const r of riverPaths){ if(riverDistance(x,z,r)<=d) half=r.width/2; }
+            if(d<half+1.8) tp.setY(i,riverBedHeight(x,z));
+        }
+        tp.needsUpdate=true; terrainGeo.computeVertexNormals();
+        // Su şeridinin her verteksi artık yeni yatağın hemen üzerinde.
+        for(const r of riverPaths){
+            const pos=r.mesh.geometry.attributes.position;
+            for(let i=0;i<pos.count;i++){
+                const x=pos.getX(i),z=pos.getZ(i);
+                pos.setY(i,riverBedHeight(x,z)+0.10);
+            }
+            pos.needsUpdate=true; r.mesh.geometry.computeVertexNormals();
+        }
     }
-    document.addEventListener('click', (e) => {
-        const t = e.target;
-        if (!t) return;
-        if (t.id === 'pcSelectBtn') setTimeout(syncTopLeftMenuButton, 120);
-        if (t.id === 'mobileSelectBtn') setTimeout(syncTopLeftMenuButton, 120);
-    }, true);
-
-    syncTopLeftMenuButton();
 
     // ------------------------------------------------------------
     // 3) Şehir parkı çimleri gerçek zemin collider olsun.
@@ -5219,458 +5239,6 @@ function stepCar(c,dt){
     // ------------------------------------------------------------
     try{ window.__sameSpeedPCMobile=true; }catch(_){ }
 
-})();
-</script>
-
-<script>
-/* ============================================================
-   8) KAMP + DÜŞMAN NPC + SİLAH + MERMİ SİSTEMİ
-   ============================================================ */
-(function(){
-    'use strict';
-    if(typeof scene==='undefined' || typeof THREE==='undefined') return;
-    if(typeof terrainHeightAt!=='function' || typeof playerDonkey==='undefined') return;
-
-    const campRand = (typeof mulberry32==='function') ? mulberry32(0xCA4F2026) : (function(){let s=0xCA4F2026;return()=>((s=(s*1664525+1013904223)>>>0)/4294967296);})();
-    const camps=[];
-    const campEnemies=[];
-    const campColliders=[];
-    const activeBullets=[];
-
-    const FIRE_LIGHT_COLOR=0xff8a32;
-    const enemyBulletMat=new THREE.MeshBasicMaterial({color:0xffd34d});
-    const playerBulletMat=new THREE.MeshBasicMaterial({color:0x7fd4ff});
-    const bulletGeo=new THREE.SphereGeometry(.055,6,5);
-
-    function getForestTrees(){ return (typeof forestTrees!=='undefined' && Array.isArray(forestTrees)) ? forestTrees : []; }
-
-    // ----------------------------------------------------------
-    // 4 KAMP YERİ: orman yoğunluğu içinde, şehir/çiftlik/dağ/yol dışı.
-    // ----------------------------------------------------------
-    const forbidden = { farm:190, city:285, road:30, pond:58 };
-    function nearMountain(x,z,pad){
-        if(typeof mountains==='undefined') return false;
-        for(const m of mountains){ if(Math.hypot(x-m.x,z-m.z)<m.radius+pad) return true; }
-        return false;
-    }
-    function nearSpecial(x,z){
-        if(typeof forestNearCave==='function' && forestNearCave(x,z)) return true;
-        if(typeof FOREST_POND_CENTER!=='undefined' && Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<forbidden.pond) return true;
-        if(typeof distanceToRoadAxis==='function' && distanceToRoadAxis(x,z)<forbidden.road) return true;
-        if(typeof BEACH_PARKING_CENTER!=='undefined' && Math.abs(x-BEACH_PARKING_CENTER.x)<150 && z<-360) return true;
-        return false;
-    }
-    function forestScore(x,z){
-        let count=0, nearest=Infinity;
-        for(const t of getForestTrees()){
-            const d=Math.hypot(x-t.x,z-t.z);
-            if(d<62) count++;
-            if(d<nearest) nearest=d;
-            if(count>34 && nearest<7) break;
-        }
-        return {count,nearest};
-    }
-    function validCamp(x,z){
-        if(Math.hypot(x-FARM_CX,z-FARM_CZ)<forbidden.farm) return false;
-        if(typeof CITY_CENTER_X!=='undefined' && Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<forbidden.city) return false;
-        if(nearMountain(x,z,20) || nearSpecial(x,z)) return false;
-        const fs=forestScore(x,z);
-        if(fs.count<8 || fs.nearest<18) return false;
-        for(const c of camps) if(Math.hypot(x-c.x,z-c.z)<90) return false;
-        return true;
-    }
-
-    // Hedeflenen dört bölge; uygun nokta bulunamazsa aday havuzu otomatik taranır.
-    const campSeeds=[
-        {x:292,z:-18},
-        {x:268,z:188},
-        {x:34,z:286},
-        {x:-224,z:176}
-    ];
-    const campNames=['Kuzeydoğu Orman Kampı','Doğu Orman Kampı','Kuzey Kampı','Kuzeybatı Orman Kampı'];
-
-    function findCampPoint(seed){
-        for(let i=0;i<240;i++){
-            const a=campRand()*Math.PI*2;
-            const r=i<40 ? 4+i*.7 : 12+campRand()*40;
-            const x=seed.x+Math.cos(a)*r,z=seed.z+Math.sin(a)*r;
-            if(validCamp(x,z)) return {x,z};
-        }
-        for(let i=0;i<12000;i++){
-            const a=campRand()*Math.PI*2;
-            const r=210+campRand()*120;
-            const x=Math.cos(a)*r,z=Math.sin(a)*r;
-            if(validCamp(x,z)) return {x,z};
-        }
-        return {x:seed.x,z:seed.z};
-    }
-
-    function lambert(color){ return new THREE.MeshLambertMaterial({color}); }
-    const stoneMat=lambert(0x666765), woodMat=lambert(0x57391f), tentMat=lambert(0x8d5d40), tentDark=lambert(0x3a2417);
-
-    function createCampfire(){
-        const g=new THREE.Group();
-        for(let i=0;i<10;i++){
-            const a=(i/10)*Math.PI*2;
-            const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.28,0),stoneMat);
-            s.position.set(Math.cos(a)*.9,.14,Math.sin(a)*.9);
-            s.rotation.set(campRand()*1.5,campRand()*3,campRand()*1.5);
-            g.add(s);
-        }
-        for(let i=0;i<4;i++){
-            const log=new THREE.Mesh(new THREE.CylinderGeometry(.11,.13,1.55,7),woodMat);
-            log.position.y=.26; log.rotation.set(0,(i%2?1:-1)*Math.PI/4,(i%2?1:-1)*Math.PI/2);
-            g.add(log);
-        }
-        const fireMat=new THREE.MeshBasicMaterial({color:0xff6a18,transparent:true,opacity:.94});
-        const fire=new THREE.Mesh(new THREE.ConeGeometry(.48,1.25,8),fireMat);
-        fire.position.y=.84; g.add(fire);
-        const innerMat=new THREE.MeshBasicMaterial({color:0xffcf42,transparent:true,opacity:.9});
-        const inner=new THREE.Mesh(new THREE.ConeGeometry(.25,.72,7),innerMat);
-        inner.position.y=.73; g.add(inner);
-        const light=new THREE.PointLight(FIRE_LIGHT_COLOR,2.2,12,2); light.position.y=1.15; g.add(light);
-        const smokeMat=new THREE.MeshBasicMaterial({color:0xb8bec3,transparent:true,opacity:.24,depthWrite:false});
-        const smoke=[];
-        for(let i=0;i<4;i++){
-            const s=new THREE.Mesh(new THREE.SphereGeometry(.35+i*.12,7,6),smokeMat);
-            s.position.set((campRand()-.5)*.25,1.65+i*.8,(campRand()-.5)*.25);
-            g.add(s); smoke.push(s);
-        }
-        g.userData={fire,inner,light,smoke,phase:campRand()*6.28};
-        return g;
-    }
-
-    function createTent(){
-        const g=new THREE.Group();
-        const base=new THREE.Mesh(new THREE.BoxGeometry(2.5,.12,3.3),tentDark);
-        base.position.y=.06; g.add(base);
-        const shape=new THREE.Shape();
-        shape.moveTo(-1.2,0); shape.lineTo(1.2,0); shape.lineTo(0,1.55); shape.closePath();
-        const geo=new THREE.ExtrudeGeometry(shape,{depth:3.2,bevelEnabled:false});
-        geo.translate(0,0,-1.6);
-        const tent=new THREE.Mesh(geo,tentMat); tent.position.y=.12; g.add(tent);
-        const door=new THREE.Mesh(new THREE.PlaneGeometry(.9,1.1),new THREE.MeshBasicMaterial({color:0x1b100a,side:THREE.DoubleSide}));
-        door.position.set(0,.67,1.61); door.rotation.y=Math.PI; g.add(door);
-        return g;
-    }
-
-    function createHuman(opts){
-        const o=Object.assign({skin:0xc98b63,shirt:0x4c5d47,pants:0x303b47,hair:0x251811,helmet:false},opts||{});
-        const g=new THREE.Group();
-        const skin=lambert(o.skin), shirt=lambert(o.shirt), pants=lambert(o.pants), hair=lambert(o.hair), boots=lambert(0x191512), gunMat=lambert(0x1e2022), steel=lambert(0x8f969b);
-        const legs=[],arms=[];
-        for(const side of [-1,1]){
-            const leg=new THREE.Group(); leg.position.set(side*.19,.88,0);
-            const up=new THREE.Mesh(new THREE.BoxGeometry(.23,.52,.25),pants); up.position.y=-.25; leg.add(up);
-            const low=new THREE.Mesh(new THREE.BoxGeometry(.20,.48,.23),pants); low.position.y=-.73; leg.add(low);
-            const boot=new THREE.Mesh(new THREE.BoxGeometry(.24,.18,.35),boots); boot.position.set(0,-1.02,.06); leg.add(boot);
-            g.add(leg); legs.push(leg);
-        }
-        const torso=new THREE.Mesh(new THREE.BoxGeometry(.58,.78,.34),shirt); torso.position.y=1.52; g.add(torso);
-        const shoulder=new THREE.Mesh(new THREE.BoxGeometry(.72,.15,.34),shirt); shoulder.position.y=1.88; g.add(shoulder);
-        const pocket=new THREE.Mesh(new THREE.BoxGeometry(.17,.16,.025),pants); pocket.position.set(-.12,1.62,.18); g.add(pocket);
-        for(const side of [-1,1]){
-            const arm=new THREE.Group(); arm.position.set(side*.41,1.78,0);
-            const up=new THREE.Mesh(new THREE.BoxGeometry(.18,.44,.20),shirt); up.position.y=-.22; arm.add(up);
-            const fore=new THREE.Mesh(new THREE.BoxGeometry(.16,.42,.18),skin); fore.position.y=-.64; arm.add(fore);
-            const hand=new THREE.Mesh(new THREE.BoxGeometry(.16,.16,.18),skin); hand.position.y=-.9; arm.add(hand);
-            g.add(arm); arms.push(arm);
-        }
-        const neck=new THREE.Mesh(new THREE.BoxGeometry(.17,.12,.17),skin); neck.position.y=2.02; g.add(neck);
-        const head=new THREE.Mesh(new THREE.BoxGeometry(.44,.48,.43),skin); head.position.y=2.34; g.add(head);
-        const eyeMat=new THREE.MeshBasicMaterial({color:0x111111});
-        for(const side of [-1,1]){const e=new THREE.Mesh(new THREE.SphereGeometry(.045,6,5),eyeMat);e.position.set(side*.1,2.38,.225);g.add(e);}
-        const mouth=new THREE.Mesh(new THREE.BoxGeometry(.14,.02,.02),new THREE.MeshBasicMaterial({color:0x351812}));mouth.position.set(0,2.18,.225);g.add(mouth);
-        const hairTop=new THREE.Mesh(new THREE.BoxGeometry(.47,.14,.45),hair);hairTop.position.y=2.57;g.add(hairTop);
-        if(o.helmet){const h=new THREE.Mesh(new THREE.SphereGeometry(.29,10,8,0,Math.PI*2,0,Math.PI*.62),lambert(0x5b6f38));h.position.y=2.48;g.add(h);}
-
-        const gun=new THREE.Group();
-        const body=new THREE.Mesh(new THREE.BoxGeometry(.10,.13,.52),gunMat); body.position.z=.22; gun.add(body);
-        const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.028,.028,.42,8),steel); barrel.rotation.x=Math.PI/2; barrel.position.z=.66; gun.add(barrel);
-        const mag=new THREE.Mesh(new THREE.BoxGeometry(.065,.20,.10),gunMat); mag.position.set(0,-.13,.12); gun.add(mag);
-        const muzzle=new THREE.Object3D(); muzzle.position.z=.88; gun.add(muzzle);
-        gun.position.set(0,-.92,.18); arms[1].add(gun);
-
-        g.userData={legs,arms,head,gunMuzzle:muzzle,walkCycle:campRand()*8,alive:true,health:5};
-        return g;
-    }
-
-    function setupCamp(point,name,index){
-        const g=new THREE.Group();
-        g.position.set(point.x,terrainHeightAt(point.x,point.z),point.z);
-        const fire=createCampfire(); g.add(fire);
-        const tentOffsets=[
-            {x:4.5,z:3.2,r:-2.35},{x:-4.5,z:3.2,r:2.35},{x:4.5,z:-3.2,r:-.78},{x:-4.5,z:-3.2,r:.78}
-        ];
-        const tents=[];
-        for(const t of tentOffsets){const tent=createTent();tent.position.set(t.x,0,t.z);tent.rotation.y=t.r;g.add(tent);tents.push(tent);}
-        const logs=[];
-        for(let i=0;i<4;i++){
-            const a=i*Math.PI/2+Math.PI/4;
-            const log=new THREE.Mesh(new THREE.CylinderGeometry(.21,.21,1.7,8),woodMat);
-            log.rotation.z=Math.PI/2;log.rotation.y=a;log.position.set(Math.cos(a)*2.2,.24,Math.sin(a)*2.2);g.add(log);logs.push(log);
-        }
-        const enemies=[];
-        for(let i=0;i<3;i++){
-            const a=i*Math.PI*2/3+.4;
-            const ex=point.x+Math.cos(a)*(8+campRand()*4),ez=point.z+Math.sin(a)*(8+campRand()*4);
-            const enemy=createHuman({skin:[0xb87a5a,0xc98b63,0xa86f50][i],shirt:[0x4d5c41,0x5e4c3c,0x3e4e61][i],hair:[0x2a1d12,0x4a3520,0x191919][i],helmet:i===0});
-            enemy.position.set(ex,terrainHeightAt(ex,ez),ez);
-            enemy.rotation.y=campRand()*Math.PI*2;
-            scene.add(enemy); // NPC'leri kamp grubundan bağımsız world root'ta tut.
-            const state={mesh:enemy,homeX:ex,homeZ:ez,patrolAngle:a,state:'patrol',alertUntil:0,lastShot:0,shootCooldown:900+campRand()*700,seeRange:38,loseRange:52,health:5,dead:false};
-            enemies.push(state);campEnemies.push(state);
-        }
-        scene.add(g);
-        campColliders.push({x:point.x,z:point.z,r:5.7});
-        for(const t of tentOffsets) campColliders.push({x:point.x+t.x,z:point.z+t.z,r:1.5});
-        return {group:g,fire,tents,logs,enemies,x:point.x,z:point.z,name,index};
-    }
-
-    for(let i=0;i<campSeeds.length;i++){
-        const p=findCampPoint(campSeeds[i]);
-        camps.push(setupCamp(p,campNames[i],i));
-    }
-    console.log('[KAMP] Oluşturuldu:',camps.map(c=>`${c.name} (${c.x.toFixed(0)},${c.z.toFixed(0)})`).join(' | '));
-
-    // Kamp eşyaları için hafif collider.
-    if(typeof checkMountainCollision==='function'){
-        const previousCampCollision=checkMountainCollision;
-        checkMountainCollision=function(x,z,radius){
-            if(previousCampCollision(x,z,radius)) return true;
-            for(const c of campColliders){if(Math.hypot(x-c.x,z-c.z)<radius+c.r) return true;}
-            for(const e of campEnemies){if(!e.dead&&e.mesh.visible&&Math.hypot(x-e.mesh.position.x,z-e.mesh.position.z)<radius+.42)return true;}
-            return false;
-        };
-    }
-
-    // ----------------------------------------------------------
-    // OYUNCU SİLAHI: first-person görünüm + world-space yedek model.
-    // ----------------------------------------------------------
-    function createPlayerGun(){
-        const g=new THREE.Group();
-        const dark=lambert(0x1d2228), metal=lambert(0x7c8790), grip=lambert(0x3f2c20);
-        const body=new THREE.Mesh(new THREE.BoxGeometry(.16,.15,.72),dark); body.position.z=-.2; g.add(body);
-        const top=new THREE.Mesh(new THREE.BoxGeometry(.11,.10,.58),metal); top.position.set(0,.09,-.18); g.add(top);
-        const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.42,8),metal); barrel.rotation.x=Math.PI/2; barrel.position.z=.36; g.add(barrel);
-        const handle=new THREE.Mesh(new THREE.BoxGeometry(.13,.35,.16),grip); handle.rotation.x=-.2; handle.position.set(0,-.19,-.04); g.add(handle);
-        const muzzle=new THREE.Object3D();muzzle.position.set(0,.01,.60);g.add(muzzle);
-        g.userData.muzzle=muzzle;
-        return g;
-    }
-    const playerGunView=createPlayerGun();
-    playerGunView.scale.setScalar(.72);
-    playerGunView.position.set(.42,-.30,-.56);
-    playerGunView.rotation.set(-.08,.10,.02);
-    camera.add(playerGunView);
-    playerGunView.visible=false;
-
-    // Üçüncü şahısta eşeğin ön-sağ tarafında küçük silah modeli görünür.
-    const playerGunWorld=createPlayerGun();
-    playerGunWorld.scale.setScalar(.54);
-    playerGunWorld.position.set(.42,1.48,.42);
-    playerGunWorld.rotation.set(0,Math.PI,0);
-    playerDonkey.add(playerGunWorld);
-    playerGunWorld.visible=false;
-
-    function syncPlayerGunVisibility(){
-        const active=typeof gameStarted!=='undefined' && gameStarted && !(typeof playerIsDead!=='undefined'&&playerIsDead);
-        playerGunView.visible=active && cameraMode==='first' && controlMode==='pc';
-        playerGunWorld.visible=active && cameraMode==='third';
-    }
-
-    let lastPlayerShot=0;
-    const PLAYER_FIRE_COOLDOWN=280;
-    function makeBullet(origin,dir,owner,damage=1){
-        const mat=owner==='player'?playerBulletMat:enemyBulletMat;
-        const m=new THREE.Mesh(bulletGeo,mat);m.position.copy(origin);
-        if(owner==='player')m.scale.setScalar(1.15);
-        scene.add(m);
-        activeBullets.push({mesh:m,velocity:dir.clone().multiplyScalar(owner==='player'?72:55),life:2.2,owner,damage});
-    }
-
-    function firePlayerWeapon(){
-        if(typeof gameStarted==='undefined'||!gameStarted||playerIsDead||!ws||ws.readyState!==WebSocket.OPEN)return false;
-        const now=performance.now();
-        if(now-lastPlayerShot<PLAYER_FIRE_COOLDOWN)return false;
-        lastPlayerShot=now;
-        const origin=new THREE.Vector3(),dir=new THREE.Vector3();
-        if(cameraMode==='first'){
-            playerGunView.userData.muzzle.getWorldPosition(origin);
-            camera.getWorldDirection(dir);
-        }else{
-            // 3P: ekranın ortasına doğru ateş et.
-            const target=new THREE.Vector3();camera.getWorldDirection(dir);playerGunWorld.userData.muzzle.getWorldPosition(origin);
-        }
-        dir.normalize();
-        makeBullet(origin,dir,'player',1);
-        actionAnimationType='attack';actionAnimationUntil=now+220;
-        return true;
-    }
-
-    // ----------------------------------------------------------
-    // DÜŞMAN AI + GÖRÜŞ + ATEŞ
-    // ----------------------------------------------------------
-    function canSeePlayer(enemy,dist,dx,dz){
-        if(typeof gameStarted==='undefined'||!gameStarted||playerIsDead)return false;
-        if(dist>enemy.seeRange)return false;
-        const facing=enemy.mesh.rotation.y;
-        let angle=Math.atan2(dx,dz)-facing;
-        while(angle>Math.PI)angle-=Math.PI*2;
-        while(angle<-Math.PI)angle+=Math.PI*2;
-        if(Math.abs(angle)>Math.PI*(2/3))return false; // 120° görüş açısı
-        return true;
-    }
-
-    function enemyShoot(e,now,px,py,pz){
-        if(now-e.lastShot<e.shootCooldown || !e.mesh.userData.gunMuzzle)return;
-        e.lastShot=now;
-        const origin=new THREE.Vector3();e.mesh.userData.gunMuzzle.getWorldPosition(origin);
-        const target=new THREE.Vector3(px,py,pz);
-        const dir=target.sub(origin).normalize();
-        dir.x+=(campRand()-.5)*.035;dir.y+=(campRand()-.5)*.035;dir.z+=(campRand()-.5)*.035;dir.normalize();
-        makeBullet(origin,dir,'enemy',1);
-    }
-
-    function updateCampEnemies(now,dt){
-        const active=typeof gameStarted!=='undefined'&&gameStarted&&!playerIsDead;
-        const px=playerDonkey.position.x,pz=playerDonkey.position.z,py=playerDonkey.position.y+1.1;
-        for(const e of campEnemies){
-            const mesh=e.mesh;
-            if(e.dead||!mesh.visible)continue;
-            const dx=px-mesh.position.x,dz=pz-mesh.position.z,dist=Math.hypot(dx,dz);
-            if(!active){ e.state='patrol'; continue; }
-
-            if(e.state==='patrol'){
-                e.patrolAngle+=dt*.28;
-                const tx=e.homeX+Math.cos(e.patrolAngle)*5.5,tz=e.homeZ+Math.sin(e.patrolAngle)*5.5;
-                const mx=tx-mesh.position.x,mz=tz-mesh.position.z,md=Math.hypot(mx,mz);
-                if(md>.2){mesh.position.x+=mx/md*1.25*dt;mesh.position.z+=mz/md*1.25*dt;mesh.rotation.y=Math.atan2(mx,mz);mesh.userData.walkCycle+=dt*6;const s=Math.sin(mesh.userData.walkCycle);mesh.userData.legs[0].rotation.x=s*.45;mesh.userData.legs[1].rotation.x=-s*.45;}
-                if(canSeePlayer(e,dist,dx,dz)){e.state='alert';e.alertUntil=now+450;}
-            }else if(e.state==='alert'){
-                const yaw=Math.atan2(dx,dz);let diff=yaw-mesh.rotation.y;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;mesh.rotation.y+=diff*Math.min(1,dt*8);
-                mesh.userData.arms[1].rotation.x=-1.22;
-                if(now>e.alertUntil)e.state='shooting';
-                if(dist>e.loseRange)e.state='patrol';
-            }else if(e.state==='shooting'){
-                if(dist>e.loseRange){e.state='patrol';mesh.userData.arms[1].rotation.x=0;continue;}
-                const yaw=Math.atan2(dx,dz);let diff=yaw-mesh.rotation.y;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;mesh.rotation.y+=diff*Math.min(1,dt*10);
-                mesh.userData.arms[1].rotation.x=-1.22+Math.atan2(py-(mesh.position.y+1.8),Math.max(.1,dist))*.35;
-                enemyShoot(e,now,px,py,pz);
-                if(!canSeePlayer(e,dist,dx,dz)) e.state='patrol';
-            }
-            mesh.position.y=terrainHeightAt(mesh.position.x,mesh.position.z);
-        }
-    }
-
-    function damageEnemy(e,amount){
-        if(!e||e.dead)return;
-        e.health=Math.max(0,e.health-amount);
-        e.mesh.userData.health=e.health;
-        e.mesh.userData.hitUntil=performance.now()+160;
-        if(e.health<=0){
-            e.dead=true;e.mesh.visible=false;e.mesh.userData.alive=false;e.state='dead';
-        }
-    }
-
-    function updateCampBullets(dt){
-        for(let i=activeBullets.length-1;i>=0;i--){
-            const b=activeBullets[i];b.life-=dt;b.mesh.position.addScaledVector(b.velocity,dt);
-            let remove=false;
-            if(b.owner==='enemy' && !playerIsDead && typeof gameStarted!=='undefined' && gameStarted){
-                const d=Math.hypot(b.mesh.position.x-playerDonkey.position.x,b.mesh.position.y-(playerDonkey.position.y+1),b.mesh.position.z-playerDonkey.position.z);
-                if(d<.78){
-                    if(typeof sendSocketMessage==='function' && typeof ws!=='undefined' && ws && ws.readyState===WebSocket.OPEN){
-                        sendSocketMessage('enemy_damage',{damage:Math.max(.5,Math.min(1,Number(b.damage)||1)),reason:'Kamp düşmanının mermisi'});
-                    }
-                    remove=true;
-                }
-            }
-            if(b.owner==='player'){
-                for(const e of campEnemies){
-                    if(e.dead)continue;
-                    const d=Math.hypot(b.mesh.position.x-e.mesh.position.x,b.mesh.position.y-(e.mesh.position.y+1.3),b.mesh.position.z-e.mesh.position.z);
-                    if(d<.9){damageEnemy(e,b.damage);remove=true;break;}
-                }
-            }
-            const ground=terrainHeightAt(b.mesh.position.x,b.mesh.position.z);
-            if(b.life<=0 || b.mesh.position.y<ground-.15 || Math.abs(b.mesh.position.x)>MAP_LIMIT+20 || Math.abs(b.mesh.position.z)>MAP_LIMIT+20)remove=true;
-            if(remove){scene.remove(b.mesh);activeBullets.splice(i,1);}
-        }
-    }
-
-    let lastCampFrame=performance.now();
-    function updateCampSystem(now){
-        const dt=Math.min(.05,Math.max(.001,(now-lastCampFrame)/1000));lastCampFrame=now;
-        for(const c of camps){
-            const f=c.fire.userData,phase=f.phase||0;
-            const pulse=1+Math.sin(now*.012+phase)*.13;
-            f.fire.scale.set(pulse,pulse*1.08,pulse);
-            f.inner.scale.set(.85+pulse*.08, .85+pulse*.08, .85+pulse*.08);
-            f.light.intensity=2.0+Math.sin(now*.025+phase)*.55;
-            for(let i=0;i<f.smoke.length;i++){const s=f.smoke[i];s.position.x=Math.sin(now*.0008+i+phase)*.22;s.position.z=Math.cos(now*.0009+i+phase)*.18;s.position.y=1.65+i*.82+Math.sin(now*.0012+i)*.15;s.scale.setScalar(1+i*.14+Math.sin(now*.0015+i)*.10);}
-        }
-        updateCampEnemies(now,dt);
-        updateCampBullets(dt);
-        syncPlayerGunVisibility();
-    }
-
-    // Mevcut ana döngünün gelecekteki karelerinde de sistem çalışsın.
-    if(typeof animate==='function'){
-        const baseAnimate=animate;
-        animate=function(){updateCampSystem(performance.now());return baseAnimate.apply(this,arguments);};
-    }else{
-        setInterval(()=>updateCampSystem(performance.now()),16);
-    }
-
-    // PC ateş tuşu. Mevcut melee sol tık saldırısı korunur.
-    document.addEventListener('keydown',e=>{
-        if(e.key==='f' || e.key==='F') firePlayerWeapon();
-    },true);
-
-    // Mobil ateş butonu.
-    const mobFireBtn=document.getElementById('mobFireBtn');
-    if(mobFireBtn){
-        const fireTap=e=>{e.preventDefault();e.stopImmediatePropagation();firePlayerWeapon();};
-        mobFireBtn.addEventListener('pointerdown',fireTap,{capture:true,passive:false});
-        mobFireBtn.addEventListener('touchstart',fireTap,{capture:true,passive:false});
-    }
-
-    // Yeni butonu genel dokunmatik kilidine dahil et.
-    const oldBlockControlTouch=typeof blockControlTouch==='function'?blockControlTouch:null;
-    if(oldBlockControlTouch && mobFireBtn) oldBlockControlTouch(mobFireBtn);
-
-    // İlk/üçüncü şahıs geçişleri sonrası silah görünürlüğünü güncel tut.
-    document.addEventListener('click',()=>syncPlayerGunVisibility(),true);
-    setInterval(syncPlayerGunVisibility,350);
-
-    // Rivers: animate wrapper'ın üstünde de dalga güncelle.
-    if(typeof __updateEsekRivers==='function'){
-        const prev=animate;
-        animate=function(){__updateEsekRivers(performance.now());return prev.apply(this,arguments);};
-    }
-})();
-</script>
-
-
-<script>
-(function(){
-  function cleanup(){
-    if(typeof scene==='undefined') return;
-    const doomed=[];
-    scene.traverse(o=>{
-      if(o!==scene && /^(AkarsuYatagi_|AkarsuSuyu_|SuKütlesi$|Gölet$|Gölet çukuru$|Gölet tabanı$|Gölet derin su$|Gölet kenarı$|Orman göleti suyu$|Orman göleti kademeli derin dip$)/i.test(o.name||'')) doomed.push(o);
-    });
-    for(const o of doomed){
-      if(o.parent) o.parent.remove(o);
-      if(o.geometry?.dispose) o.geometry.dispose();
-      const mm=Array.isArray(o.material)?o.material:[o.material];
-      for(const m of mm) if(m?.dispose) m.dispose();
-    }
-    if(scene.userData){scene.userData.farmPondWater=null;scene.userData.forestPondWater=null;}
-    console.log('[NORMAL ARAZI] Akarsular ve yapay derinlikler kaldirildi.');
-  }
-  setTimeout(cleanup,0);
 })();
 </script>
 
