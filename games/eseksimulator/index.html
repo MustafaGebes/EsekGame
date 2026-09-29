@@ -483,7 +483,7 @@
         }, 3, 2);
 
         // Zemin
-        const terrainGeo = new THREE.PlaneGeometry(1200, 1200, 80, 80);
+        const terrainGeo = new THREE.PlaneGeometry(1200, 1200, 160, 160);
         terrainGeo.rotateX(-Math.PI / 2);
         const terrainMesh = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ map: grassTexture, color: 0x4f7f38 }));
         scene.add(terrainMesh);
@@ -5259,97 +5259,147 @@ function stepCar(c,dt){
     (function setupRivers(){
         if (typeof THREE === 'undefined' || typeof terrainGeo === 'undefined' || typeof terrainHeightAt !== 'function') return;
 
+        /* =========================================================
+           GERÇEK AKARSU SİSTEMİ
+           - Yüksek çözünürlüklü arazi üzerinde gerçek yatak
+           - Merkezde derin, kıyıya doğru yumuşak şev
+           - Su yatağın içinde; yüzey havada kalmaz
+           - Şehir / çiftlik altında KESİNLİKLE kanal açılmaz
+           ========================================================= */
         const baseTerrainAt = terrainHeightAt;
         const RIVER_DEPTH = 6.0;
-        const RIVER_FILL = 0.85;
-        const RIVER_BANK = 3.5;
+        const RIVER_FILL = 0.58;       // yaklaşık %58 dolu; su yatağın üstüne taşmaz
+        const BANK_WIDTH = 8.0;
+        const CHANNEL_WIDTHS = [18, 16, 14];
 
-        // Dosyada daha önce riverPaths yoksa iki gerçek akarsu güzergâhı oluştur.
-        if (typeof riverPaths === 'undefined' || !Array.isArray(riverPaths) || riverPaths.length === 0) {
-            window.riverPaths = [
-                {
-                    width: 18,
-                    points: [
-                        {x: -305, z: 285}, {x: -210, z: 225}, {x: -100, z: 155},
-                        {x: 15, z: 95}, {x: 125, z: 12}, {x: 235, z: -92}, {x: 335, z: -180}
-                    ]
-                },
-                {
-                    width: 15,
-                    points: [
-                        {x: 385, z: 275}, {x: 315, z: 205}, {x: 250, z: 120},
-                        {x: 205, z: 32}, {x: 150, z: -65}, {x: 72, z: -155}, {x: -25, z: -240}, {x: -125, z: -305}
-                    ]
-                }
-            ];
+        const riverSeeds = [
+            {
+                id: 'northRiver', width: CHANNEL_WIDTHS[0],
+                points: [
+                    {x:-470,z:360}, {x:-390,z:345}, {x:-300,z:330}, {x:-205,z:350},
+                    {x:-110,z:370}, {x:-10,z:355}, {x:90,z:330}, {x:185,z:345},
+                    {x:280,z:320}, {x:365,z:285}, {x:445,z:245}
+                ]
+            },
+            {
+                id: 'southRiver', width: CHANNEL_WIDTHS[1],
+                points: [
+                    {x:-465,z:-290}, {x:-385,z:-315}, {x:-300,z:-335}, {x:-205,z:-355},
+                    {x:-110,z:-365}, {x:-15,z:-345}, {x:85,z:-325}, {x:180,z:-300},
+                    {x:275,z:-265}, {x:365,z:-225}, {x:450,z:-185}
+                ]
+            },
+            {
+                id: 'eastBranch', width: CHANNEL_WIDTHS[2],
+                points: [
+                    {x:450,z:245}, {x:425,z:195}, {x:405,z:140}, {x:385,z:85},
+                    {x:365,z:35}, {x:350,z:-25}, {x:330,z:-85}, {x:315,z:-145},
+                    {x:365,z:-205}
+                ]
+            }
+        ];
+
+        function forbidden(x,z){
+            // Şehir: mevcut düz alanın güvenlik sınırından daha geniş tutulur.
+            if (typeof CITY_CENTER_X !== 'undefined' && typeof CITY_CENTER_Z !== 'undefined') {
+                const cityHalf = (typeof cityModelHalf !== 'undefined') ? cityModelHalf : 242;
+                if (Math.max(Math.abs(x-CITY_CENTER_X), Math.abs(z-CITY_CENTER_Z)) < cityHalf + BANK_WIDTH + 4) return true;
+            }
+            // Çiftlik ve müştemilatları tek bir güvenlik bölgesi olarak ele al.
+            if (typeof FARM_CX !== 'undefined' && typeof FARM_CZ !== 'undefined') {
+                if (Math.hypot(x-FARM_CX,z-FARM_CZ) < 128 + BANK_WIDTH) return true;
+            }
+            return false;
         }
-        const riverList = window.riverPaths;
 
-        function pointDistanceToSegment(x,z,a,b){
+        function pointSegDistance(x,z,a,b){
             const vx=b.x-a.x, vz=b.z-a.z;
             const wx=x-a.x, wz=z-a.z;
-            const denom=vx*vx+vz*vz || 1;
-            const t=Math.max(0,Math.min(1,(wx*vx+wz*vz)/denom));
-            const px=a.x+vx*t, pz=a.z+vz*t;
-            return Math.hypot(x-px,z-pz);
+            const den=vx*vx+vz*vz || 1;
+            const t=Math.max(0,Math.min(1,(wx*vx+wz*vz)/den));
+            const qx=a.x+vx*t, qz=a.z+vz*t;
+            return Math.hypot(x-qx,z-qz);
         }
 
-        function nearestRiverInfo(x,z){
-            let best={distance:Infinity,river:null};
-            for(const r of riverList){
-                const pts=r.points||r.path||r.centerline||[];
+        function nearestRiver(x,z){
+            let best={distance:Infinity, river:null};
+            for(const r of riverSeeds){
+                const pts=r.points;
                 for(let i=0;i<pts.length-1;i++){
-                    const d=pointDistanceToSegment(x,z,pts[i],pts[i+1]);
+                    const d=pointSegDistance(x,z,pts[i],pts[i+1]);
                     if(d<best.distance) best={distance:d,river:r};
                 }
             }
             return best;
         }
 
-        window.riverDistance = function(x,z,r){
-            const pts=r && (r.points||r.path||r.centerline)||[];
-            let d=Infinity;
-            for(let i=0;i<pts.length-1;i++) d=Math.min(d,pointDistanceToSegment(x,z,pts[i],pts[i+1]));
-            return d;
-        };
-        const oldRiverDistance = window.riverDistance;
-
-        function riverProfile(distance, width){
-            const half=Math.max(1,width*.5);
-            if(distance>=half+RIVER_BANK) return 0;
-            const t=Math.max(0,Math.min(1,(half+RIVER_BANK-distance)/RIVER_BANK));
-            return Math.pow(t,0.9);
+        // Yatağın kesit profili: dış bankta 0 -> tabanda 1.
+        function bankProfile(distance, half){
+            const edge=half+BANK_WIDTH;
+            if(distance>=edge) return 0;
+            const t=Math.max(0,Math.min(1,(edge-distance)/BANK_WIDTH));
+            return t*t*(3-2*t);
         }
 
-        function underCityOrFarm(x,z){
-            if (typeof CITY_CENTER_X !== 'undefined' && typeof CITY_CENTER_Z !== 'undefined') {
-                const cityHalf = (typeof cityModelHalf !== 'undefined') ? cityModelHalf : 242;
-                if (Math.max(Math.abs(x-CITY_CENTER_X), Math.abs(z-CITY_CENTER_Z)) <= cityHalf-4) return true;
-            }
-            if (typeof FARM_CX !== 'undefined' && typeof FARM_CZ !== 'undefined') {
-                if (Math.hypot(x-FARM_CX, z-FARM_CZ) < 120) return true;
-            }
-            return false;
+        // Gerçek kanal kesiti: taban düz/yuvarlak, kıyılar eğimli.
+        function channelProfile(distance, half){
+            if(distance>=half) return 0;
+            const t=Math.max(0,Math.min(1,distance/half));
+            return 1 - t*t;
         }
 
         function riverBedY(x,z){
-            const base = baseTerrainAt(x,z);
-            if (underCityOrFarm(x,z)) return base;
-            const info=nearestRiverInfo(x,z);
-            if(!info.river || info.distance>=info.river.width*.5+RIVER_BANK) return base;
-            const p=riverProfile(info.distance,info.river.width);
-            return base-RIVER_DEPTH*p;
+            const base=baseTerrainAt(x,z);
+            if(forbidden(x,z)) return base;
+
+            const hit=nearestRiver(x,z);
+            if(!hit.river) return base;
+
+            const half=hit.river.width*0.5;
+            const d=hit.distance;
+            const bank=bankProfile(d,half);
+            if(bank<=0) return base;
+
+            // Kanal merkezinde tam derinlik; kıyıya yaklaşırken önce şev sonra taban.
+            const channel=channelProfile(d,half);
+            const depth=RIVER_DEPTH * (0.18*bank + 0.82*channel);
+            return base-depth;
         }
 
         function riverSurfaceY(x,z,r){
-            if (underCityOrFarm(x,z)) return baseTerrainAt(x,z) + 0.035;
-            const bed=riverBedY(x,z);
-            const p=riverProfile(oldRiverDistance(x,z,r),r.width);
-            return bed + RIVER_DEPTH*RIVER_FILL*p;
+            if(!r || forbidden(x,z)) return null;
+
+            const half=r.width*0.5;
+            const d=pointDistanceToRiverFor(x,z,r);
+            if(d>=half) return null;
+
+            // Su, kanalın yaklaşık %58'ine kadar dolu. Kesitte yüzeyin
+            // kenarı yatağın içine denk gelir; böylece su dışarıda/hover olmaz.
+            const waterWidth=half*Math.sqrt(RIVER_FILL);
+            if(d>waterWidth) return null;
+
+            const centerBase = baseTerrainAt(x,z);
+            const centerBed = centerBase-RIVER_DEPTH;
+            const waterY = centerBed + RIVER_DEPTH*RIVER_FILL;
+            return waterY;
         }
 
-        // terrainHeightAt bundan sonra nehir yatağını da dikkate alır.
+        function pointDistanceToRiverFor(x,z,r){
+            const pts=r.points;
+            let d=Infinity;
+            for(let i=0;i<pts.length-1;i++) d=Math.min(d,pointSegDistance(x,z,pts[i],pts[i+1]));
+            return d;
+        }
+
+        // Public helpers for the water-physics system below.
+        window.riverPaths = riverSeeds;
+        window.riverDistance = pointDistanceToRiverFor;
         window.riverTerrainHeight = riverBedY;
+        window.__esekBaseTerrainAt = baseTerrainAt;
+        window.__esekRiverDepth = RIVER_DEPTH;
+        window.__esekRiverFill = RIVER_FILL;
+
+        // terrainHeightAt bundan sonra akarsu yatağını hesaba katar.
         terrainHeightAt = riverBedY;
 
         // Arazi vertekslerini gerçek yatağa indir.
@@ -5361,84 +5411,176 @@ function stepCar(c,dt){
         tp.needsUpdate=true;
         terrainGeo.computeVertexNormals();
 
-        // Su + koyu yatak şeridi üret.
-        if (window.__esekRiverMeshes) {
-            for (const m of window.__esekRiverMeshes) scene.remove(m);
+        // Eski akarsu meshlerini temizle.
+        if(window.__esekRiverMeshes){
+            for(const m of window.__esekRiverMeshes){
+                if(m && m.parent) m.parent.remove(m);
+                if(m && m.geometry) m.geometry.dispose();
+                if(m && m.material){
+                    const mats=Array.isArray(m.material)?m.material:[m.material];
+                    for(const mat of mats) if(mat && mat.dispose) mat.dispose();
+                }
+            }
         }
         window.__esekRiverMeshes=[];
 
-        function buildRiverMesh(r, index){
-            const pts=r.points||r.path||r.centerline||[];
-            if(pts.length<2) return null;
-            const half=Math.max(3,r.width*.5);
-            const cross=[-0.92,-0.46,0,0.46,0.92];
-            const positions=[],indices=[];
+        // Polyline'ı daha sık örnekle; su yüzeyi kırık köşeler yerine yumuşak akar.
+        function densify(points, step=12){
+            const out=[];
+            for(let i=0;i<points.length-1;i++){
+                const a=points[i],b=points[i+1];
+                const len=Math.hypot(b.x-a.x,b.z-a.z);
+                const n=Math.max(1,Math.ceil(len/step));
+                for(let j=0;j<n;j++){
+                    const t=j/n;
+                    out.push({x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t});
+                }
+            }
+            out.push(points[points.length-1]);
+            return out;
+        }
+
+        function makeStrip(r){
+            const pts=densify(r.points,12);
+            const half=r.width*0.5;
+            const crossCount=9;
+            const positions=[];
             const bedPositions=[];
+            const indices=[];
+
             for(let i=0;i<pts.length;i++){
                 const p=pts[i];
                 const prev=pts[Math.max(0,i-1)], next=pts[Math.min(pts.length-1,i+1)];
                 const tx=next.x-prev.x,tz=next.z-prev.z;
                 const len=Math.hypot(tx,tz)||1;
                 const nx=-tz/len,nz=tx/len;
-                for(const f of cross){
-                    const px=p.x+nx*half*f, pz=p.z+nz*half*f;
-                    const y=riverSurfaceY(px,pz,r);
-                    positions.push(px,y,pz);
-                    bedPositions.push(px,riverBedY(px,pz)-0.015,pz);
+
+                for(let j=0;j<crossCount;j++){
+                    const f=-1 + (j/(crossCount-1))*2;
+                    const px=p.x+nx*(half+BANK_WIDTH)*f;
+                    const pz=p.z+nz*(half+BANK_WIDTH)*f;
+                    const d=Math.abs(f)*(half+BANK_WIDTH);
+                    const base=baseTerrainAt(px,pz);
+                    const by=riverBedY(px,pz);
+                    positions.push(px,base,pz);
+                    bedPositions.push(px,by-0.025,pz);
                 }
             }
-            const stride=cross.length;
+
+            const waterPos=[];
+            const waterCross=9;
+            const waterHalf=half*Math.sqrt(RIVER_FILL)*0.98;
+            const waterIndices=[];
+
+            for(let i=0;i<pts.length;i++){
+                const p=pts[i];
+                const prev=pts[Math.max(0,i-1)], next=pts[Math.min(pts.length-1,i+1)];
+                const tx=next.x-prev.x,tz=next.z-prev.z;
+                const len=Math.hypot(tx,tz)||1;
+                const nx=-tz/len,nz=tx/len;
+                for(let j=0;j<waterCross;j++){
+                    const f=-1 + (j/(waterCross-1))*2;
+                    const px=p.x+nx*waterHalf*f;
+                    const pz=p.z+nz*waterHalf*f;
+                    const y=baseTerrainAt(px,pz)-RIVER_DEPTH+RIVER_DEPTH*RIVER_FILL;
+                    waterPos.push(px,y,pz);
+                }
+            }
+
+            const stride=crossCount;
             for(let i=0;i<pts.length-1;i++){
                 for(let j=0;j<stride-1;j++){
                     const a=i*stride+j,b=a+1,c=(i+1)*stride+j+1,d=(i+1)*stride+j;
                     indices.push(a,b,d,b,c,d);
                 }
             }
-            const geo=new THREE.BufferGeometry();
-            geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
-            geo.setIndex(indices);
-            geo.computeVertexNormals();
-            const waterMat=new THREE.MeshPhongMaterial({color:0x2a5f7a,transparent:true,opacity:.88,shininess:95,side:THREE.DoubleSide,depthWrite:false});
-            const water=new THREE.Mesh(geo,waterMat);
-            water.renderOrder=5;
-            water.userData.basePositions=positions.slice();
-            water.userData.river=r;
+            const wStride=waterCross;
+            for(let i=0;i<pts.length-1;i++){
+                for(let j=0;j<wStride-1;j++){
+                    const a=i*wStride+j,b=a+1,c=(i+1)*wStride+j+1,d=(i+1)*wStride+j;
+                    waterIndices.push(a,b,d,b,c,d);
+                }
+            }
 
             const bedGeo=new THREE.BufferGeometry();
             bedGeo.setAttribute('position',new THREE.Float32BufferAttribute(bedPositions,3));
-            bedGeo.setIndex(indices.slice());
+            bedGeo.setIndex(indices);
             bedGeo.computeVertexNormals();
-            const bedMat=new THREE.MeshLambertMaterial({color:0x39463f,side:THREE.DoubleSide});
+            const bedMat=new THREE.MeshLambertMaterial({color:0x3b3327,side:THREE.DoubleSide});
             const bed=new THREE.Mesh(bedGeo,bedMat);
-            bed.renderOrder=4;
+            bed.name='AkarsuYatagi_'+r.id;
+            bed.renderOrder=2;
+
+            const waterGeo=new THREE.BufferGeometry();
+            waterGeo.setAttribute('position',new THREE.Float32BufferAttribute(waterPos,3));
+            waterGeo.setIndex(waterIndices);
+            waterGeo.computeVertexNormals();
+            const waterMat=new THREE.MeshPhongMaterial({
+                color:0x2f7698,
+                transparent:true,
+                opacity:0.90,
+                shininess:100,
+                specular:0xb9e9ff,
+                side:THREE.DoubleSide,
+                depthWrite:false
+            });
+            const water=new THREE.Mesh(waterGeo,waterMat);
+            water.name='AkarsuSuyu_'+r.id;
+            water.renderOrder=5;
+
+            // Dalga animasyonu için taban pozisyonlarını kaydet.
+            water.userData.basePositions=waterPos.slice();
+            water.userData.river=r;
+            water.userData.waterHalf=waterHalf;
 
             scene.add(bed);
             scene.add(water);
-            window.__esekRiverMeshes.push(water,bed);
-            r.mesh=water; r.bedMesh=bed; r.__cross=cross; r.__half=half; r.__index=index;
-            return water;
+            window.__esekRiverMeshes.push(bed,water);
+            r.mesh=water;
+            r.bedMesh=bed;
+            r.densePoints=pts;
+            r.waterHalf=waterHalf;
         }
 
-        riverList.forEach(buildRiverMesh);
-        window.__esekRiverPaths=riverList;
-        window.__esekBaseTerrainAt=baseTerrainAt;
-        window.__esekRiverDepth=RIVER_DEPTH;
-        window.__esekRiverFill=RIVER_FILL;
+        riverSeeds.forEach(makeStrip);
+        window.__esekRiverPaths=riverSeeds;
 
-        // Su dalgası; yüzey yatağın yaklaşık yarı doluluk seviyesinde kalır.
-        window.__updateEsekRivers = function(now){
-            for(const r of riverList){
+        // Fizik için tek nokta sorgusu: gerçek kanal tabanı ve su yüzeyi.
+        window.__esekRiverInfoAt=function(x,z){
+            const hit=nearestRiver(x,z);
+            if(!hit.river) return null;
+            if(forbidden(x,z)) return null;
+            const half=hit.river.width*0.5;
+            const d=hit.distance;
+            if(d>half+BANK_WIDTH) return null;
+            const surface=riverSurfaceY(x,z,hit.river);
+            if(surface===null) return null;
+            return {
+                river:hit.river,
+                distance:d,
+                half,
+                surfaceY:surface,
+                bottomY:riverBedY(x,z)
+            };
+        };
+
+        window.__updateEsekRivers=function(now){
+            const t=now*0.001;
+            for(const r of riverSeeds){
                 const mesh=r.mesh;
                 if(!mesh || !mesh.geometry || !mesh.userData.basePositions) continue;
-                const pos=mesh.geometry.attributes.position, base=mesh.userData.basePositions;
+                const pos=mesh.geometry.attributes.position;
+                const base=mesh.userData.basePositions;
                 for(let i=0;i<pos.count;i++){
-                    const x=base[i*3], baseY=base[i*3+1], z=base[i*3+2];
-                    const wave=Math.sin(x*.085+now*.0017)+Math.cos(z*.071-now*.00125);
-                    pos.setY(i,baseY+wave*.045);
+                    const x=base[i*3], y=base[i*3+1], z=base[i*3+2];
+                    const wave=Math.sin(x*0.055+t*1.55)+Math.cos(z*0.065-t*1.20);
+                    pos.setY(i,y+wave*0.025);
                 }
                 pos.needsUpdate=true;
             }
         };
+
+        console.log('[RIVERS] 3 akarsu hazır; arazi 160x160 örneklemeli, kanal derinliği',RIVER_DEPTH);
     })();
 
     // ------------------------------------------------------------
@@ -5995,40 +6137,13 @@ function stepCar(c,dt){
     }
 
     function riverInfoAt(x,z){
-        const paths = (window.__esekRiverPaths && Array.isArray(window.__esekRiverPaths)) ? window.__esekRiverPaths : [];
-        if (!paths.length || cityForbidden(x,z) || farmForbidden(x,z)) return null;
-        let best = null;
-        for (const r of paths) {
-            const pts = r.points || r.path || r.centerline || [];
-            const half = Math.max(3,(r.width||12)*0.5);
-            let bestD = Infinity;
-            for (let i=0;i<pts.length-1;i++) {
-                const a=pts[i], b=pts[i+1];
-                const vx=b.x-a.x, vz=b.z-a.z, wx=x-a.x, wz=z-a.z;
-                const den=vx*vx+vz*vz||1;
-                const t=Math.max(0,Math.min(1,(wx*vx+wz*vz)/den));
-                const qx=a.x+vx*t, qz=a.z+vz*t;
-                bestD=Math.min(bestD,Math.hypot(x-qx,z-qz));
-            }
-            const edge = half + CFG.WATER_EDGE_PADDING;
-            if (bestD < edge && (!best || bestD < best.distance)) best={distance:bestD,river:r,half};
-        }
-        return best;
-    }
-
-    function riverProfile(distance, half){
-        const edge=half+CFG.WATER_EDGE_PADDING;
-        if(distance>=edge) return 0;
-        const t=Math.max(0,Math.min(1,(edge-distance)/CFG.WATER_EDGE_PADDING));
-        return Math.pow(t,0.95);
+        if(typeof window.__esekRiverInfoAt==='function') return window.__esekRiverInfoAt(x,z);
+        return null;
     }
 
     function riverSurfaceAt(x,z){
         const info=riverInfoAt(x,z);
-        if(!info || typeof window.riverTerrainHeight !== 'function') return null;
-        const baseBed=window.riverTerrainHeight(x,z);
-        const p=riverProfile(info.distance,info.half);
-        return baseBed + CFG.RIVER_DEPTH*CFG.RIVER_FILL*p;
+        return info ? info.surfaceY : null;
     }
 
     // ---------------------------------------------------------
@@ -6234,11 +6349,11 @@ function stepCar(c,dt){
     function nearestWaterAt(x,z){
         // Rivers are checked first so the existing deep river bed wins.
         const ri=riverInfoAt(x,z);
-        if(ri && typeof window.riverTerrainHeight==='function'){
-            const sy=riverSurfaceAt(x,z);
-            if(sy!==null){
-                const bed=window.riverTerrainHeight(x,z);
-                if(sy>bed+0.02) return {kind:'river',surfaceY:sy,bottomY:bed,depth:CFG.RIVER_DEPTH,radius:ri.half};
+        if(ri){
+            const sy=ri.surfaceY;
+            const bed=ri.bottomY;
+            if(Number.isFinite(sy) && Number.isFinite(bed) && sy>bed+0.02){
+                return {kind:'river',surfaceY:sy,bottomY:bed,depth:Math.max(0.25,sy-bed),radius:ri.half};
             }
         }
         let best=null;
