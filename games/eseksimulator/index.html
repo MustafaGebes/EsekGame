@@ -126,7 +126,7 @@
         #settingsPanel .close-btn:hover { background: #45a049; }
         #onlineBadge { position: fixed; top: 18px; right: 18px; z-index: 35; padding: 10px 14px; border: 1px solid rgba(255,255,255,.25); border-radius: 22px; background: rgba(15,20,27,.9); color: #fff; font-weight: 700; box-shadow: 0 4px 16px #0008; }
         #onlineBadge .online-dot { display: inline-block; width: 9px; height: 9px; margin-right: 7px; border-radius: 50%; background: #36d478; box-shadow: 0 0 8px #36d478; }
-        #nameCard { margin: 8px 0 10px; padding: 12px 16px; width: 300px; max-width: 82vw; border: 1px solid #ffffff30; border-radius: 10px; background: rgba(15,20,27,.8); color: #eee; }
+        #nameCard { display:none !important; margin: 8px 0 10px; padding: 12px 16px; width: 300px; max-width: 82vw; border: 1px solid #ffffff30; border-radius: 10px; background: rgba(15,20,27,.8); color: #eee; }
         #nameCard label { display: block; font-size: 14px; color: #ddd; text-align: left; }
         #nameInput { display: block; box-sizing: border-box; width: 100%; margin-top: 7px; padding: 10px 12px; border: 1px solid #52606c; border-radius: 7px; outline: none; background: #171d23; color: #fff; font-size: 16px; user-select: text; -webkit-user-select: text; touch-action: auto; }
         #nameInput:focus, #chatInput:focus { border-color: #54a9f7; box-shadow: 0 0 0 2px #2196f340; }
@@ -171,7 +171,7 @@
     <div id="menu">
         <h1>Eşek Game</h1>
         <h2>Cross-Platform Online Modu</h2>
-        <div id="nameCard"><label for="nameInput">Oyuncu adı</label><input id="nameInput" maxlength="20" autocomplete="nickname" placeholder="Player" value="Player"><div id="nameError" role="status" aria-live="polite"></div></div>
+        <div id="nameCard" aria-hidden="true"><input id="nameInput" value="" readonly tabindex="-1"><div id="nameError" role="status" aria-live="polite"></div></div>
         <div id="mainButtons">
             <div class="section-title">Kontrol Yönteminizi Seçin</div>
             <button id="pcSelectBtn" class="btn btn-blue">💻 PC KONTROLÜ</button><br>
@@ -3408,8 +3408,6 @@ function stepCar(c,dt){
             if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
             ws = new WebSocket(wsUrl);
             ws.addEventListener('open', () => {
-                sendSocketMessage('profile', { name: getPlayerName(), platform: controlMode });
-                sendSocketMessage('presence', { active: gameStarted, name: getPlayerName(), platform: controlMode });
                 if (pingInterval) clearInterval(pingInterval);
                 pingInterval = setInterval(() => {
                     if (ws && ws.readyState === WebSocket.OPEN) sendSocketMessage('ping', { timestamp: performance.now() });
@@ -3420,8 +3418,6 @@ function stepCar(c,dt){
                     const data = JSON.parse(event.data);
                     if (data.type === 'init') {
                         myId = data.id;
-                        sendSocketMessage('profile', { name: getPlayerName(), platform: controlMode });
-                        sendSocketMessage('presence', { active: gameStarted, name: getPlayerName(), platform: controlMode });
                     } else if (data.type === 'pong') {
                         playerPingMs = Math.max(0, Math.round(performance.now() - Number(data.timestamp)));
                         sendSocketMessage('ping_result', { pingMs: playerPingMs });
@@ -3561,17 +3557,17 @@ function stepCar(c,dt){
             renderer.setSize(window.innerWidth, window.innerHeight, false);
         }
         applyRenderScale();
-        try { nameInputEl.value = localStorage.getItem('esekGamePlayerName') || 'Player'; } catch (e) { nameInputEl.value = 'Player'; }
-        function getPlayerName() {
-            const normalized = (nameInputEl.value || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 20);
-            return normalized || 'Player';
+        let currentPlayerName = 'Guest-000';
+        function getStoredAuth() {
+            try { return JSON.parse(localStorage.getItem('esekAuth') || 'null'); } catch (e) { return null; }
         }
+        function getPlayerName() { return currentPlayerName || 'Guest-000'; }
+        function getAuthToken() { const a = getStoredAuth(); return a && typeof a.token === 'string' ? a.token : ''; }
         function sendSocketMessage(type, payload = {}) {
             if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type, ...payload }));
         }
         function sendPresence(active) {
-            sendSocketMessage('profile', { name: getPlayerName(), platform: controlMode });
-            sendSocketMessage('presence', { active: !!active, name: getPlayerName(), platform: controlMode });
+            sendSocketMessage('presence', { active: !!active, platform: controlMode });
         }
         function appendChatSystem(text) {
             const row = document.createElement('div'); row.className = 'chat-system'; row.textContent = text;
@@ -3621,11 +3617,6 @@ function stepCar(c,dt){
         let chatUserHidden = false;
         function hideChat() { chatUserHidden = true; chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = gameStarted ? 'block' : 'none'; }
         function showChat() { chatUserHidden = false; chatPanelEl.style.display = 'flex'; chatReopenBtn.style.display = 'none'; }
-        nameInputEl.addEventListener('input', () => {
-            try { localStorage.setItem('esekGamePlayerName', getPlayerName()); } catch (e) {}
-            setDonkeyNameTag(playerDonkey, getPlayerName());
-            sendSocketMessage('profile', { name: getPlayerName(), platform: controlMode });
-        });
         chatFormEl.addEventListener('submit', (event) => {
             event.preventDefault();
             const text = chatInputEl.value.trim();
@@ -4563,11 +4554,6 @@ function stepCar(c,dt){
             nameErrorEl.style.display = message ? 'block' : 'none';
             nameErrorEl.style.color = isGood ? '#9de3a9' : '#ff8585';
         }
-        nameInputEl.addEventListener('input', () => {
-            setNameError('');
-            try { localStorage.setItem('esekGamePlayerName', getPlayerName()); } catch(e) {}
-            if (!gameStarted) sendSocketMessage('profile',{name:getPlayerName(),platform:controlMode});
-        });
         function setGameUiVisible(visible) {
             survivalHudEl.style.display = visible ? 'block' : 'none';
             mobChatBtnEl.style.display = visible && controlMode === 'mobile' ? 'flex' : 'none';
@@ -4600,13 +4586,12 @@ function stepCar(c,dt){
         function sendPendingJoin() {
             if (!joinPending || joinPending.sent || !ws || ws.readyState !== WebSocket.OPEN) return;
             joinPending.sent = true;
-            sendSocketMessage('join_request',{name:getPlayerName(),platform:joinPending.mode});
+            sendSocketMessage('join_request',{token:getAuthToken(),platform:joinPending.mode});
         }
         function beginJoin(mode,isResume=false) {
             setNameError('Sunucuya bağlanılıyor…',true);
             joinPending={mode,isResume,oldX:playerDonkey.position.x,oldY:playerDonkey.position.y,oldZ:playerDonkey.position.z,sent:false};
             controlMode=mode;
-            try { localStorage.setItem('esekGamePlayerName',getPlayerName()); } catch(e) {}
             initWebSocket(); attachExtendedSocket();
             if (ws && ws.readyState === WebSocket.OPEN) sendPendingJoin();
             else if (ws) ws.addEventListener('open',sendPendingJoin,{once:true});
@@ -4645,7 +4630,6 @@ function stepCar(c,dt){
             while(chatMessagesEl.children.length>100)chatMessagesEl.removeChild(chatMessagesEl.firstChild);
             chatMessagesEl.scrollTop=chatMessagesEl.scrollHeight;
         };
-        nameInputEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();beginJoin('pc',false);}});
 
         function appendExtendedSystem(text) {
             const row=document.createElement('div');row.className='chat-system';row.textContent=String(text||'');
@@ -4674,7 +4658,7 @@ function stepCar(c,dt){
         function onExtendedMessage(event) {
             let data;try{data=JSON.parse(event.data);}catch(e){return;}
             if(data.type==='join_accepted'){
-                const pending=joinPending||{mode:controlMode,isResume:false};joinPending=null;setNameError('');applyNeeds(data.state||{});
+                const pending=joinPending||{mode:controlMode,isResume:false};joinPending=null;currentPlayerName=String((data.state&&data.state.name)||'Guest-000');setNameError('');applyNeeds(data.state||{});
                 if(pending.isResume)completeResume(pending.mode);else startGameOriginal(pending.mode);
                 setGameUiVisible(true);sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
                 sendSocketMessage('apple_state_request',{trees:orchardTrees.map(t=>({id:t.id,x:t.x,z:t.z}))});
