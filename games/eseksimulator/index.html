@@ -38,6 +38,8 @@
         }
         #menu.pause-mode h1, #menu.pause-mode h2, #menu.pause-mode #nameCard, #menu.pause-mode #mainButtons { display: none !important; }
         #menu.pause-mode #pauseButtons { display: flex !important; width: auto; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+        #menu.pre-game-pause #pauseSettingsBtn { display: none !important; }
+        #menu.pre-game-pause #returnMenuBtn { display: block !important; }
         /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ ===== */
         h1 { color: #ffd700; font-size: 64px; margin: 0; text-shadow: 3px 3px 6px #000; }
         h2 { color: #ffffff; font-size: 24px; margin: 10px 0 20px 0; font-weight: 300; }
@@ -3723,7 +3725,7 @@ function stepCar(c,dt){
             document.getElementById('onlineBadge').style.display = 'none';
             chatPanelEl.style.display = 'none';
             chatReopenBtn.style.display = 'none';
-            openPauseMenu();
+            openPauseMenu(false);
             infoEl.style.display = 'none';
             mobileControlsEl.style.display = 'none';
             hudEl.style.display = 'none';
@@ -3752,19 +3754,38 @@ function stepCar(c,dt){
         });
 
         // ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BAŞLANGIÇ =====
-        function openPauseMenu() {
+        // ===== MENÜ PAUSE / OYUN PAUSE =====
+        // preGame=true: Ana menüde ESC -> sadece Devam Et + Oyundan Çık.
+        // preGame=false: Oyun içindeyken ESC -> Devam Et + Ayarlar + Menüye Dön.
+        function openPauseMenu(preGame = false) {
             menuEl.classList.add('pause-mode');
+            menuEl.classList.toggle('pre-game-pause', !!preGame);
             menuEl.style.display = 'flex';
             nameCardEl.style.display = 'none';
             mainButtons.style.display = 'none';
             pauseButtons.style.display = 'flex';
+            pauseSettingsBtn.style.display = preGame ? 'none' : '';
+            returnMenuBtn.textContent = preGame ? 'OYUNDAN ÇIK' : 'MENÜYE DÖN';
         }
         function openMainMenu() {
-            menuEl.classList.remove('pause-mode');
+            menuEl.classList.remove('pause-mode', 'pre-game-pause');
             menuEl.style.display = 'flex';
             nameCardEl.style.display = 'block';
             mainButtons.style.display = 'block';
             pauseButtons.style.display = 'none';
+            pauseSettingsBtn.style.display = '';
+            returnMenuBtn.textContent = 'MENÜYE DÖN';
+        }
+
+        function goToEsekGames() {
+            // EsekGames serverın kök adresinde çalışıyor.
+            try {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    sendPresence(false);
+                    ws.close();
+                }
+            } catch (_) {}
+            window.location.assign('/');
         }
         // ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ =====
 
@@ -3938,20 +3959,41 @@ function stepCar(c,dt){
         pcSelectBtn.addEventListener('click', () => startGame('pc'));
         mobileSelectBtn.addEventListener('click', () => startGame('mobile'));
 
-        returnMenuBtn.addEventListener('click', () => {
+        returnMenuBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (menuEl.classList.contains('pre-game-pause')) {
+                // Ana menüdeki ESC menüsünden çıkış: doğrudan EsekGames.
+                goToEsekGames();
+                return;
+            }
+            // Oyun içindeki ESC menüsünden çıkış: Simulator ana menüsü.
             gameStarted = false;
             releaseFirstPersonPointerLock();
             sendPresence(false);
-            try { if (ws && ws.readyState === WebSocket.OPEN) ws.close(); } catch (e) {}
-            window.location.href = '/';
+            playerDonkey.visible = false;
+            hudEl.style.display = 'none';
+            infoEl.style.display = 'none';
+            mobileControlsEl.style.display = 'none';
+            crosshairEl.style.display = 'none';
+            chatPanelEl.style.display = 'none';
+            chatReopenBtn.style.display = 'none';
+            openMainMenu();
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && gameStarted) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
                 if (settingsPanel.style.display === 'block') { closeSettingsPanel(); return; }
                 if (playerListPanel.style.display === 'block') { togglePlayerList(false); return; }
-                e.preventDefault();
-                pauseFromGameplay();
+
+                if (gameStarted) {
+                    pauseFromGameplay();
+                } else if (menuEl.style.display !== 'none' && !deathScreenShowing) {
+                    // Simulator ana menüsündeyken ESC.
+                    openPauseMenu(true);
+                }
                 return;
             }
             if (!gameStarted) return;
@@ -4689,6 +4731,11 @@ function stepCar(c,dt){
         resumeBtn.addEventListener('click',e=>{
             e.preventDefault();
             e.stopImmediatePropagation();
+            if (menuEl.classList.contains('pre-game-pause')) {
+                // Ana menüdeki ESC -> Devam Et, oyunu başlatmaz.
+                openMainMenu();
+                return;
+            }
             gameStarted = true;
             menuEl.classList.remove('pause-mode');
             menuEl.style.display = 'none';
