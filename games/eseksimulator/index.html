@@ -4977,7 +4977,6 @@ function stepCar(c,dt){
         });
     </script>
 
-<!-- ESC-PAUSE-FIX-2026-09-29 -->
 <!-- ===== SON OYUN DÜZELTMELERİ: PAUSE / SU / ÇARPIŞMA / ELMA / HAVUÇ / CAN ===== -->
 <script>
 (function(){
@@ -4996,6 +4995,9 @@ function stepCar(c,dt){
     const settingsPanel2=document.getElementById('settingsPanel');
     const closeSettings2=document.getElementById('closeSettings');
     const mobilePauseBtn2=document.getElementById('mobPauseBtn');
+    // Tek ESC yöneticisi: pause açıkken ikinci ESC ana menüye geçemez.
+    let pauseOpen2 = false;
+    let pausePreGame2 = false;
 
     if(menuEl2){
         menuEl2.style.zIndex='9999';
@@ -5009,6 +5011,8 @@ function stepCar(c,dt){
 
     function pauseOverlay(preGame){
         if(!menuEl2) return;
+        pauseOpen2 = true;
+        pausePreGame2 = !!preGame;
         menuEl2.classList.add('pause-mode');
         menuEl2.classList.toggle('pre-game-pause',!!preGame);
         menuEl2.style.display='flex';
@@ -5018,16 +5022,16 @@ function stepCar(c,dt){
         if(mainButtons) mainButtons.style.display='none';
         if(pauseButtons2) pauseButtons2.style.display='flex';
         if(pauseSettingsBtn2) pauseSettingsBtn2.style.display=preGame?'none':'block';
-        // Ana menü ESC'sinde yalnızca Devam Et + Oyundan Çık.
-        // Oyun içi ESC'sinde yalnızca Devam Et + Ayarlar + Menüye Dön.
         if(returnGameMenuBtn2) returnGameMenuBtn2.style.display=preGame?'none':'block';
         if(returnMenuBtn2){
-            returnMenuBtn2.style.display=preGame?'block':'none';
-            returnMenuBtn2.textContent='OYUNDAN ÇIK';
+            returnMenuBtn2.style.display='block';
+            returnMenuBtn2.textContent=preGame?'OYUNDAN ÇIK':'OYUNDAN ÇIK';
         }
     }
     function resumeFromPause2(){
-        const pre=menuEl2 && menuEl2.classList.contains('pre-game-pause');
+        const pre=pausePreGame2 || (menuEl2 && menuEl2.classList.contains('pre-game-pause'));
+        pauseOpen2 = false;
+        pausePreGame2 = false;
         if(pre){
             if(typeof openMainMenu==='function') openMainMenu();
             else {
@@ -5073,9 +5077,9 @@ function stepCar(c,dt){
             return;
         }
 
-        // Pause menüsü zaten açıksa ikinci ESC ana menüye GEÇMEZ;
-        // sadece pause'u kapatıp aynı oyun oturumuna geri döner.
-        if(menuEl2 && menuEl2.classList.contains('pause-mode')){
+        // PAUSE MENÜSÜ AÇIKSA ikinci ESC sadece oyuna geri döner.
+        // Kesinlikle ana menünün ESC ekranını açmaz.
+        if(pauseOpen2){
             resumeFromPause2();
             return;
         }
@@ -5141,6 +5145,8 @@ function stepCar(c,dt){
         returnGameMenuBtn2.addEventListener('click',function(e){
             e.preventDefault(); e.stopImmediatePropagation();
             gameStarted=false;
+            pauseOpen2=false;
+            pausePreGame2=false;
             if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
             if(typeof sendPresence==='function') sendPresence(false);
             if(typeof openMainMenu==='function') openMainMenu();
@@ -5152,6 +5158,8 @@ function stepCar(c,dt){
         returnMenuBtn2.addEventListener('click',function(e){
             e.preventDefault(); e.stopImmediatePropagation();
             gameStarted=false;
+            pauseOpen2=false;
+            pausePreGame2=false;
             if(typeof releaseFirstPersonPointerLock==='function') releaseFirstPersonPointerLock();
             try{ if(typeof sendPresence==='function') sendPresence(false); }catch(_){ }
             try{ if(typeof ws!=='undefined' && ws && ws.readyState===WebSocket.OPEN) ws.close(); }catch(_){ }
