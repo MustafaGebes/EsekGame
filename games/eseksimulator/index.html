@@ -37,6 +37,8 @@
         }
         #menu.pause-mode h1, #menu.pause-mode > h2, #menu.pause-mode #nameCard, #menu.pause-mode #mainButtons { display: none !important; }
         #menu.pause-mode #pauseButtons { display: flex !important; width: auto; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+        #menu { pointer-events: auto !important; }
+        #menu.pause-mode { pointer-events: auto !important; }
         /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ ===== */
         h1 { color: #ffd700; font-size: 64px; margin: 0; text-shadow: 3px 3px 6px #000; }
         h2 { color: #ffffff; font-size: 24px; margin: 10px 0 20px 0; font-weight: 300; }
@@ -65,6 +67,7 @@
         .mob-btn { width:56px; height:56px; border:2px solid #fff; border-radius:50%; background:rgba(0,0,0,.62); color:#fff; font-size:12px; font-weight:800; cursor:pointer; display:flex; justify-content:center; align-items:center; box-shadow:0 4px 10px rgba(0,0,0,.5); touch-action:none; }
         .mob-btn:active { background:rgba(255,255,255,.42); transform:scale(.96); }
         #mobAttackBtn { background:rgba(175,42,32,.82); border-color:#ff8f76; }
+        #mobFireBtn { background:rgba(45,95,175,.9); border-color:#86b7ff; }
         #mobMenuBtn, #mobViewBtn, #mobPlayersBtn { touch-action:none; }
         #survivalHud { position:fixed; left:18px; bottom:48px; z-index:16; display:none; width:min(285px,43vw); padding:9px 11px; border:1px solid #ffffff35; border-radius:11px; background:rgba(10,16,20,.76); box-shadow:0 4px 15px #0006; pointer-events:none; }
         .need-row { display:grid; grid-template-columns:72px 1fr 34px; gap:7px; align-items:center; margin:4px 0; color:#fff; font:700 12px Arial,sans-serif; }
@@ -176,7 +179,7 @@
             position: fixed;
             top: 18px;
             left: 18px;
-            z-index: 60;
+            z-index: 99999;
             width: 44px;
             height: 44px;
             display: none;
@@ -189,10 +192,11 @@
             border-radius: 10px;
             background: rgba(15,20,27,.85);
             cursor: pointer;
-            pointer-events: auto;
+            pointer-events: auto !important;
             touch-action: manipulation;
             box-shadow: 0 4px 14px rgba(0,0,0,.5);
             transition: transform .12s ease, background .12s ease;
+            -webkit-tap-highlight-color: transparent;
         }
         #topLeftMenuBtn:active { transform: scale(.94); background: rgba(40,50,62,.95); }
         #topLeftMenuBtn span {
@@ -234,7 +238,7 @@
         </div>
     </div>
 
-    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık: Saldır / Sürükle: Bak | E: Ye/İç | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
+    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık: Saldır / Sürükle: Bak | F: Ateş | E: Ye/İç | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
 
     <div id="hud">
         <div><span class="label">Saat:</span> <span id="hudTime">00:00</span></div>
@@ -300,6 +304,7 @@
             <button class="mob-btn" id="mobCrouchBtn">Eğil</button>
             <button class="mob-btn" id="mobJumpBtn">Zıpla</button>
             <button class="mob-btn" id="mobAttackBtn">VUR</button>
+            <button class="mob-btn mob-btn-fire" id="mobFireBtn">ATEŞ</button>
         </div>
     </div>
 
@@ -5154,21 +5159,28 @@ function stepCar(c,dt){
     }
 
     if (topLeftMenuBtn2) {
-        topLeftMenuBtn2.addEventListener('pointerup', (e) => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            // Pause açıksa butonun görevi "Devam Et" gibi davranır.
-            // Özellikle oyun içi pause'da ana menü pause'ına geçmez.
-            if (pauseState2 !== 0) {
-                resumeFromPause2();
-                return;
+        let lastMenuTapAt = 0;
+        function handleMenuBtnTap(e) {
+            const now = performance.now();
+            if (now - lastMenuTapAt < 260) return;
+            lastMenuTapAt = now;
+            if (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
             }
             if (typeof gameStarted !== 'undefined' && gameStarted && !playerIsDead) {
+                if (pauseState2 !== 0) return;
                 openGamePause2();
             } else if (!(typeof playerIsDead !== 'undefined' && playerIsDead)) {
+                if (pauseState2 !== 0) {
+                    resumeFromPause2();
+                    return;
+                }
                 openMainMenuPause2();
             }
-        }, true);
+        }
+        topLeftMenuBtn2.addEventListener('click', handleMenuBtnTap, true);
+        topLeftMenuBtn2.addEventListener('touchend', handleMenuBtnTap, { capture: true, passive: false });
     }
 
     // TEK ESC dinleyicisi. Eski ESC listener'ları bu dosyada kaldırıldı.
@@ -5242,41 +5254,178 @@ function stepCar(c,dt){
     syncTopLeftMenuButton();
 
     // ------------------------------------------------------------
-    // 2) AKARSU: yatağı gerçekten aşağı al, suyu üstte görünür yap.
+    // 2) AKARSULAR: derin yatak + %50 su doluluğu
     // ------------------------------------------------------------
-    if(typeof riverPaths!=='undefined' && typeof terrainGeo!=='undefined' && typeof distanceToRiver==='function'){
-        const oldTerrain=terrainHeightAt;
-        function riverBedHeight(x,z){
-            let d=Infinity, half=0;
-            for(const r of riverPaths){
-                const rd=riverDistance(x,z,r);
-                if(rd<d){ d=rd; half=r.width/2; }
-            }
-            if(d < half + 1.8){
-                const edge=Math.max(0,Math.min(1,(half+1.8-d)/1.8));
-                return oldTerrain(x,z) - (0.65 + edge*0.9);
-            }
-            return oldTerrain(x,z);
+    (function setupRivers(){
+        if (typeof THREE === 'undefined' || typeof terrainGeo === 'undefined' || typeof terrainHeightAt !== 'function') return;
+
+        const baseTerrainAt = terrainHeightAt;
+        const RIVER_DEPTH = 4.5;
+        const RIVER_FILL = 0.50;
+        const RIVER_BANK = 3.5;
+
+        // Dosyada daha önce riverPaths yoksa iki gerçek akarsu güzergâhı oluştur.
+        if (typeof riverPaths === 'undefined' || !Array.isArray(riverPaths) || riverPaths.length === 0) {
+            window.riverPaths = [
+                {
+                    width: 18,
+                    points: [
+                        {x: -305, z: 285}, {x: -210, z: 225}, {x: -100, z: 155},
+                        {x: 15, z: 95}, {x: 125, z: 12}, {x: 235, z: -92}, {x: 335, z: -180}
+                    ]
+                },
+                {
+                    width: 15,
+                    points: [
+                        {x: 385, z: 275}, {x: 315, z: 205}, {x: 250, z: 120},
+                        {x: 205, z: 32}, {x: 150, z: -65}, {x: 72, z: -155}, {x: -25, z: -240}, {x: -125, z: -305}
+                    ]
+                }
+            ];
         }
-        terrainHeightAt=riverBedHeight;
+        const riverList = window.riverPaths;
+
+        function pointDistanceToSegment(x,z,a,b){
+            const vx=b.x-a.x, vz=b.z-a.z;
+            const wx=x-a.x, wz=z-a.z;
+            const denom=vx*vx+vz*vz || 1;
+            const t=Math.max(0,Math.min(1,(wx*vx+wz*vz)/denom));
+            const px=a.x+vx*t, pz=a.z+vz*t;
+            return Math.hypot(x-px,z-pz);
+        }
+
+        function nearestRiverInfo(x,z){
+            let best={distance:Infinity,river:null};
+            for(const r of riverList){
+                const pts=r.points||r.path||r.centerline||[];
+                for(let i=0;i<pts.length-1;i++){
+                    const d=pointDistanceToSegment(x,z,pts[i],pts[i+1]);
+                    if(d<best.distance) best={distance:d,river:r};
+                }
+            }
+            return best;
+        }
+
+        window.riverDistance = function(x,z,r){
+            const pts=r && (r.points||r.path||r.centerline)||[];
+            let d=Infinity;
+            for(let i=0;i<pts.length-1;i++) d=Math.min(d,pointDistanceToSegment(x,z,pts[i],pts[i+1]));
+            return d;
+        };
+        const oldRiverDistance = window.riverDistance;
+
+        function riverProfile(distance, width){
+            const half=Math.max(1,width*.5);
+            if(distance>=half+RIVER_BANK) return 0;
+            const t=Math.max(0,Math.min(1,(half+RIVER_BANK-distance)/RIVER_BANK));
+            return Math.pow(t,0.9);
+        }
+
+        function riverBedY(x,z){
+            const info=nearestRiverInfo(x,z);
+            if(!info.river || info.distance>=info.river.width*.5+RIVER_BANK) return baseTerrainAt(x,z);
+            const p=riverProfile(info.distance,info.river.width);
+            return baseTerrainAt(x,z)-RIVER_DEPTH*p;
+        }
+
+        function riverSurfaceY(x,z,r){
+            const bed=riverBedY(x,z);
+            const p=riverProfile(oldRiverDistance(x,z,r),r.width);
+            return bed + RIVER_DEPTH*RIVER_FILL*p;
+        }
+
+        // terrainHeightAt bundan sonra nehir yatağını da dikkate alır.
+        window.riverTerrainHeight = riverBedY;
+        terrainHeightAt = riverBedY;
+
+        // Arazi vertekslerini gerçek yatağa indir.
         const tp=terrainGeo.attributes.position;
         for(let i=0;i<tp.count;i++){
-            const x=tp.getX(i),z=tp.getZ(i),d=distanceToRiver(x,z);
-            let half=0;
-            for(const r of riverPaths){ if(riverDistance(x,z,r)<=d) half=r.width/2; }
-            if(d<half+1.8) tp.setY(i,riverBedHeight(x,z));
+            const x=tp.getX(i), z=tp.getZ(i);
+            tp.setY(i,riverBedY(x,z));
         }
-        tp.needsUpdate=true; terrainGeo.computeVertexNormals();
-        // Su şeridinin her verteksi artık yeni yatağın hemen üzerinde.
-        for(const r of riverPaths){
-            const pos=r.mesh.geometry.attributes.position;
-            for(let i=0;i<pos.count;i++){
-                const x=pos.getX(i),z=pos.getZ(i);
-                pos.setY(i,riverBedHeight(x,z)+0.10);
+        tp.needsUpdate=true;
+        terrainGeo.computeVertexNormals();
+
+        // Su + koyu yatak şeridi üret.
+        if (window.__esekRiverMeshes) {
+            for (const m of window.__esekRiverMeshes) scene.remove(m);
+        }
+        window.__esekRiverMeshes=[];
+
+        function buildRiverMesh(r, index){
+            const pts=r.points||r.path||r.centerline||[];
+            if(pts.length<2) return null;
+            const half=Math.max(3,r.width*.5);
+            const cross=[-0.92,-0.46,0,0.46,0.92];
+            const positions=[],indices=[];
+            const bedPositions=[];
+            for(let i=0;i<pts.length;i++){
+                const p=pts[i];
+                const prev=pts[Math.max(0,i-1)], next=pts[Math.min(pts.length-1,i+1)];
+                const tx=next.x-prev.x,tz=next.z-prev.z;
+                const len=Math.hypot(tx,tz)||1;
+                const nx=-tz/len,nz=tx/len;
+                for(const f of cross){
+                    const px=p.x+nx*half*f, pz=p.z+nz*half*f;
+                    const y=riverSurfaceY(px,pz,r);
+                    positions.push(px,y,pz);
+                    bedPositions.push(px,riverBedY(px,pz)-0.015,pz);
+                }
             }
-            pos.needsUpdate=true; r.mesh.geometry.computeVertexNormals();
+            const stride=cross.length;
+            for(let i=0;i<pts.length-1;i++){
+                for(let j=0;j<stride-1;j++){
+                    const a=i*stride+j,b=a+1,c=(i+1)*stride+j+1,d=(i+1)*stride+j;
+                    indices.push(a,b,d,b,c,d);
+                }
+            }
+            const geo=new THREE.BufferGeometry();
+            geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+            geo.setIndex(indices);
+            geo.computeVertexNormals();
+            const waterMat=new THREE.MeshPhongMaterial({color:0x2a5f7a,transparent:true,opacity:.88,shininess:95,side:THREE.DoubleSide,depthWrite:false});
+            const water=new THREE.Mesh(geo,waterMat);
+            water.renderOrder=5;
+            water.userData.basePositions=positions.slice();
+            water.userData.river=r;
+
+            const bedGeo=new THREE.BufferGeometry();
+            bedGeo.setAttribute('position',new THREE.Float32BufferAttribute(bedPositions,3));
+            bedGeo.setIndex(indices.slice());
+            bedGeo.computeVertexNormals();
+            const bedMat=new THREE.MeshLambertMaterial({color:0x39463f,side:THREE.DoubleSide});
+            const bed=new THREE.Mesh(bedGeo,bedMat);
+            bed.renderOrder=4;
+
+            scene.add(bed);
+            scene.add(water);
+            window.__esekRiverMeshes.push(water,bed);
+            r.mesh=water; r.bedMesh=bed; r.__cross=cross; r.__half=half; r.__index=index;
+            return water;
         }
-    }
+
+        riverList.forEach(buildRiverMesh);
+        window.__esekRiverPaths=riverList;
+        window.__esekBaseTerrainAt=baseTerrainAt;
+        window.__esekRiverDepth=RIVER_DEPTH;
+        window.__esekRiverFill=RIVER_FILL;
+
+        // Su dalgası; yüzey yatağın yaklaşık yarı doluluk seviyesinde kalır.
+        window.__updateEsekRivers = function(now){
+            for(const r of riverList){
+                const mesh=r.mesh;
+                if(!mesh || !mesh.geometry || !mesh.userData.basePositions) continue;
+                const pos=mesh.geometry.attributes.position, base=mesh.userData.basePositions;
+                for(let i=0;i<pos.count;i++){
+                    const x=base[i*3], baseY=base[i*3+1], z=base[i*3+2];
+                    const wave=Math.sin(x*.085+now*.0017)+Math.cos(z*.071-now*.00125);
+                    pos.setY(i,baseY+wave*.045);
+                }
+                pos.needsUpdate=true;
+            }
+        };
+    })();
 
     // ------------------------------------------------------------
     // 3) Şehir parkı çimleri gerçek zemin collider olsun.
@@ -5332,6 +5481,438 @@ function stepCar(c,dt){
     // ------------------------------------------------------------
     try{ window.__sameSpeedPCMobile=true; }catch(_){ }
 
+})();
+</script>
+
+<script>
+/* ============================================================
+   8) KAMP + DÜŞMAN NPC + SİLAH + MERMİ SİSTEMİ
+   ============================================================ */
+(function(){
+    'use strict';
+    if(typeof scene==='undefined' || typeof THREE==='undefined') return;
+    if(typeof terrainHeightAt!=='function' || typeof playerDonkey==='undefined') return;
+
+    const campRand = (typeof mulberry32==='function') ? mulberry32(0xCA4F2026) : (function(){let s=0xCA4F2026;return()=>((s=(s*1664525+1013904223)>>>0)/4294967296);})();
+    const camps=[];
+    const campEnemies=[];
+    const campColliders=[];
+    const activeBullets=[];
+
+    const FIRE_LIGHT_COLOR=0xff8a32;
+    const enemyBulletMat=new THREE.MeshBasicMaterial({color:0xffd34d});
+    const playerBulletMat=new THREE.MeshBasicMaterial({color:0x7fd4ff});
+    const bulletGeo=new THREE.SphereGeometry(.055,6,5);
+
+    function getForestTrees(){ return (typeof forestTrees!=='undefined' && Array.isArray(forestTrees)) ? forestTrees : []; }
+
+    // ----------------------------------------------------------
+    // 4 KAMP YERİ: orman yoğunluğu içinde, şehir/çiftlik/dağ/yol dışı.
+    // ----------------------------------------------------------
+    const forbidden = { farm:190, city:285, road:30, pond:58 };
+    function nearMountain(x,z,pad){
+        if(typeof mountains==='undefined') return false;
+        for(const m of mountains){ if(Math.hypot(x-m.x,z-m.z)<m.radius+pad) return true; }
+        return false;
+    }
+    function nearSpecial(x,z){
+        if(typeof forestNearCave==='function' && forestNearCave(x,z)) return true;
+        if(typeof FOREST_POND_CENTER!=='undefined' && Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<forbidden.pond) return true;
+        if(typeof distanceToRoadAxis==='function' && distanceToRoadAxis(x,z)<forbidden.road) return true;
+        if(typeof BEACH_PARKING_CENTER!=='undefined' && Math.abs(x-BEACH_PARKING_CENTER.x)<150 && z<-360) return true;
+        return false;
+    }
+    function forestScore(x,z){
+        let count=0, nearest=Infinity;
+        for(const t of getForestTrees()){
+            const d=Math.hypot(x-t.x,z-t.z);
+            if(d<62) count++;
+            if(d<nearest) nearest=d;
+            if(count>34 && nearest<7) break;
+        }
+        return {count,nearest};
+    }
+    function validCamp(x,z){
+        if(Math.hypot(x-FARM_CX,z-FARM_CZ)<forbidden.farm) return false;
+        if(typeof CITY_CENTER_X!=='undefined' && Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<forbidden.city) return false;
+        if(nearMountain(x,z,20) || nearSpecial(x,z)) return false;
+        const fs=forestScore(x,z);
+        if(fs.count<8 || fs.nearest<18) return false;
+        for(const c of camps) if(Math.hypot(x-c.x,z-c.z)<90) return false;
+        return true;
+    }
+
+    // Hedeflenen dört bölge; uygun nokta bulunamazsa aday havuzu otomatik taranır.
+    const campSeeds=[
+        {x:292,z:-18},
+        {x:268,z:188},
+        {x:34,z:286},
+        {x:-224,z:176}
+    ];
+    const campNames=['Kuzeydoğu Orman Kampı','Doğu Orman Kampı','Kuzey Kampı','Kuzeybatı Orman Kampı'];
+
+    function findCampPoint(seed){
+        for(let i=0;i<240;i++){
+            const a=campRand()*Math.PI*2;
+            const r=i<40 ? 4+i*.7 : 12+campRand()*40;
+            const x=seed.x+Math.cos(a)*r,z=seed.z+Math.sin(a)*r;
+            if(validCamp(x,z)) return {x,z};
+        }
+        for(let i=0;i<12000;i++){
+            const a=campRand()*Math.PI*2;
+            const r=210+campRand()*120;
+            const x=Math.cos(a)*r,z=Math.sin(a)*r;
+            if(validCamp(x,z)) return {x,z};
+        }
+        return {x:seed.x,z:seed.z};
+    }
+
+    function lambert(color){ return new THREE.MeshLambertMaterial({color}); }
+    const stoneMat=lambert(0x666765), woodMat=lambert(0x57391f), tentMat=lambert(0x8d5d40), tentDark=lambert(0x3a2417);
+
+    function createCampfire(){
+        const g=new THREE.Group();
+        for(let i=0;i<10;i++){
+            const a=(i/10)*Math.PI*2;
+            const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.28,0),stoneMat);
+            s.position.set(Math.cos(a)*.9,.14,Math.sin(a)*.9);
+            s.rotation.set(campRand()*1.5,campRand()*3,campRand()*1.5);
+            g.add(s);
+        }
+        for(let i=0;i<4;i++){
+            const log=new THREE.Mesh(new THREE.CylinderGeometry(.11,.13,1.55,7),woodMat);
+            log.position.y=.26; log.rotation.set(0,(i%2?1:-1)*Math.PI/4,(i%2?1:-1)*Math.PI/2);
+            g.add(log);
+        }
+        const fireMat=new THREE.MeshBasicMaterial({color:0xff6a18,transparent:true,opacity:.94});
+        const fire=new THREE.Mesh(new THREE.ConeGeometry(.48,1.25,8),fireMat);
+        fire.position.y=.84; g.add(fire);
+        const innerMat=new THREE.MeshBasicMaterial({color:0xffcf42,transparent:true,opacity:.9});
+        const inner=new THREE.Mesh(new THREE.ConeGeometry(.25,.72,7),innerMat);
+        inner.position.y=.73; g.add(inner);
+        const light=new THREE.PointLight(FIRE_LIGHT_COLOR,2.2,12,2); light.position.y=1.15; g.add(light);
+        const smokeMat=new THREE.MeshBasicMaterial({color:0xb8bec3,transparent:true,opacity:.24,depthWrite:false});
+        const smoke=[];
+        for(let i=0;i<4;i++){
+            const s=new THREE.Mesh(new THREE.SphereGeometry(.35+i*.12,7,6),smokeMat);
+            s.position.set((campRand()-.5)*.25,1.65+i*.8,(campRand()-.5)*.25);
+            g.add(s); smoke.push(s);
+        }
+        g.userData={fire,inner,light,smoke,phase:campRand()*6.28};
+        return g;
+    }
+
+    function createTent(){
+        const g=new THREE.Group();
+        const base=new THREE.Mesh(new THREE.BoxGeometry(2.5,.12,3.3),tentDark);
+        base.position.y=.06; g.add(base);
+        const shape=new THREE.Shape();
+        shape.moveTo(-1.2,0); shape.lineTo(1.2,0); shape.lineTo(0,1.55); shape.closePath();
+        const geo=new THREE.ExtrudeGeometry(shape,{depth:3.2,bevelEnabled:false});
+        geo.translate(0,0,-1.6);
+        const tent=new THREE.Mesh(geo,tentMat); tent.position.y=.12; g.add(tent);
+        const door=new THREE.Mesh(new THREE.PlaneGeometry(.9,1.1),new THREE.MeshBasicMaterial({color:0x1b100a,side:THREE.DoubleSide}));
+        door.position.set(0,.67,1.61); door.rotation.y=Math.PI; g.add(door);
+        return g;
+    }
+
+    function createHuman(opts){
+        const o=Object.assign({skin:0xc98b63,shirt:0x4c5d47,pants:0x303b47,hair:0x251811,helmet:false},opts||{});
+        const g=new THREE.Group();
+        const skin=lambert(o.skin), shirt=lambert(o.shirt), pants=lambert(o.pants), hair=lambert(o.hair), boots=lambert(0x191512), gunMat=lambert(0x1e2022), steel=lambert(0x8f969b);
+        const legs=[],arms=[];
+        for(const side of [-1,1]){
+            const leg=new THREE.Group(); leg.position.set(side*.19,.88,0);
+            const up=new THREE.Mesh(new THREE.BoxGeometry(.23,.52,.25),pants); up.position.y=-.25; leg.add(up);
+            const low=new THREE.Mesh(new THREE.BoxGeometry(.20,.48,.23),pants); low.position.y=-.73; leg.add(low);
+            const boot=new THREE.Mesh(new THREE.BoxGeometry(.24,.18,.35),boots); boot.position.set(0,-1.02,.06); leg.add(boot);
+            g.add(leg); legs.push(leg);
+        }
+        const torso=new THREE.Mesh(new THREE.BoxGeometry(.58,.78,.34),shirt); torso.position.y=1.52; g.add(torso);
+        const shoulder=new THREE.Mesh(new THREE.BoxGeometry(.72,.15,.34),shirt); shoulder.position.y=1.88; g.add(shoulder);
+        const pocket=new THREE.Mesh(new THREE.BoxGeometry(.17,.16,.025),pants); pocket.position.set(-.12,1.62,.18); g.add(pocket);
+        for(const side of [-1,1]){
+            const arm=new THREE.Group(); arm.position.set(side*.41,1.78,0);
+            const up=new THREE.Mesh(new THREE.BoxGeometry(.18,.44,.20),shirt); up.position.y=-.22; arm.add(up);
+            const fore=new THREE.Mesh(new THREE.BoxGeometry(.16,.42,.18),skin); fore.position.y=-.64; arm.add(fore);
+            const hand=new THREE.Mesh(new THREE.BoxGeometry(.16,.16,.18),skin); hand.position.y=-.9; arm.add(hand);
+            g.add(arm); arms.push(arm);
+        }
+        const neck=new THREE.Mesh(new THREE.BoxGeometry(.17,.12,.17),skin); neck.position.y=2.02; g.add(neck);
+        const head=new THREE.Mesh(new THREE.BoxGeometry(.44,.48,.43),skin); head.position.y=2.34; g.add(head);
+        const eyeMat=new THREE.MeshBasicMaterial({color:0x111111});
+        for(const side of [-1,1]){const e=new THREE.Mesh(new THREE.SphereGeometry(.045,6,5),eyeMat);e.position.set(side*.1,2.38,.225);g.add(e);}
+        const mouth=new THREE.Mesh(new THREE.BoxGeometry(.14,.02,.02),new THREE.MeshBasicMaterial({color:0x351812}));mouth.position.set(0,2.18,.225);g.add(mouth);
+        const hairTop=new THREE.Mesh(new THREE.BoxGeometry(.47,.14,.45),hair);hairTop.position.y=2.57;g.add(hairTop);
+        if(o.helmet){const h=new THREE.Mesh(new THREE.SphereGeometry(.29,10,8,0,Math.PI*2,0,Math.PI*.62),lambert(0x5b6f38));h.position.y=2.48;g.add(h);}
+
+        const gun=new THREE.Group();
+        const body=new THREE.Mesh(new THREE.BoxGeometry(.10,.13,.52),gunMat); body.position.z=.22; gun.add(body);
+        const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.028,.028,.42,8),steel); barrel.rotation.x=Math.PI/2; barrel.position.z=.66; gun.add(barrel);
+        const mag=new THREE.Mesh(new THREE.BoxGeometry(.065,.20,.10),gunMat); mag.position.set(0,-.13,.12); gun.add(mag);
+        const muzzle=new THREE.Object3D(); muzzle.position.z=.88; gun.add(muzzle);
+        gun.position.set(0,-.92,.18); arms[1].add(gun);
+
+        g.userData={legs,arms,head,gunMuzzle:muzzle,walkCycle:campRand()*8,alive:true,health:5};
+        return g;
+    }
+
+    function setupCamp(point,name,index){
+        const g=new THREE.Group();
+        g.position.set(point.x,terrainHeightAt(point.x,point.z),point.z);
+        const fire=createCampfire(); g.add(fire);
+        const tentOffsets=[
+            {x:4.5,z:3.2,r:-2.35},{x:-4.5,z:3.2,r:2.35},{x:4.5,z:-3.2,r:-.78},{x:-4.5,z:-3.2,r:.78}
+        ];
+        const tents=[];
+        for(const t of tentOffsets){const tent=createTent();tent.position.set(t.x,0,t.z);tent.rotation.y=t.r;g.add(tent);tents.push(tent);}
+        const logs=[];
+        for(let i=0;i<4;i++){
+            const a=i*Math.PI/2+Math.PI/4;
+            const log=new THREE.Mesh(new THREE.CylinderGeometry(.21,.21,1.7,8),woodMat);
+            log.rotation.z=Math.PI/2;log.rotation.y=a;log.position.set(Math.cos(a)*2.2,.24,Math.sin(a)*2.2);g.add(log);logs.push(log);
+        }
+        const enemies=[];
+        for(let i=0;i<3;i++){
+            const a=i*Math.PI*2/3+.4;
+            const ex=point.x+Math.cos(a)*(8+campRand()*4),ez=point.z+Math.sin(a)*(8+campRand()*4);
+            const enemy=createHuman({skin:[0xb87a5a,0xc98b63,0xa86f50][i],shirt:[0x4d5c41,0x5e4c3c,0x3e4e61][i],hair:[0x2a1d12,0x4a3520,0x191919][i],helmet:i===0});
+            enemy.position.set(ex,terrainHeightAt(ex,ez),ez);
+            enemy.rotation.y=campRand()*Math.PI*2;
+            scene.add(enemy); // NPC'leri kamp grubundan bağımsız world root'ta tut.
+            const state={mesh:enemy,homeX:ex,homeZ:ez,patrolAngle:a,state:'patrol',alertUntil:0,lastShot:0,shootCooldown:900+campRand()*700,seeRange:38,loseRange:52,health:5,dead:false};
+            enemies.push(state);campEnemies.push(state);
+        }
+        scene.add(g);
+        campColliders.push({x:point.x,z:point.z,r:5.7});
+        for(const t of tentOffsets) campColliders.push({x:point.x+t.x,z:point.z+t.z,r:1.5});
+        return {group:g,fire,tents,logs,enemies,x:point.x,z:point.z,name,index};
+    }
+
+    for(let i=0;i<campSeeds.length;i++){
+        const p=findCampPoint(campSeeds[i]);
+        camps.push(setupCamp(p,campNames[i],i));
+    }
+    console.log('[KAMP] Oluşturuldu:',camps.map(c=>`${c.name} (${c.x.toFixed(0)},${c.z.toFixed(0)})`).join(' | '));
+
+    // Kamp eşyaları için hafif collider.
+    if(typeof checkMountainCollision==='function'){
+        const previousCampCollision=checkMountainCollision;
+        checkMountainCollision=function(x,z,radius){
+            if(previousCampCollision(x,z,radius)) return true;
+            for(const c of campColliders){if(Math.hypot(x-c.x,z-c.z)<radius+c.r) return true;}
+            for(const e of campEnemies){if(!e.dead&&e.mesh.visible&&Math.hypot(x-e.mesh.position.x,z-e.mesh.position.z)<radius+.42)return true;}
+            return false;
+        };
+    }
+
+    // ----------------------------------------------------------
+    // OYUNCU SİLAHI: first-person görünüm + world-space yedek model.
+    // ----------------------------------------------------------
+    function createPlayerGun(){
+        const g=new THREE.Group();
+        const dark=lambert(0x1d2228), metal=lambert(0x7c8790), grip=lambert(0x3f2c20);
+        const body=new THREE.Mesh(new THREE.BoxGeometry(.16,.15,.72),dark); body.position.z=-.2; g.add(body);
+        const top=new THREE.Mesh(new THREE.BoxGeometry(.11,.10,.58),metal); top.position.set(0,.09,-.18); g.add(top);
+        const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.42,8),metal); barrel.rotation.x=Math.PI/2; barrel.position.z=.36; g.add(barrel);
+        const handle=new THREE.Mesh(new THREE.BoxGeometry(.13,.35,.16),grip); handle.rotation.x=-.2; handle.position.set(0,-.19,-.04); g.add(handle);
+        const muzzle=new THREE.Object3D();muzzle.position.set(0,.01,.60);g.add(muzzle);
+        g.userData.muzzle=muzzle;
+        return g;
+    }
+    const playerGunView=createPlayerGun();
+    playerGunView.scale.setScalar(.72);
+    playerGunView.position.set(.42,-.30,-.56);
+    playerGunView.rotation.set(-.08,.10,.02);
+    camera.add(playerGunView);
+    playerGunView.visible=false;
+
+    // Üçüncü şahısta eşeğin ön-sağ tarafında küçük silah modeli görünür.
+    const playerGunWorld=createPlayerGun();
+    playerGunWorld.scale.setScalar(.54);
+    playerGunWorld.position.set(.42,1.48,.42);
+    playerGunWorld.rotation.set(0,Math.PI,0);
+    playerDonkey.add(playerGunWorld);
+    playerGunWorld.visible=false;
+
+    function syncPlayerGunVisibility(){
+        const active=typeof gameStarted!=='undefined' && gameStarted && !(typeof playerIsDead!=='undefined'&&playerIsDead);
+        playerGunView.visible=active && cameraMode==='first' && controlMode==='pc';
+        playerGunWorld.visible=active && cameraMode==='third';
+    }
+
+    let lastPlayerShot=0;
+    const PLAYER_FIRE_COOLDOWN=280;
+    function makeBullet(origin,dir,owner,damage=1){
+        const mat=owner==='player'?playerBulletMat:enemyBulletMat;
+        const m=new THREE.Mesh(bulletGeo,mat);m.position.copy(origin);
+        if(owner==='player')m.scale.setScalar(1.15);
+        scene.add(m);
+        activeBullets.push({mesh:m,velocity:dir.clone().multiplyScalar(owner==='player'?72:55),life:2.2,owner,damage});
+    }
+
+    function firePlayerWeapon(){
+        if(typeof gameStarted==='undefined'||!gameStarted||playerIsDead||!ws||ws.readyState!==WebSocket.OPEN)return false;
+        const now=performance.now();
+        if(now-lastPlayerShot<PLAYER_FIRE_COOLDOWN)return false;
+        lastPlayerShot=now;
+        const origin=new THREE.Vector3(),dir=new THREE.Vector3();
+        if(cameraMode==='first'){
+            playerGunView.userData.muzzle.getWorldPosition(origin);
+            camera.getWorldDirection(dir);
+        }else{
+            // 3P: ekranın ortasına doğru ateş et.
+            const target=new THREE.Vector3();camera.getWorldDirection(dir);playerGunWorld.userData.muzzle.getWorldPosition(origin);
+        }
+        dir.normalize();
+        makeBullet(origin,dir,'player',1);
+        actionAnimationType='attack';actionAnimationUntil=now+220;
+        return true;
+    }
+
+    // ----------------------------------------------------------
+    // DÜŞMAN AI + GÖRÜŞ + ATEŞ
+    // ----------------------------------------------------------
+    function canSeePlayer(enemy,dist,dx,dz){
+        if(typeof gameStarted==='undefined'||!gameStarted||playerIsDead)return false;
+        if(dist>enemy.seeRange)return false;
+        const facing=enemy.mesh.rotation.y;
+        let angle=Math.atan2(dx,dz)-facing;
+        while(angle>Math.PI)angle-=Math.PI*2;
+        while(angle<-Math.PI)angle+=Math.PI*2;
+        if(Math.abs(angle)>Math.PI*(2/3))return false; // 120° görüş açısı
+        return true;
+    }
+
+    function enemyShoot(e,now,px,py,pz){
+        if(now-e.lastShot<e.shootCooldown || !e.mesh.userData.gunMuzzle)return;
+        e.lastShot=now;
+        const origin=new THREE.Vector3();e.mesh.userData.gunMuzzle.getWorldPosition(origin);
+        const target=new THREE.Vector3(px,py,pz);
+        const dir=target.sub(origin).normalize();
+        dir.x+=(campRand()-.5)*.035;dir.y+=(campRand()-.5)*.035;dir.z+=(campRand()-.5)*.035;dir.normalize();
+        makeBullet(origin,dir,'enemy',1);
+    }
+
+    function updateCampEnemies(now,dt){
+        const active=typeof gameStarted!=='undefined'&&gameStarted&&!playerIsDead;
+        const px=playerDonkey.position.x,pz=playerDonkey.position.z,py=playerDonkey.position.y+1.1;
+        for(const e of campEnemies){
+            const mesh=e.mesh;
+            if(e.dead||!mesh.visible)continue;
+            const dx=px-mesh.position.x,dz=pz-mesh.position.z,dist=Math.hypot(dx,dz);
+            if(!active){ e.state='patrol'; continue; }
+
+            if(e.state==='patrol'){
+                e.patrolAngle+=dt*.28;
+                const tx=e.homeX+Math.cos(e.patrolAngle)*5.5,tz=e.homeZ+Math.sin(e.patrolAngle)*5.5;
+                const mx=tx-mesh.position.x,mz=tz-mesh.position.z,md=Math.hypot(mx,mz);
+                if(md>.2){mesh.position.x+=mx/md*1.25*dt;mesh.position.z+=mz/md*1.25*dt;mesh.rotation.y=Math.atan2(mx,mz);mesh.userData.walkCycle+=dt*6;const s=Math.sin(mesh.userData.walkCycle);mesh.userData.legs[0].rotation.x=s*.45;mesh.userData.legs[1].rotation.x=-s*.45;}
+                if(canSeePlayer(e,dist,dx,dz)){e.state='alert';e.alertUntil=now+450;}
+            }else if(e.state==='alert'){
+                const yaw=Math.atan2(dx,dz);let diff=yaw-mesh.rotation.y;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;mesh.rotation.y+=diff*Math.min(1,dt*8);
+                mesh.userData.arms[1].rotation.x=-1.22;
+                if(now>e.alertUntil)e.state='shooting';
+                if(dist>e.loseRange)e.state='patrol';
+            }else if(e.state==='shooting'){
+                if(dist>e.loseRange){e.state='patrol';mesh.userData.arms[1].rotation.x=0;continue;}
+                const yaw=Math.atan2(dx,dz);let diff=yaw-mesh.rotation.y;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;mesh.rotation.y+=diff*Math.min(1,dt*10);
+                mesh.userData.arms[1].rotation.x=-1.22+Math.atan2(py-(mesh.position.y+1.8),Math.max(.1,dist))*.35;
+                enemyShoot(e,now,px,py,pz);
+                if(!canSeePlayer(e,dist,dx,dz)) e.state='patrol';
+            }
+            mesh.position.y=terrainHeightAt(mesh.position.x,mesh.position.z);
+        }
+    }
+
+    function damageEnemy(e,amount){
+        if(!e||e.dead)return;
+        e.health=Math.max(0,e.health-amount);
+        e.mesh.userData.health=e.health;
+        e.mesh.userData.hitUntil=performance.now()+160;
+        if(e.health<=0){
+            e.dead=true;e.mesh.visible=false;e.mesh.userData.alive=false;e.state='dead';
+        }
+    }
+
+    function updateCampBullets(dt){
+        for(let i=activeBullets.length-1;i>=0;i--){
+            const b=activeBullets[i];b.life-=dt;b.mesh.position.addScaledVector(b.velocity,dt);
+            let remove=false;
+            if(b.owner==='enemy' && !playerIsDead && typeof gameStarted!=='undefined' && gameStarted){
+                const d=Math.hypot(b.mesh.position.x-playerDonkey.position.x,b.mesh.position.y-(playerDonkey.position.y+1),b.mesh.position.z-playerDonkey.position.z);
+                if(d<.78){
+                    if(typeof needs!=='undefined'){
+                        needs.health=Math.max(0,needs.health-b.damage);
+                        if(typeof renderNeeds==='function')renderNeeds();
+                        if(needs.health<=0 && typeof showDeath==='function')showDeath('Kamp düşmanının mermisi seni vurdu.');
+                    }
+                    remove=true;
+                }
+            }
+            if(b.owner==='player'){
+                for(const e of campEnemies){
+                    if(e.dead)continue;
+                    const d=Math.hypot(b.mesh.position.x-e.mesh.position.x,b.mesh.position.y-(e.mesh.position.y+1.3),b.mesh.position.z-e.mesh.position.z);
+                    if(d<.9){damageEnemy(e,b.damage);remove=true;break;}
+                }
+            }
+            const ground=terrainHeightAt(b.mesh.position.x,b.mesh.position.z);
+            if(b.life<=0 || b.mesh.position.y<ground-.15 || Math.abs(b.mesh.position.x)>MAP_LIMIT+20 || Math.abs(b.mesh.position.z)>MAP_LIMIT+20)remove=true;
+            if(remove){scene.remove(b.mesh);activeBullets.splice(i,1);}
+        }
+    }
+
+    let lastCampFrame=performance.now();
+    function updateCampSystem(now){
+        const dt=Math.min(.05,Math.max(.001,(now-lastCampFrame)/1000));lastCampFrame=now;
+        for(const c of camps){
+            const f=c.fire.userData,phase=f.phase||0;
+            const pulse=1+Math.sin(now*.012+phase)*.13;
+            f.fire.scale.set(pulse,pulse*1.08,pulse);
+            f.inner.scale.set(.85+pulse*.08, .85+pulse*.08, .85+pulse*.08);
+            f.light.intensity=2.0+Math.sin(now*.025+phase)*.55;
+            for(let i=0;i<f.smoke.length;i++){const s=f.smoke[i];s.position.x=Math.sin(now*.0008+i+phase)*.22;s.position.z=Math.cos(now*.0009+i+phase)*.18;s.position.y=1.65+i*.82+Math.sin(now*.0012+i)*.15;s.scale.setScalar(1+i*.14+Math.sin(now*.0015+i)*.10);}
+        }
+        updateCampEnemies(now,dt);
+        updateCampBullets(dt);
+        syncPlayerGunVisibility();
+    }
+
+    // Mevcut ana döngünün gelecekteki karelerinde de sistem çalışsın.
+    if(typeof animate==='function'){
+        const baseAnimate=animate;
+        animate=function(){updateCampSystem(performance.now());return baseAnimate.apply(this,arguments);};
+    }else{
+        setInterval(()=>updateCampSystem(performance.now()),16);
+    }
+
+    // PC ateş tuşu. Mevcut melee sol tık saldırısı korunur.
+    document.addEventListener('keydown',e=>{
+        if(e.key==='f' || e.key==='F') firePlayerWeapon();
+    },true);
+
+    // Mobil ateş butonu.
+    const mobFireBtn=document.getElementById('mobFireBtn');
+    if(mobFireBtn){
+        const fireTap=e=>{e.preventDefault();e.stopImmediatePropagation();firePlayerWeapon();};
+        mobFireBtn.addEventListener('pointerdown',fireTap,{capture:true,passive:false});
+        mobFireBtn.addEventListener('touchstart',fireTap,{capture:true,passive:false});
+    }
+
+    // Yeni butonu genel dokunmatik kilidine dahil et.
+    const oldBlockControlTouch=typeof blockControlTouch==='function'?blockControlTouch:null;
+    if(oldBlockControlTouch && mobFireBtn) oldBlockControlTouch(mobFireBtn);
+
+    // İlk/üçüncü şahıs geçişleri sonrası silah görünürlüğünü güncel tut.
+    document.addEventListener('click',()=>syncPlayerGunVisibility(),true);
+    setInterval(syncPlayerGunVisibility,350);
+
+    // Rivers: animate wrapper'ın üstünde de dalga güncelle.
+    if(typeof __updateEsekRivers==='function'){
+        const prev=animate;
+        animate=function(){__updateEsekRivers(performance.now());return prev.apply(this,arguments);};
+    }
 })();
 </script>
 
