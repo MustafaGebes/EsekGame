@@ -112,54 +112,26 @@
         }
 
 
-        /* ===== PROFİL BAŞLANGIÇ ===== */
-
-        .profile-button {
-            width: 40px;
-            height: 40px;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            border: 1px solid rgba(255, 255, 255, 0.13);
-
-            border-radius: 50%;
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #273449,
-                    #182131
-                );
-
-            color: #d8e0e8;
-
-            font-size: 19px;
-
-            cursor: pointer;
-
-            transition: 0.2s;
-
-            box-shadow:
-                0 0 18px rgba(0, 180, 255, 0.08);
-        }
-
-
-        .profile-button:hover {
-            border-color: rgba(0, 210, 255, 0.45);
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #31445f,
-                    #1b2a40
-                );
-
-            transform: translateY(-1px);
-        }
-
-        /* ===== PROFİL BİTİŞ ===== */
+        /* ===== HESAP BUTONU ===== */
+        .account-button { border:1px solid rgba(255,255,255,.13); border-radius:10px; background:linear-gradient(135deg,#273449,#182131); color:#fff; padding:9px 14px; font-size:14px; font-weight:800; cursor:pointer; transition:.2s; }
+        .account-button:hover { border-color:rgba(0,210,255,.45); transform:translateY(-1px); }
+        .account-modal { position:fixed; inset:0; z-index:500; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,.72); backdrop-filter:blur(8px); }
+        .account-box { width:min(430px,94vw); padding:26px; border-radius:18px; background:linear-gradient(145deg,#151d28,#0c1118); border:1px solid rgba(255,255,255,.13); box-shadow:0 24px 70px rgba(0,0,0,.6); }
+        .account-box h2 { margin:0 0 8px; color:#ffd43b; font-size:26px; }
+        .account-box p { color:#9aa7b5; line-height:1.5; margin:0 0 18px; }
+        .account-box label { display:block; color:#d9e1e8; font-weight:700; font-size:13px; margin:12px 0 6px; }
+        .account-box input { width:100%; padding:12px; border-radius:9px; border:1px solid #394656; background:#0b1118; color:#fff; outline:none; font-size:15px; }
+        .account-box input:focus { border-color:#00cfff; box-shadow:0 0 0 2px #00cfff22; }
+        .account-tabs { display:flex; gap:8px; margin-bottom:14px; }
+        .account-tab { flex:1; padding:10px; border:0; border-radius:8px; background:#202b39; color:#b9c5d0; font-weight:800; cursor:pointer; }
+        .account-tab.active { background:#ffd43b; color:#171717; }
+        .account-warning { margin-top:14px; padding:11px 12px; border-radius:9px; background:rgba(244,67,54,.12); border:1px solid rgba(244,67,54,.5); color:#ff7474; font-size:13px; line-height:1.45; font-weight:700; }
+        .account-error { min-height:20px; margin-top:10px; color:#ff7777; font-size:13px; }
+        .account-actions { display:flex; gap:9px; margin-top:12px; }
+        .account-actions button { flex:1; padding:12px; border:0; border-radius:9px; font-weight:900; cursor:pointer; }
+        #accountSubmit { background:#35b979; color:#fff; } #accountClose { background:#293442; color:#dbe4ec; }
+        @media(max-width:650px){ .account-button{padding:8px 10px;font-size:12px;} }
+        /* ===== HESAP BUTONU BİTİŞ ===== */
 
 
         /* ===== HEADER BİTİŞ ===== */
@@ -648,10 +620,6 @@
             }
 
 
-            .profile-button {
-                width: 37px;
-                height: 37px;
-            }
 
 
             .hero {
@@ -725,13 +693,7 @@
             </nav>
 
 
-            <!-- ===== PROFİL BUTONU BAŞLANGIÇ ===== -->
-
-            <button class="account-button" onclick="openAccountMenu()">
-    Hesap Oluştur / Giriş Yap
-            </button>
-
-            <!-- ===== PROFİL BUTONU BİTİŞ ===== -->
+            <button id="accountButton" class="account-button" type="button">Hesap oluştur / Giriş yap</button>
 
         </div>
 
@@ -881,6 +843,21 @@
     <!-- ===== OYUNLAR BİTİŞ ===== -->
 
 
+    <div id="accountModal" class="account-modal" aria-hidden="true">
+        <div class="account-box" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+            <h2 id="accountTitle">Hesaba Giriş Yap</h2><p>Hesabın varsa giriş yap. Yoksa kullanıcı adını ve şifreni oluştur.</p>
+            <div class="account-tabs"><button id="loginTab" class="account-tab active" type="button">Hesaba Giriş Yap</button><button id="registerTab" class="account-tab" type="button">Hesap Oluştur</button></div>
+            <form id="accountForm">
+                <label for="accountUsername">Kullanıcı adı</label><input id="accountUsername" maxlength="20" autocomplete="username" required>
+                <label for="accountPassword">Şifre</label><input id="accountPassword" type="password" maxlength="128" autocomplete="current-password" required>
+                <div id="confirmPasswordWrap" style="display:none"><label for="accountPassword2">Şifre tekrar</label><input id="accountPassword2" type="password" maxlength="128" autocomplete="new-password"></div>
+                <div class="account-warning">⚠️ Uyarı: Hesabınızın şifresini unutursanız hesabınız gidebilir.</div>
+                <div id="accountError" class="account-error" role="alert"></div>
+                <div class="account-actions"><button id="accountSubmit" type="submit">Giriş Yap</button><button id="accountClose" type="button">Kapat</button></div>
+            </form>
+        </div>
+    </div>
+
     <!-- ===== FOOTER BAŞLANGIÇ ===== -->
 
     <footer id="about">
@@ -927,111 +904,21 @@
         // ===== NAVİGASYON BİTİŞ =====
 
 
-        // ===== PROFİL BAŞLANGIÇ =====
-
-        function openAccountMenu() {
-    const menu = document.getElementById("accountMenu");
-
-    menu.style.display =
-        menu.style.display === "none"
-            ? "block"
-            : "none";
-}
-
-function register() {
-
-    const user =
-        document.getElementById("registerUser").value;
-
-    const pass1 =
-        document.getElementById("registerPass1").value;
-
-    const pass2 =
-        document.getElementById("registerPass2").value;
-
-    if(pass1 !== pass2){
-        alert("Şifreler aynı değil.");
-        return;
-    }
-
-    localStorage.setItem(
-        "esekAccount",
-        JSON.stringify({
-            username:user,
-            password:pass1
-        })
-    );
-
-    alert("Hesap oluşturuldu.");
-}
-
-function login(){
-
-    const user =
-        document.getElementById("loginUser").value;
-
-    const pass =
-        document.getElementById("loginPass").value;
-
-    const acc =
-        JSON.parse(
-            localStorage.getItem("esekAccount")
-        );
-
-    if(
-        acc &&
-        acc.username === user &&
-        acc.password === pass
-    ){
-        localStorage.setItem(
-            "loggedUser",
-            user
-        );
-
-        alert("Giriş yapıldı.");
-    }else{
-        alert("Kullanıcı adı veya şifre hatalı.");
-    }
-}
-
-        // ===== PROFİL BİTİŞ =====
+        // ===== HESAP SİSTEMİ =====
+        const accountButton=document.getElementById('accountButton'),accountModal=document.getElementById('accountModal'),accountForm=document.getElementById('accountForm'),loginTab=document.getElementById('loginTab'),registerTab=document.getElementById('registerTab'),accountTitle=document.getElementById('accountTitle'),accountSubmit=document.getElementById('accountSubmit'),accountClose=document.getElementById('accountClose'),accountUsername=document.getElementById('accountUsername'),accountPassword=document.getElementById('accountPassword'),accountPassword2=document.getElementById('accountPassword2'),confirmPasswordWrap=document.getElementById('confirmPasswordWrap'),accountError=document.getElementById('accountError');
+        let accountMode='login';
+        function getStoredAccount(){try{return JSON.parse(localStorage.getItem('esekAuth')||'null')}catch(e){return null}}
+        function updateAccountButton(){const a=getStoredAccount();accountButton.textContent=a&&a.username?`👤 ${a.username}`:'Hesap oluştur / Giriş yap';}
+        function setAccountMode(mode){accountMode=mode;const r=mode==='register';loginTab.classList.toggle('active',!r);registerTab.classList.toggle('active',r);accountTitle.textContent=r?'Hesap Oluştur':'Hesaba Giriş Yap';accountSubmit.textContent=r?'Hesap Oluştur':'Giriş Yap';confirmPasswordWrap.style.display=r?'block':'none';accountPassword.autocomplete=r?'new-password':'current-password';accountError.textContent='';}
+        function openAccountModal(mode='login'){setAccountMode(mode);accountModal.style.display='flex';accountModal.setAttribute('aria-hidden','false');accountUsername.focus();}
+        function closeAccountModal(){accountModal.style.display='none';accountModal.setAttribute('aria-hidden','true');accountForm.reset();setAccountMode('login');}
+        accountButton.addEventListener('click',()=>{const a=getStoredAccount();if(a&&a.username){if(confirm(`${a.username} hesabından çıkış yapılsın mı?`)){localStorage.removeItem('esekAuth');updateAccountButton();}}else openAccountModal('login');});
+        loginTab.addEventListener('click',()=>setAccountMode('login'));registerTab.addEventListener('click',()=>setAccountMode('register'));accountClose.addEventListener('click',closeAccountModal);accountModal.addEventListener('click',e=>{if(e.target===accountModal)closeAccountModal();});
+        accountForm.addEventListener('submit',async e=>{e.preventDefault();accountError.textContent='';const username=accountUsername.value.trim(),password=accountPassword.value;if(!/^[A-Za-z0-9_çğıöşüÇĞİÖŞÜ-]{3,20}$/.test(username)){accountError.textContent='Kullanıcı adı 3-20 karakter olmalı ve yalnızca harf, rakam, _ veya - içermeli.';return;}if(password.length<6){accountError.textContent='Şifre en az 6 karakter olmalı.';return;}if(accountMode==='register'&&password!==accountPassword2.value){accountError.textContent='Şifreler aynı değil.';return;}accountSubmit.disabled=true;try{const r=await fetch(`/api/auth/${accountMode}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.message||'İşlem başarısız.');localStorage.setItem('esekAuth',JSON.stringify({token:d.token,username:d.username}));updateAccountButton();closeAccountModal();}catch(err){accountError.textContent=err.message||'Sunucuya bağlanılamadı.';}finally{accountSubmit.disabled=false;}});
+        updateAccountButton();
+        // ===== HESAP SİSTEMİ BİTİŞ =====
 
     </script>
-    <div id="accountMenu" class="account-menu" style="display:none;">
-    <div class="account-box">
-
-        <h2>Hesap Girişi</h2>
-
-        <input type="text" id="loginUser" placeholder="Kullanıcı Adı">
-        <input type="password" id="loginPass" placeholder="Şifre">
-
-        <button onclick="login()">Giriş Yap</button>
-
-        <hr>
-
-        <h2>Hesap Oluştur</h2>
-
-        <input type="text" id="registerUser" placeholder="Kullanıcı Adı">
-
-        <input type="password"
-               id="registerPass1"
-               placeholder="Şifre">
-
-        <input type="password"
-               id="registerPass2"
-               placeholder="Şifre Tekrar">
-
-        <button onclick="register()">
-            Hesap Oluştur
-        </button>
-
-        <p style="color:red;font-weight:bold;">
-            Uyarı: Hesabınızın şifresini unutursanız
-            hesabınız gidebilir.
-        </p>
-
-    </div>
-</div>
 
 </body>
 </html>
