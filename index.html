@@ -3698,9 +3698,11 @@ function stepCar(c,dt){
             if (settingsPanel.style.display === 'block') return;
             if (cameraMode === 'first') {
                 yaw -= (e.movementX || 0) * 0.005 * sensitivity;
-                // Birinci şahıs: fare aşağı = yukarı bak. viewPitch = -pitch olduğu için
-                // burada pitch aşağı çekişte azalır.
-                pitch -= (e.movementY || 0) * 0.005 * sensitivity;
+                // ===== BİRİNCİ ŞAHIS DİKEY BAKIŞ DÜZELTMESİ BAŞLANGIÇ =====
+                // Normal oyun mantığı: fare aşağı = aşağı bak, fare yukarı = yukarı bak.
+                // viewPitch = -pitch olduğu için pitch burada mouse hareketiyle aynı yönde artırılır.
+                pitch += (e.movementY || 0) * 0.005 * sensitivity;
+                // ===== BİRİNCİ ŞAHIS DİKEY BAKIŞ DÜZELTMESİ BİTİŞ =====
                 pitch = Math.max(-1.4, Math.min(1.2, pitch));
             } else if (isMouseDown) {
                 const dx = e.clientX - mouseX;
@@ -3811,9 +3813,11 @@ function stepCar(c,dt){
             yaw -= dx * CAMERA_ROTATE_SPEED * sensitivity;
             // Mobilde üçüncü şahıs eski yörünge davranışını korur.
             // Birinci şahısta aşağı sürükle = yukarı bakış olacak şekilde eksen terslenir.
+            // ===== BİRİNCİ ŞAHIS MOBİL DİKEY BAKIŞ DÜZELTMESİ BAŞLANGIÇ =====
             pitch = cameraMode === 'third'
                 ? pitch + dy * CAMERA_ROTATE_SPEED * sensitivity
-                : pitch - dy * CAMERA_ROTATE_SPEED * sensitivity;
+                : pitch + dy * CAMERA_ROTATE_SPEED * sensitivity;
+            // ===== BİRİNCİ ŞAHIS MOBİL DİKEY BAKIŞ DÜZELTMESİ BİTİŞ =====
             pitch = cameraMode === 'third'
                 ? Math.max(CAMERA_MIN_PITCH, Math.min(CAMERA_MAX_PITCH, pitch))
                 : Math.max(-1.4, Math.min(1.2, pitch));
