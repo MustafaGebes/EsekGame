@@ -3730,8 +3730,8 @@ function stepCar(c,dt){
         function toggleCameraMode() {
             if (cameraMode === 'third') {
                 cameraMode = 'first';
-                // Dikey hedefi koru; yalnızca birinci şahsın izin verdiği aralığa sıkıştır.
-                pitch = THREE.MathUtils.clamp(pitch, -1.15, 1.0);
+                // Ayıklanan kamera kodundaki gibi 1. şahsa geçerken bakış eğimini sıfırla.
+                pitch = 0;
                 hudCamEl.textContent = '1. Şahıs';
                 mobViewBtn.textContent = '3P'; mobViewBtn.title = '3. şahsa geç';
                 crosshairEl.style.display = 'block';
@@ -3774,7 +3774,7 @@ function stepCar(c,dt){
             const target = new THREE.Vector3(playerDonkey.position.x, playerDonkey.position.y + (crouch ? 0.9 : 1.25), playerDonkey.position.z);
             if (cameraMode === 'third') {
                 const cp = Math.cos(pitch), sp = Math.sin(pitch), horizontal = cameraOrbitDistance * cp;
-                const camX = playerDonkey.position.x + Math.sin(yaw) * horizontal;
+                const camX = playerDonkey.position.x - Math.sin(yaw) * horizontal;
                 const camY = playerDonkey.position.y + CAMERA_HEIGHT + sp * cameraOrbitDistance;
                 const camZ = playerDonkey.position.z - Math.cos(yaw) * horizontal;
                 const groundBelowCamera = terrainHeightAt(camX, camZ);
@@ -3983,8 +3983,8 @@ function stepCar(c,dt){
             if (cameraMode === 'third' && !isMouseDown) return;
             const dx = pointerLocked ? (e.movementX || 0) : e.clientX - mouseX;
             const dy = pointerLocked ? (e.movementY || 0) : e.clientY - mouseY;
-            // Birinci şahısta yatay fare yönünü ters eşle: fare sağa = bakış sağa.
-            yaw += (cameraMode === 'first' ? -dx : dx) * CAMERA_ROTATE_SPEED * sensitivity;
+            // 1. şahısta sağ fare hareketi sağa bakar; 3. şahısta yaw eşeği ve arkadaki kamerayı birlikte döndürür.
+            yaw += (cameraMode === 'first' ? dx : -dx) * CAMERA_ROTATE_SPEED * sensitivity;
             pitch += dy * CAMERA_ROTATE_SPEED * sensitivity;
             pitch = cameraMode === 'first'
                 ? Math.max(-1.4, Math.min(1.2, pitch))
@@ -4093,8 +4093,8 @@ function stepCar(c,dt){
             if (!touch) return;
             const dx = touch.clientX - cameraLastX;
             const dy = touch.clientY - cameraLastY;
-            yaw += dx * CAMERA_ROTATE_SPEED * sensitivity;
-            // Mobilde iki kamera modu da aynı yönde yörünge/sürükleme hissini kullanır.
+            yaw += (cameraMode === 'first' ? dx : -dx) * CAMERA_ROTATE_SPEED * sensitivity;
+            // 3. şahısta eşek ve kamera birlikte döner; 1. şahısta sağ sürükleme sağa baktırır.
             // Birinci şahısta aşağı sürükle = yukarı bakış olacak şekilde eksen terslenir.
             pitch += dy * CAMERA_ROTATE_SPEED * sensitivity;
             pitch = cameraMode === 'third'
@@ -4467,7 +4467,7 @@ function stepCar(c,dt){
                     const cp = Math.cos(pitch);
                     const sp = Math.sin(pitch);
                     const horizontal = cameraOrbitDistance * cp;
-                    const camX = playerDonkey.position.x + Math.sin(yaw) * horizontal;
+                    const camX = playerDonkey.position.x - Math.sin(yaw) * horizontal;
                     const camY = playerDonkey.position.y + (isCrouchNow ? 1.35 : CAMERA_HEIGHT) + sp * cameraOrbitDistance;
                     const camZ = playerDonkey.position.z - Math.cos(yaw) * horizontal;
                     const groundBelowCamera = terrainHeightAt(camX, camZ);
