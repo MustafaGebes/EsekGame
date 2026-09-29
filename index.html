@@ -2282,6 +2282,10 @@
         const BEACH_PARKING_CENTER = { x: -153.5, z: -377 };
         const BEACH_WATER_EDGE = -452.5;
         const FOREST_POND_CENTER = { x: 300, z: -8 };
+        // Orman göleti parametreleri terrainHeightAt tarafından da kullanılır; bu nedenle burada tanımlıdır.
+        const FOREST_POND_DEPTH = 2.6;
+        const FOREST_POND_RADIUS_X = 17.5;
+        const FOREST_POND_RADIUS_Z = 13.0;
 
         function smoothStep(edge0, edge1, value) {
             const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
@@ -2327,13 +2331,17 @@
             const beachLandDx = Math.max(0, Math.abs(x - BEACH_PARKING_CENTER.x) - 128);
             const beachLandDz = Math.max(0, Math.abs(z + 420) - 42);
             const beachFlat = smoothStep(2, 20, Math.hypot(beachLandDx, beachLandDz));
-            const pondFlat = smoothStep(10, 22, Math.hypot(x - FOREST_POND_CENTER.x, z - FOREST_POND_CENTER.z));
+            const pondDistX=(x-FOREST_POND_CENTER.x)/FOREST_POND_RADIUS_X;
+            const pondDistZ=(z-FOREST_POND_CENTER.z)/FOREST_POND_RADIUS_Z;
+            const pondNorm=Math.hypot(pondDistX,pondDistZ);
+            const pondFlat = smoothStep(12, 26, Math.hypot(x - FOREST_POND_CENTER.x, z - FOREST_POND_CENTER.z));
+            const pondBowl = pondNorm<1 ? -(1-pondNorm*pondNorm)*FOREST_POND_DEPTH : 0;
             const cityDist = Math.max(cityLocalX, cityLocalZ);
             if (cityDist <= cityModelHalf-12) return cityGroundY;
             const edgeFade = 1 - smoothStep(310, 350, radial);
             const broadHills = (Math.sin(x * 0.027) * 1.15 + Math.cos(z * 0.023) * 1.05 + Math.sin((x + z) * 0.041) * 0.65);
             const smallUndulation = Math.sin(x * 0.11 + z * 0.07) * 0.22;
-            return (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * parkingFlat * beachParkingFlat * beachFlat * pondFlat * edgeFade;
+            return (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * parkingFlat * beachParkingFlat * beachFlat * pondFlat * edgeFade + pondBowl;
         }
         const terrainPositions = terrainGeo.attributes.position;
         for (let i = 0; i < terrainPositions.count; i++) {
@@ -2669,10 +2677,34 @@
         beachFoam.rotation.x = -Math.PI / 2;
         beachFoam.position.set(BEACH_PARKING_CENTER.x, 0.005, BEACH_WATER_EDGE + 0.3);
         scene.add(beachFoam);
-        const pondShore = new THREE.Mesh(new THREE.RingGeometry(11.5, 15.5, 32), new THREE.MeshLambertMaterial({ color: 0x8b896b }));
-        pondShore.rotation.x = -Math.PI / 2; pondShore.position.set(FOREST_POND_CENTER.x, 0.012, FOREST_POND_CENTER.z); scene.add(pondShore);
-        const pondSurface = new THREE.Mesh(new THREE.CircleGeometry(12, 32), new THREE.MeshPhongMaterial({ color: 0x347f8c, transparent: true, opacity: 0.88, shininess: 55, side: THREE.DoubleSide }));
-        pondSurface.rotation.x = -Math.PI / 2; pondSurface.position.set(FOREST_POND_CENTER.x, -0.08, FOREST_POND_CENTER.z); scene.add(pondSurface);
+        // ===== ORMAN GÖLETİ GENİŞLETME + DERİNLEŞTİRME BAŞLANGIÇ =====
+const pondBankMat = new THREE.MeshLambertMaterial({ color: 0x8b896b });
+const pondInnerMat = new THREE.MeshLambertMaterial({ color: 0x4c4032 });
+const pondWaterMat = new THREE.MeshPhongMaterial({ color: 0x2f8aa1, transparent: true, opacity: 0.94, shininess: 70, side: THREE.DoubleSide });
+const pondShore = new THREE.Mesh(new THREE.RingGeometry(1, 1, 40), pondBankMat);
+pondShore.rotation.x = -Math.PI / 2;
+pondShore.scale.set(FOREST_POND_RADIUS_X, FOREST_POND_RADIUS_Z, 1);
+pondShore.position.set(FOREST_POND_CENTER.x, -0.005, FOREST_POND_CENTER.z);
+scene.add(pondShore);
+const pondWater = new THREE.Mesh(new THREE.CircleGeometry(1, 40), pondWaterMat);
+pondWater.rotation.x = -Math.PI / 2;
+pondWater.scale.set(FOREST_POND_RADIUS_X - 1.3, FOREST_POND_RADIUS_Z - 1.3, 1);
+pondWater.position.set(FOREST_POND_CENTER.x, -0.22, FOREST_POND_CENTER.z);
+pondWater.name = 'Orman göleti suyu';
+scene.add(pondWater);
+const pondBottom = new THREE.Mesh(new THREE.CircleGeometry(1, 40), pondInnerMat);
+pondBottom.rotation.x = -Math.PI / 2;
+pondBottom.scale.set(FOREST_POND_RADIUS_X - 2.0, FOREST_POND_RADIUS_Z - 2.0, 1);
+pondBottom.position.set(FOREST_POND_CENTER.x, -FOREST_POND_DEPTH, FOREST_POND_CENTER.z);
+pondBottom.name = 'Orman göleti derin dip';
+scene.add(pondBottom);
+for(let i=0;i<18;i++){
+  const a=i*Math.PI*2/18, rx=FOREST_POND_RADIUS_X+(.2+((i%3)*.35)), rz=FOREST_POND_RADIUS_Z+(.15+((i%2)*.25));
+  const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.45+.16*(i%3),0),new THREE.MeshLambertMaterial({color:0x666256}));
+  rock.position.set(FOREST_POND_CENTER.x+Math.cos(a)*rx,0.12,FOREST_POND_CENTER.z+Math.sin(a)*rz);
+  rock.scale.y=.65;rock.castShadow=true;rock.receiveShadow=true;scene.add(rock);
+}
+// ===== ORMAN GÖLETİ GENİŞLETME + DERİNLEŞTİRME BİTİŞ =====
         const beachRockMesh = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ vertexColors: true }), 58);
         const beachRockDummy = new THREE.Object3D(), beachRockColor = new THREE.Color(); let beachRockCount = 0;
         for (let i = 0; i < 58; i++) {
@@ -2700,16 +2732,47 @@
             for(let f=0;f<7;f++) { const leaf=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.12,5.4),palmLeafMat); leaf.position.set(0,7.5,0); leaf.rotation.y=f*Math.PI*2/7; leaf.rotation.x=-0.25; palm.add(leaf); }
             palm.position.set(x,0,z); scene.add(palm);
         }
-        // Mağara ağızları ve kayalık yığınları orman kıyısında, yol ve yürünebilir alandan uzakta.
-        for (const [cx,cz] of [[312,-108],[306,42]]) {
-            const cave = new THREE.Group();
-            const rockMat = new THREE.MeshLambertMaterial({ color: 0x625b50 });
-            const arch = new THREE.Mesh(new THREE.TorusGeometry(3.6,1.15,7,12,Math.PI),rockMat); arch.position.y=3.2; arch.rotation.z=Math.PI; cave.add(arch);
-            const dark = new THREE.Mesh(new THREE.CircleGeometry(2.65,12),new THREE.MeshBasicMaterial({color:0x101319,side:THREE.DoubleSide})); dark.position.set(0,2.05,0.42); cave.add(dark);
-            for(let r=0;r<7;r++){const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1,0),rockMat);stone.scale.set(1.1+r%2*.35,.8+r%3*.2,1);stone.position.set(-5.4+r*1.8,.35+(r%2)*.22,0.8);cave.add(stone);}
-            cave.position.set(cx,terrainHeightAt(cx,cz),cz); scene.add(cave);
-            buildings.push({x:cx,z:cz,halfW:5.2,halfD:3.2});
-        }
+// ===== MAĞARALARI YENİDEN YAPMA BAŞLANGIÇ =====
+// Eski iki dekoratif ağızı yalnızca kendi konumlarından temizliyoruz; başka dünya objelerine dokunmuyoruz.
+const CAVE_SPECS = [{x:312,z:-108},{x:306,z:42}];
+for(const oldCave of scene.children.slice()){
+  if(!oldCave || !oldCave.position) continue;
+  if(CAVE_SPECS.some(c=>Math.hypot(oldCave.position.x-c.x,oldCave.position.z-c.z)<0.5)){
+    // Sadece eski cave grubunu (adı yoksa da bu koordinattaki cave) kaldır.
+    if(oldCave.type==='Group') scene.remove(oldCave);
+  }
+}
+for(const c of CAVE_SPECS){
+  const cave=new THREE.Group(); cave.name='Gerçek mağara';
+  const y=terrainHeightAt(c.x,c.z);
+  const rockOuter=new THREE.MeshStandardMaterial({color:0x554c43,roughness:.95});
+  const rockInner=new THREE.MeshStandardMaterial({color:0x2c2825,roughness:1});
+  const groundMat=new THREE.MeshLambertMaterial({color:0x2f2b27});
+  // Giriş önü ve iç taban: yürünebilir hacim.
+  const floor=new THREE.Mesh(new THREE.BoxGeometry(11,0.16,15),groundMat);floor.position.set(0,-.05,-2.2);cave.add(floor);
+  // Tavan kemeri: girişte açık boşluk bırakır.
+  for(const sx of [-4.2,4.2]){const side=new THREE.Mesh(new THREE.BoxGeometry(1.9,5.2,13),rockOuter);side.position.set(sx,2.5,-2.2);cave.add(side);}
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(10.4,1.8,13),rockOuter);roof.position.set(0,6.2,-2.2);cave.add(roof);
+  const back=new THREE.Mesh(new THREE.BoxGeometry(10.2,5.7,1.1),rockInner);back.position.set(0,2.55,-8.7);cave.add(back);
+  // Gerçek mağara duvar hissi için iç kavisli kaya parçaları.
+  for(let i=0;i<9;i++){
+    const a=(i/8)*Math.PI;
+    const rx=Math.cos(a)*4.55, ry=2.7+Math.sin(a)*2.4;
+    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.9+(i%3)*.18,1),rockInner);
+    rock.position.set(rx,ry,-8.0+(i%2)*.45); rock.scale.set(1.2,.8,1.05); cave.add(rock);
+  }
+  // Giriş kemeri dışarıdan gerçek mağara ağzı gibi görünür.
+  const archL=new THREE.Mesh(new THREE.CylinderGeometry(1.15,1.35,6.2,8),rockOuter);archL.position.set(-4.1,2.8,3.1);archL.rotation.z=Math.PI/2;archL.rotation.x=.18;cave.add(archL);
+  const archR=archL.clone();archR.position.x=4.1;cave.add(archR);
+  const archTop=new THREE.Mesh(new THREE.TorusGeometry(4.1,1.05,10,20,Math.PI),rockOuter);archTop.position.set(0,3.0,3.15);archTop.rotation.z=Math.PI;cave.add(archTop);
+  const darkness=new THREE.Mesh(new THREE.PlaneGeometry(8.0,4.8),new THREE.MeshBasicMaterial({color:0x050607,side:THREE.DoubleSide}));darkness.position.set(0,2.5,-8.1);darkness.rotation.y=Math.PI;cave.add(darkness);
+  // Hafif sıcak iç ışık, mağaranın içini okunur bırakır.
+  const lamp=new THREE.PointLight(0x9b7a52,0.9,16,2);lamp.position.set(0,2.6,-4.2);cave.add(lamp);
+  cave.position.set(c.x,y,c.z); scene.add(cave);
+}
+// Mağara girişleri çevresinde ağaçlar kesilerek giriş kapatılmıyor.
+function forestNearCave(x,z){for(const c of CAVE_SPECS) if(Math.hypot(x-c.x,z-c.z)<18)return true;return false;}
+// ===== MAĞARALARI YENİDEN YAPMA BİTİŞ =====
 
         // İnsan ölçüsünde, duraklayıp yürüyen kasaba ve plaj sakinleri.
         const townNpcs = [];
@@ -2828,7 +2891,14 @@ inst(new THREE.BoxGeometry(.4,.04,3),new THREE.MeshBasicMaterial({color:0xf2e6a0
 
 // ---------- Blocks, buildings, trees ----------
 var slabMat=new THREE.MeshStandardMaterial({map:walkT,roughness:.9}),tl=[],trees=0,bldg=0,maxH=0;
-function addTree(x,z){var s=R(.8,1.4),i=rnd()<.5?0:1;tl.push([x,z,s,i,pick([0xffffff,0xd8f0c0,0xb8d89a])]);trees++}
+// ===== ŞEHİR SAĞ-ÜST AĞAÇLARI DÜZENLEMESİ BAŞLANGIÇ =====
+function addTree(x,z){
+  // Şehrin sağ-üst bölgesindeki eski koyu ağaç kümesini biraz daha doğuya taşıyoruz.
+  if(x>20 && z<-20){x+=62;z-=8;}
+  var s=R(.8,1.4),i=rnd()<.5?0:1;
+  tl.push([x,z,s,i,pick([0xffffff,0xd8f0c0,0xb8d89a])]);trees++
+}
+// ===== ŞEHİR SAĞ-ÜST AĞAÇLARI DÜZENLEMESİ BİTİŞ =====
 for(var i=0;i<N;i++)for(var j=0;j<N;j++){
   var cx=(i-(N-1)/2)*P,cz=(j-(N-1)/2)*P,d=Math.hypot(i-3.5,j-3.5);
   var slab=new THREE.Mesh(new THREE.BoxGeometry(B,.4,B),slabMat);slab.position.set(cx,.1,cz);slab.receiveShadow=true;cityRoot.add(slab);
@@ -2989,7 +3059,8 @@ function stepCar(c,dt){
             const a=forestRand()*Math.PI*2, r=Math.sqrt(forestRand())*105;
             const x=220+Math.cos(a)*r, z=-55+Math.sin(a)*r;
             if(Math.hypot(x,z)>326)continue;
-            if(Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<24)continue;
+            if(Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<31)continue;
+            if(forestNearCave(x,z))continue;
             if(Math.hypot(x-FARM_CX,z-FARM_CZ)<170)continue;
             if(Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<CITY_RADIUS+22)continue;
             if(!canPlaceForestTree(x,z))continue;
@@ -2999,7 +3070,8 @@ function stepCar(c,dt){
         for(let attempt=0;attempt<25000 && forestTrees.length<FOREST_MAX_TREES;attempt++){
             const a=forestRand()*Math.PI*2, r=205+forestRand()*130;
             const x=Math.cos(a)*r, z=Math.sin(a)*r;
-            if(Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<25)continue;
+            if(Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<31)continue;
+            if(forestNearCave(x,z))continue;
             if(Math.hypot(x-FARM_CX,z-FARM_CZ)<170)continue;
             if(Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<CITY_RADIUS+24)continue;
             if(Math.abs(x-BEACH_PARKING_CENTER.x)<140&&z<-382)continue;
@@ -3028,21 +3100,68 @@ function stepCar(c,dt){
         function setTreeAppleCount(treeId,count){const treeIndex=orchardTrees.findIndex(t=>t.id===treeId);if(treeIndex<0)return;const tree=orchardTrees[treeIndex];tree.apples=Math.max(0,Math.min(10,Number(count)||0));for(let a=0;a<10;a++){const slot=treeIndex*10+a;if(a<tree.apples){const angle=a*2.399+treeIndex*.7,ring=1.35+(.16*(a%3));appleDummy.position.set(tree.x+Math.cos(angle)*ring*tree.scale,tree.groundY+(6+((a*7)%5)*.28)*tree.scale,tree.z+Math.sin(angle)*ring*tree.scale);appleDummy.scale.setScalar(1); }else{appleDummy.position.set(0,-1000,0);appleDummy.scale.setScalar(0);}appleDummy.rotation.set(0,0,0);appleDummy.updateMatrix();appleMesh.setMatrixAt(slot,appleDummy.matrix);}}
         orchardTrees.forEach(t=>setTreeAppleCount(t.id,6));appleMesh.instanceMatrix.needsUpdate=true;scene.add(appleMesh);
 
-        // Wildlife: hostile wolves/boars, timid deer/rabbits/foxes, approachable goats.
+        // ===== AYRINTILI HAYVAN MODELLERİ BAŞLANGIÇ =====
         const wildlife=[];
+        const animalTextureCache=new Map();
+        function makeAnimalTexture(type,baseHex){
+            const key=type+':'+baseHex; if(animalTextureCache.has(key)) return animalTextureCache.get(key);
+            const c=document.createElement('canvas');c.width=256;c.height=256;const ctx=c.getContext('2d');
+            ctx.fillStyle='#'+baseHex.toString(16).padStart(6,'0');ctx.fillRect(0,0,256,256);
+            function dot(x,y,r,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+            if(type==='deer'){for(let i=0;i<40;i++)dot((i*67)%256,(i*43)%256,2+(i%3),'#d7aa74');for(let i=0;i<26;i++)dot((i*41+23)%256,(i*59+17)%256,1.6,'#f1d7ad');}
+            if(type==='wolf'){for(let i=0;i<60;i++)dot((i*31)%256,(i*47)%256,1.5+(i%2),'#9aa0a2');for(let i=0;i<12;i++)dot((i*71)%256,(i*19)%256,3,'#4b5053');}
+            if(type==='boar'){for(let i=0;i<48;i++)dot((i*53)%256,(i*29)%256,2,'#735f50');}
+            if(type==='fox'){for(let i=0;i<36;i++)dot((i*47)%256,(i*61)%256,1.7,'#e07a45');for(let i=0;i<20;i++)dot((i*59+31)%256,(i*37+11)%256,1.5,'#f7d7bc');}
+            if(type==='rabbit'){for(let i=0;i<48;i++)dot((i*73)%256,(i*39)%256,1.6,'#e3d6c4');}
+            if(type==='goat'){for(let i=0;i<38;i++)dot((i*61)%256,(i*31)%256,1.4,'#f2eee5');}
+            const tex=new THREE.CanvasTexture(c);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(2,2);tex.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),4);tex.needsUpdate=true;animalTextureCache.set(key,tex);return tex;
+        }
         function createWildAnimal(type,id,x,z,seed){
             const styles={wolf:{coat:0x747c80,temperament:'aggressive',scale:1.05,label:'Kurt'},boar:{coat:0x554438,temperament:'aggressive',scale:1.05,label:'Yaban domuzu'},deer:{coat:0x9a6947,temperament:'shy',scale:1.08,label:'Geyik'},rabbit:{coat:0xc8b9a0,temperament:'shy',scale:.55,label:'Tavşan'},fox:{coat:0xb96532,temperament:'shy',scale:.74,label:'Tilki'},goat:{coat:0xe0d7c6,temperament:'friendly',scale:.9,label:'Keçi'}}[type];
-            const g=new THREE.Group(),coat=new THREE.MeshLambertMaterial({color:styles.coat}),dark=new THREE.MeshLambertMaterial({color:0x352920}),eye=new THREE.MeshBasicMaterial({color:0x151515});
-            const body=new THREE.Mesh(new THREE.SphereGeometry(.72,10,8),coat);body.scale.set(1.45,.9,.9);body.position.y=.98;g.add(body);
-            const neck=new THREE.Mesh(new THREE.CylinderGeometry(.24,.37,.78,8),coat);neck.position.set(0,1.38,.58);neck.rotation.x=-.38;g.add(neck);
-            const head=new THREE.Mesh(new THREE.SphereGeometry(.34,9,7),coat);head.position.set(0,1.69,.88);g.add(head);
-            const legs=[];for(const lx of [-.43,.43])for(const lz of [-.43,.43]){const leg=new THREE.Group();leg.position.set(lx,.68,lz);const limb=new THREE.Mesh(new THREE.CylinderGeometry(.10,.075,.62,6),coat);limb.position.y=-.26;leg.add(limb);const hoof=new THREE.Mesh(new THREE.CylinderGeometry(.10,.12,.12,6),dark);hoof.position.y=-.56;leg.add(hoof);g.add(leg);legs.push(leg);}
-            for(const side of [-1,1]){const eartype=type==='rabbit'?new THREE.ConeGeometry(.105,.62,6):new THREE.ConeGeometry(.10,.33,6);const ear=new THREE.Mesh(eartype,coat);ear.position.set(side*(type==='deer'||type==='goat'?.24:.17),type==='rabbit'?2.02:1.92,.83);ear.rotation.z=side*.24;g.add(ear);const eyeMesh=new THREE.Mesh(new THREE.SphereGeometry(.055,6,5),eye);eyeMesh.position.set(side*.24,1.73,1.12);g.add(eyeMesh);}
-            if(type==='deer'||type==='goat'){for(const side of [-1,1]){const horn=new THREE.Mesh(new THREE.ConeGeometry(.07,.58,5),dark);horn.position.set(side*.17,2.05,.64);horn.rotation.z=side*.22;g.add(horn);}}
-            if(type==='wolf'||type==='fox'){const tail=new THREE.Mesh(new THREE.ConeGeometry(.16,.8,7),coat);tail.position.set(0,1.15,-1.05);tail.rotation.x=Math.PI/2;g.add(tail);}
-            const statusCanvas=document.createElement('canvas');statusCanvas.width=256;statusCanvas.height=64;const statusTex=new THREE.CanvasTexture(statusCanvas);const statusSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:statusTex,transparent:true,depthTest:false}));statusSprite.position.set(0,2.65,0);statusSprite.scale.set(3.2,.8,1);g.add(statusSprite);
+            const g=new THREE.Group();
+            const coat=new THREE.MeshLambertMaterial({color:styles.coat,map:makeAnimalTexture(type,styles.coat)});
+            const dark=new THREE.MeshLambertMaterial({color:0x352920});
+            const white=new THREE.MeshLambertMaterial({color:0xf0e8dc});
+            const pink=new THREE.MeshLambertMaterial({color:0xca8173});
+            const eye=new THREE.MeshBasicMaterial({color:0x151515});
+            const bodyScale=type==='boar'?[1.65,1.0,1.05]:type==='deer'?[1.35,.9,.78]:type==='rabbit'?[1.1,.9,1.0]:[1.48,.9,.9];
+            const body=new THREE.Mesh(new THREE.SphereGeometry(.74,14,10),coat);body.scale.set(...bodyScale);body.position.y=1.0;g.add(body);
+            if(type==='deer'||type==='goat'){body.scale.y*=.9;}
+            const neckLen=type==='deer'?1.05:type==='goat'?.72:.55;
+            const neck=new THREE.Mesh(new THREE.CylinderGeometry(.24,.37,neckLen,10),coat);neck.position.set(0,1.38,.53);neck.rotation.x=type==='deer'?-0.18:-.34;g.add(neck);
+            const headLen=type==='wolf'||type==='fox'?.55:type==='boar'?.52:.34;
+            const head=new THREE.Mesh(new THREE.SphereGeometry(.36,12,9),coat);head.scale.set(type==='boar'?1.18:1,1,headLen/.36);head.position.set(0,1.72,.92);g.add(head);
+            const snout=new THREE.Mesh(new THREE.SphereGeometry(type==='boar'?.22:.18,10,8),type==='boar'?pink:(type==='wolf'||type==='fox'?white:coat));snout.scale.set(1,.72,1.35);snout.position.set(0,1.63,1.28);g.add(snout);
+            const legs=[];
+            const legHeight=type==='rabbit'?.48:type==='deer'?1.0:.62;
+            const legRadius=type==='deer'?.09:.11;
+            for(const lx of [-.43,.43])for(const lz of [-.38,.38]){const leg=new THREE.Group();leg.position.set(lx,legHeight,lz);const limb=new THREE.Mesh(new THREE.CylinderGeometry(legRadius,.075,legHeight,8),coat);limb.position.y=-legHeight*.5;leg.add(limb);const hoof=new THREE.Mesh(new THREE.CylinderGeometry(.095,.12,.13,7),dark);hoof.position.y=-legHeight-.02;leg.add(hoof);g.add(leg);legs.push(leg);}
+            if(type==='rabbit'){
+                for(const side of [-1,1]){const ear=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.62,8),coat);ear.position.set(side*.16,2.26,.9);ear.rotation.z=side*.12;g.add(ear);}
+                const tail=new THREE.Mesh(new THREE.SphereGeometry(.18,9,7),white);tail.position.set(0,1.05,-.85);g.add(tail);
+            } else if(type==='deer'){
+                for(const side of [-1,1]){const ear=new THREE.Mesh(new THREE.ConeGeometry(.12,.28,7),coat);ear.position.set(side*.25,1.99,.85);ear.rotation.z=side*.28;g.add(ear);}
+                for(const side of [-1,1]){
+                    const antlerRoot=new THREE.Mesh(new THREE.CylinderGeometry(.045,.07,.55,6),dark);antlerRoot.position.set(side*.18,2.24,.72);antlerRoot.rotation.z=side*.08;g.add(antlerRoot);
+                    for(const branch of [-.18,.02,.21]){const b=new THREE.Mesh(new THREE.CylinderGeometry(.025,.035,.25,5),dark);b.position.set(side*(.18+branch*.18),2.38+Math.abs(branch),.70);b.rotation.z=side*(.45-(branch*.3));g.add(b);}
+                }
+                const chest=new THREE.Mesh(new THREE.SphereGeometry(.34,10,7),white);chest.scale.set(.9,1.2,.4);chest.position.set(0,1.08,.86);g.add(chest);
+            } else if(type==='goat'){
+                for(const side of [-1,1]){const ear=new THREE.Mesh(new THREE.ConeGeometry(.10,.34,7),coat);ear.position.set(side*.24,1.98,.84);ear.rotation.z=side*.5;g.add(ear);const horn=new THREE.Mesh(new THREE.TorusGeometry(.12,.045,6,10,Math.PI*1.3),dark);horn.position.set(side*.15,2.18,.73);horn.rotation.y=Math.PI/2;horn.rotation.z=side*.15;g.add(horn);}
+                const beard=new THREE.Mesh(new THREE.ConeGeometry(.12,.42,7),dark);beard.position.set(0,1.38,1.26);beard.rotation.x=Math.PI;g.add(beard);
+            } else if(type==='wolf'||type==='fox'){
+                for(const side of [-1,1]){const ear=new THREE.Mesh(new THREE.ConeGeometry(.12,.36,7),coat);ear.position.set(side*.22,2.03,.82);ear.rotation.z=side*.18;g.add(ear);}
+                const tail=new THREE.Mesh(new THREE.ConeGeometry(type==='fox'?.22:.19,1.25,9),type==='fox'?coat:coat);tail.position.set(0,1.17,-1.05);tail.rotation.x=Math.PI/2;tail.scale.y=1.15;g.add(tail);
+                if(type==='fox'){const tip=new THREE.Mesh(new THREE.ConeGeometry(.18,.35,8),white);tip.position.set(0,1.17,-1.58);tip.rotation.x=Math.PI/2;g.add(tip);}
+            } else if(type==='boar'){
+                for(const side of [-1,1]){const ear=new THREE.Mesh(new THREE.ConeGeometry(.13,.28,6),coat);ear.position.set(side*.23,1.98,.82);ear.rotation.z=side*.25;g.add(ear);}
+                for(const side of [-1,1]){const tusk=new THREE.Mesh(new THREE.ConeGeometry(.045,.24,6),white);tusk.position.set(side*.16,1.47,1.38);tusk.rotation.x=.9;g.add(tusk);}
+            }
+            for(const side of [-1,1]){const eyeMesh=new THREE.Mesh(new THREE.SphereGeometry(.052,7,6),eye);eyeMesh.position.set(side*.22,1.79,1.17);g.add(eyeMesh);}
+            const statusCanvas=document.createElement('canvas');statusCanvas.width=256;statusCanvas.height=64;const statusTex=new THREE.CanvasTexture(statusCanvas);const statusSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:statusTex,transparent:true,depthTest:false}));statusSprite.position.set(0,type==='rabbit'?2.35:2.7,0);statusSprite.scale.set(3.3,.82,1);g.add(statusSprite);
             g.position.set(x,terrainHeightAt(x,z),z);g.scale.setScalar(styles.scale);g.rotation.y=seed*1.4;g.userData={id,type,label:styles.label,temperament:styles.temperament,legs,body,head,statusCanvas,statusTex,statusSprite,health:9,hunger:9,thirst:9,alive:true,homeX:x,homeZ:z,phase:seed*1.7,walkTimer:1+seed%4,attackAt:0,foodTimer:0,drinkTimer:0,deadAt:0,lastFoodSearch:0,foodTarget:null,careAction:"",careAnimUntil:0};scene.add(g);wildlife.push(g);return g;
         }
+        // ===== AYRINTILI HAYVAN MODELLERİ BİTİŞ =====
         const animalSpawns=[
             ['wolf','forest-wolf-1',195,-34],['wolf','forest-wolf-2',252,-99],['wolf','forest-wolf-3',279,-28],
             ['boar','forest-boar-1',186,-94],['boar','forest-boar-2',286,-71],
@@ -3184,7 +3303,9 @@ function stepCar(c,dt){
             donkey.userData.displayName = safeName;
         }
 
+        const DONKEY_BASE_SCALE = 0.90;
         const playerDonkey = createDonkeyModel();
+        playerDonkey.scale.setScalar(DONKEY_BASE_SCALE);
         playerDonkey.visible = false;
         scene.add(playerDonkey);
 
@@ -4133,7 +4254,7 @@ function stepCar(c,dt){
                 }
                 
                 playerDonkey.rotation.y = yaw;
-                playerDonkey.scale.y += ((isCrouching ? 0.6 : 1.0) - playerDonkey.scale.y) * 0.5;
+                playerDonkey.scale.y += ((DONKEY_BASE_SCALE * (isCrouching ? 0.6 : 1.0)) - playerDonkey.scale.y) * 0.5;
 
                 const groundY = terrainHeightAt(playerDonkey.position.x, playerDonkey.position.z);
                 velocityY -= 0.015;
@@ -4306,7 +4427,7 @@ function stepCar(c,dt){
             infoEl.style.display = 'block'; mobileControlsEl.style.display = mode === 'mobile' ? 'block' : 'none';
             hudEl.style.display = 'block'; crosshairEl.style.display = cameraMode === 'first' ? 'block' : 'none';
             playerDonkey.visible = cameraMode !== 'first'; playerDonkey.rotation.z = 0;
-            playerDonkey.scale.y = 1; document.body.style.cursor = 'crosshair';
+            playerDonkey.scale.set(DONKEY_BASE_SCALE,DONKEY_BASE_SCALE,DONKEY_BASE_SCALE); document.body.style.cursor = 'crosshair';
             for (const other of Object.values(otherPlayers)) other.visible = true;
             sendPresence(true); setGameUiVisible(true); setChatVisible(!chatIsManuallyHidden);
             sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
@@ -4417,7 +4538,7 @@ function stepCar(c,dt){
                 const dead=otherPlayers[data.id];if(dead){dead.rotation.z=Math.PI/2;dead.userData.isMoving=false;}
                 if(data.id===myId)showDeath(data.reason||`${data.killerName||'Bir tehlike'} seni yendi.`);
             } else if(data.type==='respawned'){
-                const p=data.spawn||{x:180,y:0,z:210};playerDonkey.position.set(p.x,p.y,p.z);playerDonkey.rotation.set(0,yaw,0);playerDonkey.scale.y=1;playerDonkey.visible=cameraMode!=='first';
+                const p=data.spawn||{x:180,y:0,z:210};playerDonkey.position.set(p.x,p.y,p.z);playerDonkey.rotation.set(0,yaw,0);playerDonkey.scale.set(DONKEY_BASE_SCALE,DONKEY_BASE_SCALE,DONKEY_BASE_SCALE);playerDonkey.visible=cameraMode!=='first';
                 playerIsDead=false;deathScreenShowing=false;gameStarted=true;deathOverlayEl.style.display='none';respawnBtnEl.disabled=false;respawnBtnEl.textContent='↻ Yeniden Doğ';
                 menuEl.style.display='none';infoEl.style.display='block';mobileControlsEl.style.display=controlMode==='mobile'?'block':'none';hudEl.style.display='block';crosshairEl.style.display=cameraMode==='first'?'block':'none';
                 applyNeeds(data.state||{health:9,hunger:9,thirst:9});setGameUiVisible(true);setChatVisible(!chatIsManuallyHidden);document.body.style.cursor='crosshair';
@@ -4457,7 +4578,7 @@ function stepCar(c,dt){
             }
             const farmPond={x:FARM_CX-16*1.20,z:FARM_CZ+11*1.20,radius:5.0};
             const waterTargets=[
-                {x:FOREST_POND_CENTER.x,z:FOREST_POND_CENTER.z,radius:6.2},
+                {x:FOREST_POND_CENTER.x,z:FOREST_POND_CENTER.z,radius:12.8},
                 {x:farmPond.x,z:farmPond.z,radius:farmPond.radius},
                 {x:Math.max(BEACH_PARKING_CENTER.x-122,Math.min(BEACH_PARKING_CENTER.x+122,x)),z:BEACH_WATER_EDGE+1.0,radius:6.2}
             ];
