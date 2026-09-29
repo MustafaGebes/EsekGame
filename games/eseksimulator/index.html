@@ -19,25 +19,53 @@
     <style>
         body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: Arial, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
         #menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.5); z-index: 20; }
-        /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BAŞLANGIÇ ===== */
+        /* ===== DURAKLATMA MENÜSÜ ===== */
         #menu.pause-mode {
-            display: flex !important;
-            position: fixed;
-            inset: 0;
-            z-index: 9999;
-            width: 100vw;
-            height: 100vh;
-            margin: 0;
-            padding: 0;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0,0,0,.90);
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            transform: none !important;
+            margin: 0 !important;
+            padding: 20px !important;
+            box-sizing: border-box;
+            border-radius: 0 !important;
+            background: rgba(0,0,0,.88) !important;
+            border: 0 !important;
+            box-shadow: none !important;
             backdrop-filter: blur(5px);
+            z-index: 9999 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
         }
-        #menu.pause-mode h1, #menu.pause-mode > h2, #menu.pause-mode #nameCard, #menu.pause-mode #mainButtons { display: none !important; }
-        #menu.pause-mode #pauseButtons { display: flex !important; width: auto; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
-        /* ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ ===== */
+        #menu.pause-mode h1,
+        #menu.pause-mode h2,
+        #menu.pause-mode #nameCard,
+        #menu.pause-mode #mainButtons { display: none !important; }
+        #menu.pause-mode #pauseButtons {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 8px;
+            width: min(330px, 90vw) !important;
+        }
+        #menu.pause-mode #pauseTitle {
+            display: block !important;
+            color: #fff;
+            font-size: 30px;
+            margin: 0 0 18px;
+            text-shadow: 0 2px 10px #000;
+        }
+        #menu.pause-mode #pauseButtons .btn {
+            width: min(300px, 82vw) !important;
+            min-width: 0 !important;
+            margin: 4px 0 !important;
+        }
+        #pauseSettingsBtn.menu-only-hidden { display:none !important; }
+        /* ===== DURAKLATMA MENÜSÜ BİTİŞ ===== */
         h1 { color: #ffd700; font-size: 64px; margin: 0; text-shadow: 3px 3px 6px #000; }
         h2 { color: #ffffff; font-size: 24px; margin: 10px 0 20px 0; font-weight: 300; }
         .section-title { color: #aaaaaa; font-size: 18px; margin: 15px 0 5px 0; }
@@ -185,11 +213,11 @@
             <button id="mobileSelectBtn" class="btn" style="background-color: #ff9800;">📱 MOBİL KONTROLÜ</button>
         </div>
         <div id="pauseButtons" style="display: none; flex-direction: column; align-items: center;">
-            <div style="font-size:28px;font-weight:800;margin-bottom:18px;">OYUN DURAKLATILDI</div>
-            <button id="resumeBtn" class="btn">OYUNA DEVAM ET</button>
+            <div id="pauseTitle">Oyun Duraklatıldı</div>
+            <button id="resumeBtn" class="btn">DEVAM ET</button>
             <button id="pauseSettingsBtn" class="btn btn-yellow">⚙️ AYARLAR</button>
-            <button id="returnGameMenuBtn" class="btn btn-blue">MENÜYE DÖN</button>
-            <button id="returnMenuBtn" class="btn btn-red">OYUNDAN ÇIK</button>
+            <button id="returnMenuBtn" class="btn btn-red">MENÜYE DÖN</button>
+            <button id="exitGameBtn" class="btn btn-red" style="display:none;">OYUNDAN ÇIK</button>
         </div>
     </div>
 
@@ -3512,7 +3540,7 @@ function stepCar(c,dt){
         const pauseButtons = document.getElementById('pauseButtons');
         const resumeBtn = document.getElementById('resumeBtn');
         const returnMenuBtn = document.getElementById('returnMenuBtn');
-        const returnGameMenuBtn = document.getElementById('returnGameMenuBtn');
+        const exitGameBtn = document.getElementById('exitGameBtn');
         const pauseSettingsBtn = document.getElementById('pauseSettingsBtn');
         const pcSelectBtn = document.getElementById('pcSelectBtn');
         const mobileSelectBtn = document.getElementById('mobileSelectBtn');
@@ -3659,22 +3687,57 @@ function stepCar(c,dt){
             if (!autoFpsEnabled) { renderScale = renderScaleTarget; applyRenderScale(); }
         });
 
-        // ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BAŞLANGIÇ =====
-        function openPauseMenu() {
+        // ===== DURAKLATMA MENÜSÜ =====
+        let pauseOpenedFromGame = false;
+        function openPauseMenu(fromGame = false) {
+            pauseOpenedFromGame = !!fromGame;
             menuEl.classList.add('pause-mode');
             menuEl.style.display = 'flex';
             nameCardEl.style.display = 'none';
             mainButtons.style.display = 'none';
             pauseButtons.style.display = 'flex';
+            pauseSettingsBtn.style.display = fromGame ? 'block' : 'none';
+            returnMenuBtn.style.display = fromGame ? 'block' : 'none';
+            exitGameBtn.style.display = fromGame ? 'none' : 'block';
         }
         function openMainMenu() {
+            pauseOpenedFromGame = false;
             menuEl.classList.remove('pause-mode');
             menuEl.style.display = 'flex';
             nameCardEl.style.display = 'block';
             mainButtons.style.display = 'block';
             pauseButtons.style.display = 'none';
+            pauseSettingsBtn.style.display = 'none';
+            returnMenuBtn.style.display = 'none';
+            exitGameBtn.style.display = 'none';
         }
-        // ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ =====
+        function resumePausedGame() {
+            if (!pauseOpenedFromGame) {
+                openMainMenu();
+                document.body.style.cursor = 'default';
+                return;
+            }
+            gameStarted = true;
+            menuEl.classList.remove('pause-mode');
+            menuEl.style.display = 'none';
+            pauseButtons.style.display = 'none';
+            playerDonkey.visible = cameraMode !== 'first';
+            hudEl.style.display = 'block';
+            infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
+            mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
+            crosshairEl.style.display = cameraMode === 'first' ? 'block' : 'none';
+            interactPromptEl.style.display = 'none';
+            document.getElementById('onlineBadge').style.display = 'none';
+            chatPanelEl.style.display = chatUserHidden ? 'none' : 'flex';
+            chatReopenBtn.style.display = chatUserHidden ? 'block' : 'none';
+            for (const other of Object.values(otherPlayers)) other.visible = true;
+            setDonkeyNameTag(playerDonkey, getPlayerName());
+            document.body.style.cursor = (cameraMode === 'first' && controlMode === 'pc') ? 'none' : 'default';
+            if (cameraMode === 'first' && controlMode === 'pc') requestFirstPersonPointerLock();
+            setGameplayCameraImmediate();
+            sendPresence(true);
+        }
+        // ===== DURAKLATMA MENÜSÜ BİTİŞ =====
 
         function openSettings() { settingsPanel.style.display = 'block'; }
         function closeSettingsPanel() { settingsPanel.style.display = 'none'; }
@@ -3846,28 +3909,45 @@ function stepCar(c,dt){
         pcSelectBtn.addEventListener('click', () => startGame('pc'));
         mobileSelectBtn.addEventListener('click', () => startGame('mobile'));
 
-        returnGameMenuBtn.addEventListener('click', () => {
+        // Pause butonları tek bir yerde yönetilir; yeniden join_request gönderilmez.
+        resumeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            resumePausedGame();
+        });
+
+        returnMenuBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             gameStarted = false;
             releaseFirstPersonPointerLock();
             sendPresence(false);
+            openMainMenu();
             document.getElementById('onlineBadge').style.display = 'block';
             chatPanelEl.style.display = 'none';
             chatReopenBtn.style.display = 'none';
+            togglePlayerList(false);
             infoEl.style.display = 'none';
             mobileControlsEl.style.display = 'none';
             hudEl.style.display = 'none';
+            settingsPanel.style.display = 'none';
             crosshairEl.style.display = 'none';
             interactPromptEl.style.display = 'none';
             mobOpenBtn.style.display = 'none';
+            document.body.style.cursor = 'default';
             playerDonkey.visible = false;
-            openMainMenu();
+            for (const other of Object.values(otherPlayers)) other.visible = false;
         });
 
-        returnMenuBtn.addEventListener('click', () => {
+        exitGameBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             gameStarted = false;
             releaseFirstPersonPointerLock();
             sendPresence(false);
-            try { if (ws && ws.readyState === WebSocket.OPEN) ws.close(); } catch (e) {}
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                try { ws.close(); } catch (_) {}
+            }
             window.location.href = '/';
         });
 
@@ -3875,31 +3955,25 @@ function stepCar(c,dt){
             if (e.key === 'Escape') {
                 if (settingsPanel.style.display === 'block') { closeSettingsPanel(); return; }
                 if (playerListPanel.style.display === 'block') { togglePlayerList(false); return; }
-                if (e.target.closest('input,textarea,[contenteditable="true"]')) return;
-
                 e.preventDefault();
-
-                /* Menüdeyken ESC de aynı duraklatma menüsünü açar. */
-                if (!gameStarted) {
-                    openPauseMenu();
-                    return;
+                if (gameStarted) {
+                    gameStarted = false;
+                    releaseFirstPersonPointerLock();
+                    document.getElementById('onlineBadge').style.display = 'block';
+                    chatPanelEl.style.display = 'none';
+                    chatReopenBtn.style.display = 'none';
+                    infoEl.style.display = 'none';
+                    mobileControlsEl.style.display = 'none';
+                    hudEl.style.display = 'none';
+                    crosshairEl.style.display = 'none';
+                    interactPromptEl.style.display = 'none';
+                    mobOpenBtn.style.display = 'none';
+                    document.body.style.cursor = 'default';
+                    playerDonkey.visible = false;
+                    openPauseMenu(true);
+                } else {
+                    openPauseMenu(false);
                 }
-
-                /* Oyunun içindeyken sadece duraklatır; sunucuya çıkış göndermez. */
-                gameStarted = false;
-                releaseFirstPersonPointerLock();
-                document.getElementById('onlineBadge').style.display = 'none';
-                chatPanelEl.style.display = 'none';
-                chatReopenBtn.style.display = 'none';
-                openPauseMenu();
-                infoEl.style.display = 'none';
-                mobileControlsEl.style.display = 'none';
-                hudEl.style.display = 'none';
-                crosshairEl.style.display = 'none';
-                interactPromptEl.style.display = 'none';
-                mobOpenBtn.style.display = 'none';
-                document.body.style.cursor = 'default';
-                playerDonkey.visible = false;
                 return;
             }
             if (!gameStarted) return;
@@ -3997,11 +4071,11 @@ function stepCar(c,dt){
             if (gameStarted) {
                 gameStarted = false;
                 releaseFirstPersonPointerLock();
-                sendPresence(false);
                 document.getElementById('onlineBadge').style.display = 'block';
-                chatPanelEl.style.display = 'none'; chatReopenBtn.style.display = 'none';
+                chatPanelEl.style.display = 'none';
+                chatReopenBtn.style.display = 'none';
                 togglePlayerList(false);
-                openPauseMenu();
+                openPauseMenu(true);
                 infoEl.style.display = 'none';
                 mobileControlsEl.style.display = 'none';
                 hudEl.style.display = 'none';
@@ -4593,34 +4667,8 @@ function stepCar(c,dt){
         }
         pcSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('pc',false);},true);
         mobileSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('mobile',false);},true);
-        resumeBtn.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            menuEl.classList.remove('pause-mode');
-            menuEl.style.display = 'none';
-            pauseButtons.style.display = 'none';
-            gameStarted = true;
-            playerIsDead = false;
-            deathScreenShowing = false;
-            hudEl.style.display = 'block';
-            playerDonkey.visible = cameraMode !== 'first';
-            for (const other of Object.values(otherPlayers)) other.visible = true;
-            setDonkeyNameTag(playerDonkey, getPlayerName());
-            setGameUiVisible(true);
-            setChatVisible(!chatIsManuallyHidden);
-            infoEl.style.display = controlMode === 'pc' ? 'block' : 'none';
-            mobileControlsEl.style.display = controlMode === 'mobile' ? 'block' : 'none';
-            crosshairEl.style.display = cameraMode === 'first' ? 'block' : 'none';
-            document.getElementById('onlineBadge').style.display = 'none';
-            if (cameraMode === 'first' && controlMode === 'pc') {
-                document.body.style.cursor = 'none';
-                requestFirstPersonPointerLock();
-            } else {
-                document.body.style.cursor = 'default';
-            }
-        }, true);
-        document.getElementById('chatHideBtn').addEventListener
-('click',()=>setChatVisible(false));
+
+        document.getElementById('chatHideBtn').addEventListener('click',()=>setChatVisible(false));
         chatReopenBtn.addEventListener('click',()=>setChatVisible(true));
         mobileUiTap(mobChatBtnEl, ()=>setChatVisible(chatIsManuallyHidden));
         document.getElementById('chatForm').addEventListener('submit',e=>{
