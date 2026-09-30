@@ -368,6 +368,10 @@ const ANIMAL_ATTACK_DAMAGE = 3;
 const ANIMAL_BITE_DAMAGE = 1;
 
 const GUN_AMMO = 12;
+const SUPPLY_STATION = { x: 165, z: 268 };
+const SUPPLY_STATION_RANGE = 12;
+const AMMO_PICKUP_COOLDOWN_MS = 20000;
+const ARMOR_PICKUP_COOLDOWN_MS = 60000;
 
 const CHAT_RESET_MS = 10 * 60 * 1000; // 10 dakika
 const CHAT_HISTORY_LIMIT = 100;
@@ -407,10 +411,13 @@ function createPlayer(ws) {
         health: MAX_NEED,
         hunger: MAX_NEED,
         thirst: MAX_NEED,
+        armor: 0,
         alive: true,
 
         weapon: "none",
         ammo: 0,
+        nextAmmoPickupAt: 0,
+        nextArmorPickupAt: 0,
 
         connectedAt: Date.now()
     };
@@ -502,6 +509,7 @@ function getPublicPlayer(p) {
         isJumping: p.isJumping,
         isCrouching: p.isCrouching,
         health: p.health,
+        armor: p.armor,
         alive: p.alive
     };
 }
@@ -523,6 +531,7 @@ function sendNeeds(player) {
     sendTo(player, {
         type: "needs",
         health: player.health,
+        armor: player.armor,
         hunger: player.hunger,
         thirst: player.thirst,
         alive: player.alive
@@ -593,6 +602,7 @@ function joinGame(player, data) {
     player.health = MAX_NEED;
     player.hunger = MAX_NEED;
     player.thirst = MAX_NEED;
+    player.armor = 0;
 
     player.x = SPAWN.x;
     player.y = SPAWN.y;
@@ -609,7 +619,8 @@ function joinGame(player, data) {
             name: player.name,
             health: player.health,
             hunger: player.hunger,
-            thirst: player.thirst
+            thirst: player.thirst,
+            armor: player.armor
         }
     });
 
@@ -630,16 +641,24 @@ function leaveGame(player) {
 // HASAR / ÖLÜM
 // ============================================================
 
+function applyPlayerDamage(target, amount) {
+    const damage = Math.max(0, Number(amount) || 0);
+    const armor = clampNeed(target.armor);
+    const absorbed = Math.min(armor, damage * 0.5);
+    target.armor = clampNeed(armor - absorbed);
+    target.health = clampNeed(target.health - (damage - absorbed));
+}
 function damagePlayer(target, amount, attackerId, killerName, reason) {
     if (!target.inGame || !target.alive) return;
 
-    target.health = clampNeed(target.health - amount);
+    applyPlayerDamage(target, amount);
 
     broadcast({
         type: "combat_hit",
         attackerId: attackerId || null,
         targetId: target.id,
-        health: target.health
+        health: target.health,
+        armor: target.armor
     });
 
     sendNeeds(target);
@@ -930,13 +949,14 @@ function handleAnimalAttack(player, data) {
 
         const d = Math.hypot(p.x - x, p.z - z);
         if (d <= 4.5) {
-            p.health = clampNeed(p.health - ANIMAL_BITE_DAMAGE);
+            applyPlayerDamage(p, ANIMAL_BITE_DAMAGE);
 
             sendTo(p, {
                 type: "animal_bite",
                 targetId: p.id,
                 animalId: String((data && data.animalId) || ""),
-                health: p.health
+                health: p.health,
+                armor: p.armor
             });
 
             sendNeeds(p);
@@ -962,6 +982,52 @@ function handleAttackPlayer(player, data) {
     damagePlayer(target, FIST_DAMAGE, player.id, player.name);
 }
 
+function isNearSupplyStation(player) {
+    return Math.hypot(player.x - SUPPLY_STATION.x, player.z - SUPPLY_STATION.z) <= SUPPLY_STATION_RANGE;
+}
+function handleAmmoPick(player) {
+    if (!player.inGame || !player.alive) return;
+    if (!isNearSupplyStation(player)) {
+        sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: "Mermi almak için çiftlikteki istasyona yaklaş." });
+        return;
+    }
+    if (player.weapon !== "gun") {
+        sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: "Mermi almak için tabancayı kuşan." });
+        return;
+    }
+    if (player.ammo >= GUN_AMMO) {
+        sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: "Mermilerin zaten dolu." });
+        return;
+    }
+    const now = Date.now();
+    if (now < player.nextAmmoPickupAt) {
+        sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: `Mermi istasyonu ${Math.ceil((player.nextAmmoPickupAt - now) / 1000)} sn sonra hazır.` });
+        return;
+    }
+    player.ammo = GUN_AMMO;
+    player.nextAmmoPickupAt = now + AMMO_PICKUP_COOLDOWN_MS;
+    sendTo(player, { type: "ammo_pick_result", ok: true, ammo: player.ammo, respawnMs: AMMO_PICKUP_COOLDOWN_MS });
+}
+function handleArmorPick(player) {
+    if (!player.inGame || !player.alive) return;
+    if (!isNearSupplyStation(player)) {
+        sendTo(player, { type: "armor_pick_result", ok: false, armor: player.armor, message: "Zırh almak için çiftlikteki istasyona yaklaş." });
+        return;
+    }
+    if (player.armor >= MAX_NEED) {
+        sendTo(player, { type: "armor_pick_result", ok: false, armor: player.armor, message: "Zırhın zaten dolu." });
+        return;
+    }
+    const now = Date.now();
+    if (now < player.nextArmorPickupAt) {
+        sendTo(player, { type: "armor_pick_result", ok: false, armor: player.armor, message: `Zırh istasyonu ${Math.ceil((player.nextArmorPickupAt - now) / 1000)} sn sonra hazır.` });
+        return;
+    }
+    player.armor = MAX_NEED;
+    player.nextArmorPickupAt = now + ARMOR_PICKUP_COOLDOWN_MS;
+    sendNeeds(player);
+    sendTo(player, { type: "armor_pick_result", ok: true, armor: player.armor, health: player.health, hunger: player.hunger, thirst: player.thirst, respawnMs: ARMOR_PICKUP_COOLDOWN_MS });
+}
 function handleWeaponEquip(player, data) {
     if (!player.inGame) return;
 
@@ -1044,6 +1110,7 @@ function handleRespawn(player) {
     player.health = MAX_NEED;
     player.hunger = MAX_NEED;
     player.thirst = MAX_NEED;
+    player.armor = 0;
 
     player.x = SPAWN.x;
     player.y = SPAWN.y;
@@ -1052,7 +1119,7 @@ function handleRespawn(player) {
     sendTo(player, {
         type: "respawned",
         spawn: { x: SPAWN.x, y: SPAWN.y, z: SPAWN.z },
-        state: { health: player.health, hunger: player.hunger, thirst: player.thirst }
+        state: { health: player.health, armor: player.armor, hunger: player.hunger, thirst: player.thirst }
     });
 
     broadcastPlayers();
@@ -1153,6 +1220,12 @@ wss.on("connection", (ws, req) => {
 
             case "weapon_attack":
                 handleWeaponAttack(player, data);
+                break;
+            case "ammo_pick":
+                handleAmmoPick(player);
+                break;
+            case "armor_pick":
+                handleArmorPick(player);
                 break;
 
             case "respawn":
