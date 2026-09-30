@@ -124,6 +124,13 @@
         #settingsPanel select { width: 100%; padding: 9px; border: 1px solid #666; border-radius: 6px; background: #252832; color: #fff; font-size: 14px; }
         #settingsPanel input[type="checkbox"] { accent-color: #4CAF50; transform: scale(1.15); margin-right: 8px; }
         #settingsPanel .hint { font-size: 12px; color: #999; margin: 5px 0 12px; line-height: 1.4; }
+        #keybindSection { margin: 16px 0 8px; padding: 12px; border: 1px solid #4b6048; border-radius: 8px; background: rgba(35,48,34,.55); }
+        #keybindSection h4 { margin: 0 0 5px; color: #ffd700; font-size: 15px; }
+        #keybindSection .hint { margin: 0 0 9px; }
+        .keybind-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 5px 0; color: #eee; font-size: 13px; }
+        .keybind-button { min-width: 72px; padding: 6px 9px; color: #fff; background: #303b48; border: 1px solid #687684; border-radius: 5px; font-weight: 700; cursor: pointer; }
+        .keybind-button.listening { background: #705b1d; border-color: #ffd700; }
+        #keybindStatus { min-height: 16px; margin: 7px 0 0; color: #ffd700; font-size: 12px; }
         #settingsPanel h3 { margin: 0 0 20px 0; color: #ffd700; text-align: center; font-size: 22px; }
         #settingsPanel label { display: block; margin: 15px 0 5px 0; color: #cccccc; font-size: 14px; }
         #settingsPanel input[type="range"] { width: 100%; height: 8px; background: #333; border-radius: 4px; outline: none; -webkit-appearance: none; }
@@ -246,6 +253,22 @@
         <p class="hint">Düşük profil çizim çözünürlüğünü ve ağaç ayrıntısını azaltır; FPS yükselmeye çalışır.</p>
         <label style="margin-top:12px;"><input type="checkbox" id="autoFpsToggle" checked>Akıllı FPS optimizasyonu</label>
         <p class="hint">FPS düşünce çözünürlük ve uzak orman ayrıntısı otomatik azaltılır; FPS yükselince geri gelir.</p>
+        <div id="keybindSection" style="display:none">
+            <h4>PC KONTROLLERİ</h4>
+            <p class="hint">WASD veya ok tuşlarıyla da hareket edebilirsin. Bir tuşa basıp yeni tuşa dokun.</p>
+            <div class="keybind-row"><span>İleri</span><button class="keybind-button" data-bind-action="forward">W</button></div>
+            <div class="keybind-row"><span>Geri</span><button class="keybind-button" data-bind-action="backward">S</button></div>
+            <div class="keybind-row"><span>Sol</span><button class="keybind-button" data-bind-action="left">A</button></div>
+            <div class="keybind-row"><span>Sağ</span><button class="keybind-button" data-bind-action="right">D</button></div>
+            <div class="keybind-row"><span>Zıpla / yüzeye çık</span><button class="keybind-button" data-bind-action="jump">Space</button></div>
+            <div class="keybind-row"><span>Dal / eğil</span><button class="keybind-button" data-bind-action="crouch">C</button></div>
+            <div class="keybind-row"><span>Koş</span><button class="keybind-button" data-bind-action="sprint">Shift</button></div>
+            <div class="keybind-row"><span>Etkileşim / al</span><button class="keybind-button" data-bind-action="interact">E</button></div>
+            <div class="keybind-row"><span>Eşyayı bırak</span><button class="keybind-button" data-bind-action="drop">Q</button></div>
+            <div class="keybind-row"><span>Kamera değiştir</span><button class="keybind-button" data-bind-action="camera">T</button></div>
+            <button class="close-btn" id="resetKeybinds" type="button">VARSAYILAN TUŞLAR</button>
+            <p id="keybindStatus" aria-live="polite"></p>
+        </div>
         <button class="close-btn" id="closeSettings">KAPAT</button>
     </div>
 
@@ -2345,6 +2368,13 @@
         const BEACH_PARKING_CENTER = { x: -153.5, z: -377 };
         const BEACH_WATER_EDGE = -452.5;
         const FOREST_POND_CENTER = { x: 300, z: -8 };
+        // Haritanın doğu ormanında, üstü tamamen açık ve gerçek zemin çukuruna oturan derin gölet.
+        const DEEP_POOL = { x: 330, z: 100, rx: 31, rz: 25, waterY: 0.62, depth: 12.5 };
+        const CAVE_SPECS = [{ x: 390, z: 100, heading: -Math.PI / 2, clearRadius: 38 }];
+        const forestBees = [], caveBears = [], deepPoolRipples = [];
+        function deepPoolNormAt(x, z) {
+            return Math.hypot((x - DEEP_POOL.x) / DEEP_POOL.rx, (z - DEEP_POOL.z) / DEEP_POOL.rz);
+        }
         // Orman göleti parametreleri terrainHeightAt tarafından da kullanılır; bu nedenle burada tanımlıdır.
         const FOREST_POND_DEPTH = 0;
         const FOREST_POND_RADIUS_X = 17.5;
@@ -2404,7 +2434,14 @@
             const edgeFade = 1 - smoothStep(310, 350, radial);
             const broadHills = (Math.sin(x * 0.027) * 1.15 + Math.cos(z * 0.023) * 1.05 + Math.sin((x + z) * 0.041) * 0.65);
             const smallUndulation = Math.sin(x * 0.11 + z * 0.07) * 0.22;
-            return (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * parkingFlat * beachParkingFlat * beachFlat * pondFlat * edgeFade + pondBowl;
+            const baseGroundY = (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * parkingFlat * beachParkingFlat * beachFlat * pondFlat * edgeFade + pondBowl;
+            const poolNorm = deepPoolNormAt(x, z);
+            if (poolNorm < 1.14) {
+                const bowlBlend = smoothStep(0.38, 1.14, poolNorm);
+                const poolFloorY = DEEP_POOL.waterY - DEEP_POOL.depth;
+                return poolFloorY + (baseGroundY - poolFloorY) * bowlBlend;
+            }
+            return baseGroundY;
         }
         const terrainPositions = terrainGeo.attributes.position;
         for (let i = 0; i < terrainPositions.count; i++) {
@@ -2447,6 +2484,7 @@
             const radius = 95 + Math.random() * 235;
             const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
             if (Math.hypot(x - FARM_CX, z - FARM_CZ) < 178) continue;
+            if (deepPoolNormAt(x, z) < 1.26 || forestNearCave(x, z)) continue;
             if (Math.hypot(x - CITY_CENTER_X, z - CITY_CENTER_Z) < CITY_RADIUS + 20) continue;
             if (distanceToRoadAxis(x, z) < 18) continue;
             if (Math.abs(x - PARKING_CENTER.x) < 27 && Math.abs(z - PARKING_CENTER.z) < 17) continue;
@@ -2762,11 +2800,141 @@ for(let i=0;i<18;i++){
             for(let f=0;f<7;f++) { const leaf=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.12,5.4),palmLeafMat); leaf.position.set(0,7.5,0); leaf.rotation.y=f*Math.PI*2/7; leaf.rotation.x=-0.25; palm.add(leaf); }
             palm.position.set(x,0,z); scene.add(palm);
         }
-// ===== MAĞARA MODELLERİ KALDIRILDI =====
-// Mağara koordinatı listesi boş bırakıldı; orman yerleşimi/çarpışması çökmez.
-const CAVE_SPECS = [];
-function forestNearCave(_x, _z) { return false; }
-// ===== MAĞARA MODELLERİ KALDIRILDI BİTİŞ =====
+function forestNearCave(x, z) {
+    if (deepPoolNormAt(x, z) < 1.28) return true;
+    return CAVE_SPECS.some(cave => Math.hypot(x - cave.x, z - cave.z) < cave.clearRadius);
+}
+function createDeepPoolAndCave() {
+    const bottomY = DEEP_POOL.waterY - DEEP_POOL.depth;
+    const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x5a5b55, roughness: 0.96, side: THREE.DoubleSide });
+    const wetRockMaterial = new THREE.MeshStandardMaterial({ color: 0x333d3b, roughness: 0.92, side: THREE.DoubleSide });
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x39433c, roughness: 1 });
+    const wallGeo = new THREE.CylinderGeometry(DEEP_POOL.rx * 1.08, DEEP_POOL.rx * 0.38, DEEP_POOL.depth, 64, 1, true);
+    const wall = new THREE.Mesh(wallGeo, wetRockMaterial);
+    wall.position.set(DEEP_POOL.x, DEEP_POOL.waterY - DEEP_POOL.depth * 0.5, DEEP_POOL.z);
+    wall.scale.z = DEEP_POOL.rz / DEEP_POOL.rx;
+    wall.name = 'Derin göletin kayalık iç duvarı'; wall.receiveShadow = true; scene.add(wall);
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(1, 64), floorMaterial);
+    floor.rotation.x = -Math.PI / 2; floor.scale.set(DEEP_POOL.rx * 0.38, DEEP_POOL.rz * 0.38, 1);
+    floor.position.set(DEEP_POOL.x, bottomY + 0.08, DEEP_POOL.z); floor.name = 'Derin gölet dibi'; floor.receiveShadow = true; scene.add(floor);
+    const shore = new THREE.Mesh(new THREE.RingGeometry(0.96, 1.14, 64), new THREE.MeshLambertMaterial({ color: 0x756f5c, side: THREE.DoubleSide }));
+    shore.rotation.x = -Math.PI / 2; shore.scale.set(DEEP_POOL.rx, DEEP_POOL.rz, 1);
+    shore.position.set(DEEP_POOL.x, 0.055, DEEP_POOL.z); scene.add(shore);
+    const waterMaterial = new THREE.MeshPhongMaterial({ color: 0x268ca4, transparent: true, opacity: 0.78, shininess: 88, side: THREE.DoubleSide, depthWrite: false });
+    const water = new THREE.Mesh(new THREE.CircleGeometry(1, 72), waterMaterial);
+    water.rotation.x = -Math.PI / 2; water.scale.set(DEEP_POOL.rx * 0.90, DEEP_POOL.rz * 0.90, 1);
+    water.position.set(DEEP_POOL.x, DEEP_POOL.waterY, DEEP_POOL.z); water.renderOrder = 4;
+    water.name = 'Açık gökyüzünün altındaki derin yüzülebilir gölet'; scene.add(water);
+    const rippleGeo = new THREE.RingGeometry(0.96, 1, 48);
+    for (let i = 0; i < 4; i++) {
+        const ring = new THREE.Mesh(rippleGeo, new THREE.MeshBasicMaterial({ color: 0xb9edf0, transparent: true, opacity: 0.24, side: THREE.DoubleSide, depthWrite: false }));
+        ring.rotation.x = -Math.PI / 2; ring.position.set(DEEP_POOL.x, DEEP_POOL.waterY + 0.025 + i * 0.001, DEEP_POOL.z);
+        ring.userData.phase = i / 4; scene.add(ring); deepPoolRipples.push(ring);
+    }
+    const rimRockGeo = new THREE.DodecahedronGeometry(1, 0);
+    for (let i = 0; i < 36; i++) {
+        const a = i * Math.PI * 2 / 36, s = 0.65 + (i % 4) * 0.20;
+        const rock = new THREE.Mesh(rimRockGeo, rockMaterial);
+        const x = DEEP_POOL.x + Math.cos(a) * DEEP_POOL.rx * 1.12;
+        const z = DEEP_POOL.z + Math.sin(a) * DEEP_POOL.rz * 1.12;
+        rock.position.set(x, terrainHeightAt(x, z) + 0.35, z);
+        rock.scale.set(s * 1.25, s * 0.72, s); rock.rotation.set(a * 0.12, a, a * 0.08);
+        rock.castShadow = true; rock.receiveShadow = true; scene.add(rock);
+    }
+    // Mağara, suyun yanındaki kayalık kıyıda; su yüzeyinin üzerinde hiçbir yapı yoktur.
+    const cave = CAVE_SPECS[0];
+    const caveRoot = new THREE.Group();
+    caveRoot.position.set(cave.x, terrainHeightAt(cave.x, cave.z), cave.z); caveRoot.rotation.y = cave.heading;
+    const interior = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 14), new THREE.MeshLambertMaterial({ color: 0x282827, side: THREE.BackSide }));
+    interior.scale.set(7.2, 5.4, 9.4); interior.position.set(0, 3.6, -3.0); caveRoot.add(interior);
+    const darkness = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 14), new THREE.MeshBasicMaterial({ color: 0x101312 }));
+    darkness.scale.set(4.0, 3.45, 0.32); darkness.position.set(0, 3.65, 0.10); caveRoot.add(darkness);
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(4.15, 1.08, 9, 20), rockMaterial); arch.position.set(0, 3.7, 0.18); caveRoot.add(arch);
+    const rockPositions = [
+        [-4.9,1.0,0.2,2.0,2.0,1.8], [4.9,1.0,0.2,2.0,2.1,1.9],
+        [-4.6,3.5,0.15,1.7,2.0,1.5], [4.6,3.6,0.15,1.8,2.0,1.6],
+        [-3.2,6.6,-0.1,2.0,1.7,1.8], [0,7.4,-0.2,2.8,1.8,2.0], [3.2,6.6,-0.1,2.0,1.8,1.8],
+        [-5.0,0.2,2.0,2.2,0.8,2.4], [5.0,0.2,2.0,2.2,0.8,2.4]
+    ];
+    for (const [x,y,z,sx,sy,sz] of rockPositions) {
+        const rock = new THREE.Mesh(rimRockGeo, rockMaterial);
+        rock.position.set(x,y,z); rock.scale.set(sx,sy,sz); rock.rotation.set(y*.07,x*.09,z*.1); rock.castShadow = true; caveRoot.add(rock);
+    }
+    const caveFloor = new THREE.Mesh(new THREE.BoxGeometry(6.2,0.16,10), floorMaterial);
+    caveFloor.position.set(0,0.02,-2.3); caveRoot.add(caveFloor);
+    const bear = new THREE.Group();
+    const fur = new THREE.MeshStandardMaterial({ color: 0x493021, roughness: 0.98 });
+    const furLight = new THREE.MeshStandardMaterial({ color: 0x68452c, roughness: 0.95 });
+    const muzzleMat = new THREE.MeshStandardMaterial({ color: 0x9a7552, roughness: 0.9 });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x120d0b });
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), fur); body.scale.set(1.55,1.23,2.0); body.position.set(0,1.6,-0.15); bear.add(body);
+    const chest = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 10), furLight); chest.scale.set(1.0,1.1,.92); chest.position.set(0,1.48,1.1); bear.add(chest);
+    const head = new THREE.Group(); head.position.set(0,2.55,1.18); bear.add(head);
+    const headBall = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), fur); headBall.scale.set(.93,.79,.88); head.add(headBall);
+    for (const side of [-1,1]) {
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(.27,10,8), fur); ear.position.set(side*.70,.62,-.05); head.add(ear);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(.095,8,6), eyeMat); eye.position.set(side*.34,.12,.78); head.add(eye);
+        const paw = new THREE.Mesh(new THREE.SphereGeometry(1,10,8), fur); paw.scale.set(.48,.68,.55); paw.position.set(side*.98,.66,1.0); bear.add(paw);
+        const rear = new THREE.Mesh(new THREE.SphereGeometry(1,10,8), fur); rear.scale.set(.47,.72,.52); rear.position.set(side*.98,.66,-1.35); bear.add(rear);
+        for (let toe = -1; toe <= 1; toe++) {
+            const claw = new THREE.Mesh(new THREE.ConeGeometry(.09,.24,6), muzzleMat); claw.position.set(side*.98+toe*.17,.32,1.40); claw.rotation.x=-Math.PI/2; bear.add(claw);
+        }
+    }
+    const snout = new THREE.Mesh(new THREE.SphereGeometry(1,12,8), muzzleMat); snout.scale.set(.50,.36,.48); snout.position.set(0,2.28,2.02); bear.add(snout);
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(.22,10,8), new THREE.MeshStandardMaterial({color:0x171311,roughness:.5})); nose.position.set(0,2.32,2.43); bear.add(nose);
+    bear.position.set(0,0,-4.9); bear.rotation.y = 0; bear.userData = { body, head, phase: Math.random()*Math.PI*2 };
+    caveRoot.add(bear); caveBears.push(bear);
+    caveRoot.name = 'Kayalık mağara ve içerideki ayı'; scene.add(caveRoot);
+
+    function addPine(x,z,seed,withHive=false) {
+        const tree = new THREE.Group();
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.46,.72,8.5,8), new THREE.MeshLambertMaterial({color:0x65452b}));
+        trunk.position.y=4.25; trunk.castShadow=true; tree.add(trunk);
+        const leafMat = new THREE.MeshLambertMaterial({color:seed%2?0x2e6b3b:0x3c7543});
+        for(let layer=0;layer<3;layer++) {
+            const crown=new THREE.Mesh(new THREE.ConeGeometry(4.6-layer*.82,4.9,8),leafMat);
+            crown.position.set(0,6.0+layer*2.1,0); crown.rotation.y=seed*.4+layer*.25; crown.castShadow=true; tree.add(crown);
+        }
+        tree.position.set(x,terrainHeightAt(x,z),z); scene.add(tree);
+        if(withHive) {
+            const hive = new THREE.Group();
+            const body=new THREE.Mesh(new THREE.CylinderGeometry(.63,.52,1.05,6),new THREE.MeshStandardMaterial({color:0xd69227,roughness:.84})); body.rotation.y=Math.PI/6; hive.add(body);
+            const cap=new THREE.Mesh(new THREE.ConeGeometry(.70,.35,6),new THREE.MeshStandardMaterial({color:0x76502d,roughness:.9})); cap.position.y=.68; hive.add(cap);
+            const hole=new THREE.Mesh(new THREE.CircleGeometry(.14,14),new THREE.MeshBasicMaterial({color:0x24170d})); hole.position.set(0,-.08,.525); hive.add(hole);
+            hive.position.set(.78,6.05,.05); tree.add(hive); tree.updateMatrixWorld(true);
+            const home=hive.getWorldPosition(new THREE.Vector3());
+            for(let i=0;i<9;i++) {
+                const bee=new THREE.Group();
+                const bodyBee=new THREE.Mesh(new THREE.SphereGeometry(.15,8,6),new THREE.MeshStandardMaterial({color:0xf4c83b,roughness:.65})); bodyBee.scale.set(1,0.78,1.35); bee.add(bodyBee);
+                const stripe=new THREE.Mesh(new THREE.SphereGeometry(.105,8,6),new THREE.MeshBasicMaterial({color:0x302417})); stripe.position.z=.055; stripe.scale.set(1,.8,.38); bee.add(stripe);
+                const wingMat=new THREE.MeshBasicMaterial({color:0xf4f7e6,transparent:true,opacity:.72,side:THREE.DoubleSide});
+                for(const side of [-1,1]) { const wing=new THREE.Mesh(new THREE.SphereGeometry(.11,7,5),wingMat); wing.scale.set(.55,.16,1.0); wing.position.set(side*.1,.12,-.03); bee.add(wing); }
+                scene.add(bee); forestBees.push({group:bee,home:home.clone(),phase:i*Math.PI*2/9,seed});
+            }
+        }
+    }
+    addPine(410,77,1,false);
+    addPine(414,127,2,true);
+    addPine(402,145,3,false);
+    addPine(428,100,4,false);
+}
+function updateDeepPoolAndCaveLife(now) {
+    const t = now * 0.001;
+    for (const ring of deepPoolRipples) {
+        const p = (t * 0.23 + ring.userData.phase) % 1;
+        const s = 0.18 + p * 0.78;
+        ring.scale.set(DEEP_POOL.rx * s, DEEP_POOL.rz * s, 1);
+        ring.material.opacity = 0.24 * (1 - p);
+    }
+    for (const bee of forestBees) {
+        const a=t*1.65+bee.phase, b=t*2.2+bee.phase*1.4;
+        bee.group.position.set(bee.home.x+Math.cos(a)*1.55,bee.home.y+Math.sin(b)*.48,bee.home.z+Math.sin(a*.83)*1.25);
+        bee.group.rotation.y=-a;
+    }
+    for (const bear of caveBears) {
+        const u=bear.userData; u.body.scale.y=1.23+Math.sin(t*1.7+u.phase)*.035; u.head.rotation.x=Math.sin(t*.7+u.phase)*.025;
+    }
+}
 
         // İnsan ölçüsünde, duraklayıp yürüyen kasaba ve plaj sakinleri.
         const townNpcs = [];
@@ -3020,6 +3188,7 @@ function stepCar(c,dt){
         };
         })();
         function updateCityModel(dt) { cityModelController(dt); }
+        createDeepPoolAndCave();
         // Lush forest region: thousands of low-cost instanced trees cover ~90% of the woodland canopy.
         const forestTrees=[]; const orchardTrees=[]; const forestTreeGrid=new Map(); const FOREST_CELL=8;
         function mulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
@@ -3501,7 +3670,72 @@ function stepCar(c,dt){
         const HEAD_LOOK_LIMIT = 0.82;
         const HEAD_LOOK_SMOOTH = 0.18;
         // ===== OYUN KAMERASI DÜZENLEMESİ BİTİŞ =====
-        const keys = { w: false, a: false, s: false, d: false, c: false, shift: false };
+        const keys = { w: false, a: false, s: false, d: false, c: false, shift: false, jump: false };
+        const DEFAULT_KEY_BINDINGS = { forward:'w', backward:'s', left:'a', right:'d', jump:'space', crouch:'c', sprint:'shift', interact:'e', drop:'q', camera:'t' };
+        const KEY_BINDINGS_STORAGE = 'esekgames_pc_keybindings_v1';
+        let keyBindings = { ...DEFAULT_KEY_BINDINGS };
+        try { const saved = JSON.parse(localStorage.getItem(KEY_BINDINGS_STORAGE) || 'null'); if (saved && typeof saved === 'object') for (const k of Object.keys(DEFAULT_KEY_BINDINGS)) if (typeof saved[k] === 'string') keyBindings[k] = saved[k]; } catch (_) {}
+        const pressedPCKeys = new Set();
+        let bindingAction = null, mobileSwimUpUntil = 0;
+        const keybindSection = document.getElementById('keybindSection');
+        const keybindStatus = document.getElementById('keybindStatus');
+        const keybindButtons = [...document.querySelectorAll('[data-bind-action]')];
+        const swimHintEl = document.createElement('div');
+        swimHintEl.style.cssText = 'position:fixed;left:50%;bottom:82px;transform:translateX(-50%);z-index:130;display:none;padding:8px 12px;border-radius:8px;background:rgba(7,25,34,.82);border:1px solid rgba(142,219,225,.55);color:#e6fbff;font:700 13px Arial;pointer-events:none;text-align:center;white-space:nowrap;';
+        document.body.appendChild(swimHintEl);
+        const underwaterTint = document.createElement('div');
+        underwaterTint.style.cssText = 'position:fixed;inset:0;z-index:75;display:none;background:rgba(25,120,157,.23);pointer-events:none;';
+        document.body.appendChild(underwaterTint);
+        function keyToken(e) { if (e.code === 'Space' || e.key === ' ') return 'space'; return String(e.key || '').toLowerCase(); }
+        function keyLabel(token) { return ({space:'Space',shift:'Shift',arrowup:'↑',arrowdown:'↓',arrowleft:'←',arrowright:'→',enter:'Enter'}[token] || (token.length === 1 ? token.toUpperCase() : token)); }
+        function getActionLabel(action) { return keyLabel(keyBindings[action] || DEFAULT_KEY_BINDINGS[action] || '?'); }
+        function isActionKey(action,e) { return keyToken(e) === keyBindings[action]; }
+        function actionIsDown(action) {
+            const mapped=keyBindings[action];
+            if (pressedPCKeys.has(mapped)) return true;
+            const fallback={forward:'arrowup',backward:'arrowdown',left:'arrowleft',right:'arrowright'}[action];
+            return !!fallback && !Object.values(keyBindings).includes(fallback) && pressedPCKeys.has(fallback);
+        }
+        function syncPCKeyState() {
+            keys.w=actionIsDown('forward'); keys.s=actionIsDown('backward'); keys.a=actionIsDown('left'); keys.d=actionIsDown('right');
+            keys.c=actionIsDown('crouch'); keys.shift=actionIsDown('sprint'); keys.jump=actionIsDown('jump');
+        }
+        function refreshKeybindSection() {
+            if (keybindSection) keybindSection.style.display = controlMode === 'pc' ? 'block' : 'none';
+            for (const button of keybindButtons) {
+                const action=button.dataset.bindAction;
+                button.textContent=keyLabel(keyBindings[action] || DEFAULT_KEY_BINDINGS[action]);
+                button.classList.toggle('listening', bindingAction===action);
+            }
+            if (swimHintEl) swimHintEl.textContent = controlMode==='pc' ? `${getActionLabel('jump')} · yüzeye çık  |  ${getActionLabel('crouch')} · dal` : 'Zıpla · yüzeye çık  |  Eğil · dal';
+        }
+        for (const button of keybindButtons) button.addEventListener('click', () => {
+            bindingAction=button.dataset.bindAction;
+            if (keybindStatus) keybindStatus.textContent='Yeni tuşa bas… (ESC menüyü kapatır)';
+            refreshKeybindSection();
+        });
+        const resetKeybindsButton=document.getElementById('resetKeybinds');
+        if (resetKeybindsButton) resetKeybindsButton.addEventListener('click', () => {
+            keyBindings={...DEFAULT_KEY_BINDINGS}; pressedPCKeys.clear(); syncPCKeyState();
+            try { localStorage.removeItem(KEY_BINDINGS_STORAGE); } catch (_) {}
+            bindingAction=null; if(keybindStatus)keybindStatus.textContent='Varsayılan tuşlar geri yüklendi.'; refreshKeybindSection();
+        });
+        document.addEventListener('keydown', e => {
+            if (!bindingAction) return;
+            const token=keyToken(e);
+            if (token==='escape') { bindingAction=null; refreshKeybindSection(); return; }
+            e.preventDefault(); e.stopImmediatePropagation();
+            if (['tab','control','alt','meta','capslock','numlock','scrolllock'].includes(token) || token.startsWith('f') && /^f\d+$/.test(token)) {
+                if(keybindStatus)keybindStatus.textContent='Bu tuş kullanılamaz; başka bir tuş seç.'; return;
+            }
+            const duplicate=Object.entries(keyBindings).find(([a,k])=>a!==bindingAction&&k===token);
+            if (duplicate) { if(keybindStatus)keybindStatus.textContent=`${keyLabel(token)} zaten atanmış.`; return; }
+            keyBindings[bindingAction]=token;
+            try { localStorage.setItem(KEY_BINDINGS_STORAGE,JSON.stringify(keyBindings)); } catch (_) {}
+            bindingAction=null; pressedPCKeys.clear(); syncPCKeyState();
+            if(keybindStatus)keybindStatus.textContent='Tuş ataması kaydedildi.'; refreshKeybindSection();
+        }, true);
+        window.addEventListener('blur', () => { pressedPCKeys.clear(); syncPCKeyState(); });
         let joystickActive = false;
         let joystickMoveX = 0, joystickMoveZ = 0;
         let isCouchingMobile = false;
@@ -3812,6 +4046,7 @@ function stepCar(c,dt){
 
         function startGame(mode) {
             controlMode = mode;
+            refreshKeybindSection();
             tryLockMobileLandscape();
             initWebSocket();
             // Başlangıç noktası doğrudan yeni çiftlik modelindeki ahırın içi.
@@ -3850,32 +4085,22 @@ function stepCar(c,dt){
         mobileSelectBtn.addEventListener('click', () => startGame('mobile'));
 
         document.addEventListener('keydown', (e) => {
-            if (!gameStarted) return;
-            if (e.key === 'Tab' && controlMode === 'pc' && !e.target.closest('input,textarea,button')) {
-                e.preventDefault(); togglePlayerList(); return;
-            }
+            if (!gameStarted || controlMode !== 'pc') return;
             if (e.target.closest('input,textarea,[contenteditable="true"]')) return;
-            if (controlMode !== 'pc') return;
-            const k = e.key.toLowerCase();
-            if (k === 'w') keys.w = true;
-            if (k === 'a') keys.a = true;
-            if (k === 's') keys.s = true;
-            if (k === 'd') keys.d = true;
-            if (k === 'c') keys.c = true;
-            if (k === 'shift') keys.shift = true;
-            if (k === 't') toggleCameraMode();
-            if (e.code === 'Space' && isGrounded) { velocityY = 0.35; isGrounded = false; }
+            if (settingsPanel.style.display === 'block') return;
+            if (e.key === 'Tab' && !e.target.closest('button')) { e.preventDefault(); togglePlayerList(); return; }
+            const token=keyToken(e);
+            if (['arrowup','arrowdown','arrowleft','arrowright','space'].includes(token)) e.preventDefault();
+            pressedPCKeys.add(token); syncPCKeyState();
+            if (!e.repeat && isActionKey('camera',e)) toggleCameraMode();
+            if (!e.repeat && isActionKey('jump',e)) {
+                if (deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z) < 0.92) return;
+                if (isGrounded) { velocityY=0.35; isGrounded=false; }
+            }
         });
-
         document.addEventListener('keyup', (e) => {
             if (!gameStarted || controlMode !== 'pc') return;
-            const k = e.key.toLowerCase();
-            if (k === 'w') keys.w = false;
-            if (k === 'a') keys.a = false;
-            if (k === 's') keys.s = false;
-            if (k === 'd') keys.d = false;
-            if (k === 'c') keys.c = false;
-            if (k === 'shift') keys.shift = false;
+            pressedPCKeys.delete(keyToken(e)); syncPCKeyState();
         });
 
         // ===== OYUN KAMERASI DÜZENLEMESİ BAŞLANGIÇ =====
@@ -4035,12 +4260,14 @@ function stepCar(c,dt){
 
         function handleJumpStart(e) {
             e.preventDefault();
-            if (gameStarted && isGrounded) { velocityY = 0.35; isGrounded = false; }
+            if (gameStarted && deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z)<0.92) { mobileSwimUpUntil=performance.now()+650; }
+            else if (gameStarted && isGrounded) { velocityY = 0.35; isGrounded = false; }
         }
         
         mobJumpBtn.addEventListener('touchstart', handleJumpStart, { passive: false });
         mobJumpBtn.addEventListener('click', () => {
-            if (gameStarted && isGrounded) { velocityY = 0.35; isGrounded = false; }
+            if (gameStarted && deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z)<0.92) { mobileSwimUpUntil=performance.now()+650; }
+            else if (gameStarted && isGrounded) { velocityY = 0.35; isGrounded = false; }
         });
 
         mobCrouchBtn.addEventListener('touchstart', (e) => { e.preventDefault(); isCouchingMobile = true; }, { passive: false });
@@ -4279,8 +4506,9 @@ function stepCar(c,dt){
                 // Suya girince hareket yavaşlar; göletin fizik alanı görsel göletle aynı merkezdedir.
                 // ===== GÖLET HAREKET/FİZİK DÜZENLEMESİ BİTİŞ =====
 
+                const deepPoolNormBeforeMove=deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z);
                 let speed = baseSpeed;
-                if (inPond) speed *= 0.55;
+                if (inPond || deepPoolNormBeforeMove < 0.92) speed *= 0.55;
                 let moveX = 0, moveZ = 0, isMoving = false;
                 // Klavye ve joystick aynı ileri/yan vektörünü üretir; ikisi de aynı azami hıza sahiptir.
                 let forwardInput = 0, strafeInput = 0;
@@ -4318,36 +4546,48 @@ function stepCar(c,dt){
                     playerDonkey.position.z = newZ;
                 }
 
-                // Gölet suyu üzerinde yüzme: su yüzeyinin 0.3 birim üstünde dur
-                const swimPondDist = Math.hypot(playerDonkey.position.x - pondWX, playerDonkey.position.z - pondWZ);
-                if (swimPondDist < pondSwimR) {
-                    // Su içinde: hafif aşağı çek (yüzme efekti)
-                    const waterY = 0.08 - 0.15;  // su yüzeyi yüksekliği (farmRoot.y + pond.y)
-                    playerDonkey.position.y = Math.max(playerDonkey.position.y, waterY + 0.3);
-                    velocityY = 0; // su içinde yerçekimi yok
-                    isGrounded = true; // zıplama devre dışı (yüzme modu)
-                }
-
                 const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
                 if (distFromCenter > MAP_LIMIT - 5) {
                     const scale = (MAP_LIMIT - 5) / distFromCenter;
                     playerDonkey.position.x *= scale;
                     playerDonkey.position.z *= scale;
                 }
-                
                 // Kamera ve eşek aynı yaw değerini paylaşır: kamera eşeğin arkasında kalır.
                 playerDonkey.rotation.y = yaw;
                 playerDonkey.scale.y += ((DONKEY_BASE_SCALE * (isCrouching ? 0.6 : 1.0)) - playerDonkey.scale.y) * 0.5;
-
                 const groundY = terrainHeightAt(playerDonkey.position.x, playerDonkey.position.z);
-                velocityY -= 0.015;
-                playerDonkey.position.y += velocityY;
-                if (playerDonkey.position.y <= groundY) {
-                    playerDonkey.position.y = groundY;
-                    velocityY = 0;
-                    isGrounded = true;
+                const swimPondDist = Math.hypot(playerDonkey.position.x - pondWX, playerDonkey.position.z - pondWZ);
+                const inDeepWater = deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z) < 0.92;
+                if (inDeepWater) {
+                    const diveHeld=controlMode==='pc'?keys.c:isCouchingMobile;
+                    const surfaceHeld=controlMode==='pc'?keys.jump:(performance.now()<mobileSwimUpUntil);
+                    if (diveHeld) velocityY -= 0.022;
+                    else if (surfaceHeld) velocityY += 0.036;
+                    else velocityY += THREE.MathUtils.clamp((DEEP_POOL.waterY-1.15-playerDonkey.position.y)*0.012,-0.008,0.008);
+                    velocityY *= 0.94;
+                    playerDonkey.position.y += velocityY;
+                    if (playerDonkey.position.y <= groundY + 0.12) {
+                        playerDonkey.position.y = groundY + 0.12; velocityY = 0; isGrounded = true;
+                    } else isGrounded = false;
+                    if (playerDonkey.position.y > DEEP_POOL.waterY - 0.16) {
+                        playerDonkey.position.y = DEEP_POOL.waterY - 0.16; velocityY = Math.min(0,velocityY);
+                    }
+                    swimHintEl.style.display='block';
+                    underwaterTint.style.display=playerDonkey.position.y+1.25<DEEP_POOL.waterY?'block':'none';
+                } else {
+                    swimHintEl.style.display='none'; underwaterTint.style.display='none';
+                    // Çiftlikteki sığ göletin eski yüzme davranışı korunur.
+                    if (swimPondDist < pondSwimR) {
+                        const shallowWaterY = 0.08 - 0.15;
+                        playerDonkey.position.y = Math.max(playerDonkey.position.y, shallowWaterY + 0.3);
+                        velocityY = 0; isGrounded = true;
+                    }
+                    velocityY -= 0.015;
+                    playerDonkey.position.y += velocityY;
+                    if (playerDonkey.position.y <= groundY) {
+                        playerDonkey.position.y = groundY; velocityY = 0; isGrounded = true;
+                    }
                 }
-
                 const isJumping = !isGrounded;
                 updateDonkeyAnimation(playerDonkey, isMoving, isJumping, isCrouching, isSprinting ? 1.35 : 1);
 
@@ -4376,6 +4616,7 @@ function stepCar(c,dt){
                         isCrouching: isCrouching,
                         isMoving: isMoving,
                         isJumping: isJumping,
+                        isSwimming: inDeepWater,
                         name: getPlayerName(),
                         platform: controlMode,
                         pingMs: playerPingMs
@@ -4671,6 +4912,7 @@ function stepCar(c,dt){
             const farmPond={x:FARM_CX-16*1.20,z:FARM_CZ+11*1.20,radius:5.0};
             const waterTargets=[
                 {x:FOREST_POND_CENTER.x,z:FOREST_POND_CENTER.z,radius:12.8},
+                {x:DEEP_POOL.x,z:DEEP_POOL.z,radius:DEEP_POOL.rx*0.82},
                 {x:farmPond.x,z:farmPond.z,radius:farmPond.radius},
                 {x:Math.max(BEACH_PARKING_CENTER.x-122,Math.min(BEACH_PARKING_CENTER.x+122,x)),z:BEACH_WATER_EDGE+1.0,radius:6.2}
             ];
@@ -4688,7 +4930,7 @@ function stepCar(c,dt){
             if(!gameStarted||playerIsDead){currentTargetAction=null;interactPromptEl.style.display='none';mobOpenBtn.style.display='none';return;}
             currentTargetAction=getAimedPoint(playerDonkey.position.x,playerDonkey.position.y,playerDonkey.position.z);
             if(currentTargetAction){
-                const label=currentTargetAction.type==='apple'?'E · Elma ye':'E · Su iç';
+                const label=getActionLabel('interact')+' · '+(currentTargetAction.type==='apple'?'Elma ye':'Su iç');
                 interactPromptEl.textContent=label;interactPromptEl.style.display='block';
                 if(controlMode==='mobile'){mobOpenBtn.textContent=currentTargetAction.type==='apple'?'🍎 YE':'💧 İÇ';mobOpenBtn.style.display='flex';}
             }else{interactPromptEl.style.display='none';mobOpenBtn.style.display='none';}
@@ -4702,7 +4944,7 @@ function stepCar(c,dt){
             }
         }
         document.addEventListener('keydown',e=>{
-            if((e.key||'').toLowerCase()==='e'&&gameStarted&&!e.target.closest('input,textarea,#chatPanel')){e.preventDefault();performInteraction();}
+            if(isActionKey('interact',e)&&gameStarted&&!e.target.closest('input,textarea,#chatPanel,#settingsPanel')){e.preventDefault();performInteraction();}
         });
         mobOpenBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();performInteraction();});
 
@@ -4765,7 +5007,7 @@ function stepCar(c,dt){
         function blockControlTouch(el){el.addEventListener('touchstart',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});el.addEventListener('touchmove',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});el.addEventListener('touchend',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});}
         for(const el of [mobOpenBtn,mobAttackBtnEl,mobJumpBtn,mobCrouchBtn,mobSprintBtn])blockControlTouch(el);
         function bindHoldPointer(el,down,up){let pointer=null;el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(pointer!==null)return;pointer=e.pointerId;el.setPointerCapture(e.pointerId);down();},{passive:false});const release=e=>{if(e.pointerId!==pointer)return;pointer=null;up();};el.addEventListener('pointerup',release);el.addEventListener('pointercancel',release);el.addEventListener('lostpointercapture',release);}
-        bindHoldPointer(mobJumpBtn,()=>{if(gameStarted&&isGrounded){velocityY=.35;isGrounded=false;}},()=>{});
+        bindHoldPointer(mobJumpBtn,()=>{if(gameStarted&&deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z)<0.92){mobileSwimUpUntil=performance.now()+650;}else if(gameStarted&&isGrounded){velocityY=.35;isGrounded=false;}},()=>{});
         bindHoldPointer(mobCrouchBtn,()=>{isCouchingMobile=true;},()=>{isCouchingMobile=false;});
         bindHoldPointer(mobSprintBtn,()=>{isSprintingMobile=true;},()=>{isSprintingMobile=false;});
 
@@ -4825,6 +5067,7 @@ function stepCar(c,dt){
             }
         }
         function updateWater(now) {
+            updateDeepPoolAndCaveLife(now);
             const pos = waterGeo.attributes.position;
             for (let i = 0; i < pos.count; i++) {
                 const base = waterBaseY[i * 3 + 1], x = waterBaseY[i * 3], z = waterBaseY[i * 3 + 2];
@@ -5239,7 +5482,7 @@ const worldItems=[];
 const carrotItems=[];
 const campfires=[];
 const ITEM_PICKUP_RANGE=3.4;
-const DROP_KEY='q';
+const DROP_KEY='q'; // Geriye dönük varsayılan; canlı atama getActionLabel('drop') üzerinden okunur.
 const CARROT_RESPAWN_MS=5*60*1000;
 
 /* -------------------- yardımcılar -------------------- */
@@ -5314,7 +5557,7 @@ const SUPPLY_STATION={x:165,z:268}; // Çiftlik girişinin hemen yanı.
 const STATION_WEAPON_RESPAWN_MS=45000;
 const STATION_AMMO_RESPAWN_MS=20000;
 const STATION_ARMOR_RESPAWN_MS=60000;
-const LOCAL_GUN_AMMO=12;
+const LOCAL_GUN_AMMO = 9999;
 function makeAmmoPickup(){
   const g=new THREE.Group();
   const box=new THREE.Mesh(new THREE.BoxGeometry(.82,.55,.68),makeMat(0x9a6929));box.position.y=.28;g.add(box);
@@ -5372,10 +5615,10 @@ function heldVisual(){
   if(!heldItem||typeof playerDonkey==='undefined'||!playerDonkey)return;
   if(heldItem.group){if(heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);heldItem.group=null;}
   const g=heldItem.type==='sword'?makeSword():makeGun();
-  g.scale.setScalar(heldItem.type==='gun'?1.3:1.1);
-  // Yerel -X, arkadan kamerada eşeğin sağ tarafında görünür.
+  g.scale.setScalar(heldItem.type==='gun'?1.5:1.15);
+  // Eşeğin yerel +X'i sağ tarafıdır; tabancanın +X namlusu -90° çevrilerek +Z ileriye bakar.
   g.position.set(HELD_POS.x,HELD_POS.y,HELD_POS.z);
-  g.rotation.set(0,0,heldItem.type==='sword'?.35:0);
+  g.rotation.set(0,heldItem.type==='gun'?-Math.PI/2:0,heldItem.type==='sword'?.35:0);
   playerDonkey.add(g); heldItem.group=g;
 }
 function clearHeld(){if(heldItem&&heldItem.group&&heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);heldItem=null;}
@@ -5390,7 +5633,6 @@ function pickupItem(item){
   }
   if(item.userData.kind==='pickup'&&item.userData.itemType==='ammo'){
     if(!heldItem||heldItem.type!=='gun'){showFullWarning('Mermi almak için tabancayı kuşanmalısın.');return;}
-    if(heldItem.ammo>=LOCAL_GUN_AMMO){showFullWarning('Mermilerin zaten dolu.');return;}
     if(!ws||ws.readyState!==WebSocket.OPEN)return;
     item.userData.pending=true;sendSocketMessage('ammo_pick',{});return;
   }
@@ -5401,7 +5643,7 @@ function pickupItem(item){
   }
   if(item.userData.kind==='pickup'){
     if(heldItem)dropHeld();
-    heldItem={type:item.userData.itemType,ammo:item.userData.itemType==='gun'?12:0,group:null};
+    heldItem={type:item.userData.itemType,ammo:item.userData.itemType==='gun'?LOCAL_GUN_AMMO:0,group:null};
     item.visible=false;if(item.userData.stationPickup)item.userData.respawnAt=Date.now()+item.userData.respawnMs;heldVisual();
     try{if(typeof sendSocketMessage==='function')sendSocketMessage('weapon_equip',{weapon:heldItem.type});}catch(_){ }
   }
@@ -5432,16 +5674,15 @@ function findNearby(){
   }
   return best;
 }
-function updatePickupPrompt(){  nearbyPickup=findNearby();  if(!interactPromptEl)return;  if(nearbyPickup){    interactPromptEl.textContent='E · '+(nearbyPickup.userData.kind==='carrot'?'Havuç al':'Al: '+itemLabel(nearbyPickup.userData.itemType));    interactPromptEl.style.display='block';    pickupPromptActive=true;  }else if(pickupPromptActive&&!currentTargetAction){    pickupPromptActive=false;    interactPromptEl.style.display='none';  }}
+function updatePickupPrompt(){  nearbyPickup=findNearby();  if(!interactPromptEl)return;  if(nearbyPickup){    interactPromptEl.textContent=getActionLabel('interact')+' · '+(nearbyPickup.userData.kind==='carrot'?'Havuç al':'Al: '+itemLabel(nearbyPickup.userData.itemType));    interactPromptEl.style.display='block';    pickupPromptActive=true;  }else if(pickupPromptActive&&!currentTargetAction){    pickupPromptActive=false;    interactPromptEl.style.display='none';  }}
 
 // E: eşya al; Q: bırak. Capture ile eski E etkileşimini sadece eşya yakındaysa kesiyoruz.
 document.addEventListener('keydown',e=>{
   if(!gameStarted||playerIsDead||e.target.closest('input,textarea,#chatPanel'))return;
-  const k=(e.key||'').toLowerCase();
-  if(k===DROP_KEY){
+  if(isActionKey('drop',e)){
     e.preventDefault();dropHeld();return;
   }
-  if(k==='e'){
+  if(isActionKey('interact',e)){
     const n=findNearby();
     if(n){e.preventDefault();e.stopImmediatePropagation();pickupItem(n);return;}
   }
@@ -5461,8 +5702,7 @@ function nearestWeaponTarget(range){
 function useHeldWeapon(){
   if(!heldItem||!ws||ws.readyState!==WebSocket.OPEN)return;
   if(heldItem.type==='gun'){
-    if(heldItem.ammo<=0){showFullWarning('Mermi bitti! Silahı bırakıp yenisini al.');return;}
-    heldItem.ammo--;
+    heldItem.ammo=LOCAL_GUN_AMMO;
     playGunFx();
     const target=nearestWeaponTarget(30);
     sendSocketMessage('weapon_attack',{weapon:'gun',targetId:target&&target.type==='player'?target.id:null,targetAnimalId:target&&target.type==='animal'?target.animal.userData.id:null,x:target&&target.type==='animal'?target.animal.position.x:playerDonkey.position.x,z:target&&target.type==='animal'?target.animal.position.z:playerDonkey.position.z,yaw:playerDonkey.rotation.y});
@@ -5535,14 +5775,14 @@ function updateDamageFlash(){
     else{setDonkeyRed(g,false);g.userData.hitUntil=0;}
   }
 }
-const HELD_POS={x:-.62,y:1.35,z:.45};
+const HELD_POS={x:.68,y:1.35,z:.24};
 const ammoHudEl=document.createElement('div');
 ammoHudEl.id='ammoHud';
 ammoHudEl.style.cssText='position:fixed;right:18px;bottom:18px;z-index:120;display:none;padding:8px 14px;border-radius:10px;background:rgba(10,14,20,.78);border:1px solid rgba(255,255,255,.18);color:#ffd43b;font:800 18px Arial;pointer-events:none;';
 document.body.appendChild(ammoHudEl);
 let lastAmmoText='';
 function updateAmmoHud(){
-  const txt=(heldItem&&heldItem.type==='gun')?('\ud83d\udd2b '+Math.max(0,heldItem.ammo|0)):'';
+  const txt=(heldItem&&heldItem.type==='gun')?('\ud83d\udd2b ∞'):'';
   if(txt===lastAmmoText)return;
   lastAmmoText=txt;ammoHudEl.textContent=txt;ammoHudEl.style.display=txt?'block':'none';
 }
@@ -5585,9 +5825,9 @@ function updateWeaponFx(){
       if(gunState!==null){
         const p=Math.min(1,(now-gunState)/170),kick=1-p;
         g.position.set(HELD_POS.x-kick*.2,HELD_POS.y+kick*.04,HELD_POS.z);
-        g.rotation.set(0,0,kick*.28);
+        g.rotation.set(0,-Math.PI/2,kick*.28);
         if(muzzle){muzzle.visible=p<.4;muzzle.scale.setScalar(1+kick*.7);}
-        if(p>=1){gunState=null;g.position.set(HELD_POS.x,HELD_POS.y,HELD_POS.z);g.rotation.set(0,0,0);if(muzzle)muzzle.visible=false;}
+        if(p>=1){gunState=null;g.position.set(HELD_POS.x,HELD_POS.y,HELD_POS.z);g.rotation.set(0,-Math.PI/2,0);if(muzzle)muzzle.visible=false;}
       }else{
         g.position.x+=(HELD_POS.x-g.position.x)*.25;g.position.y+=(HELD_POS.y-g.position.y)*.25;g.rotation.z*=.8;
       }
