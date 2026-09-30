@@ -5216,6 +5216,7 @@ window.closePauseResume = closePauseResume;
 
 let heldItem=null;
 let nearbyPickup=null;
+let pickupPromptActive=false;
 const worldItems=[];
 const carrotItems=[];
 const campfires=[];
@@ -5354,12 +5355,7 @@ function findNearby(){
   }
   return best;
 }
-function updatePickupPrompt(){
-  nearbyPickup=findNearby();
-  if(nearbyPickup){
-    prompt.textContent='E · '+(nearbyPickup.userData.kind==='carrot'?'Havuç al':'Al: '+itemLabel(nearbyPickup.userData.itemType));prompt.style.display='block';
-  }
-}
+function updatePickupPrompt(){  nearbyPickup=findNearby();  if(!interactPromptEl)return;  if(nearbyPickup){    interactPromptEl.textContent='E · '+(nearbyPickup.userData.kind==='carrot'?'Havuç al':'Al: '+itemLabel(nearbyPickup.userData.itemType));    interactPromptEl.style.display='block';    pickupPromptActive=true;  }else if(pickupPromptActive&&!currentTargetAction){    pickupPromptActive=false;    interactPromptEl.style.display='none';  }}
 
 // E: eşya al; G: bırak. Capture ile eski E etkileşimini sadece eşya yakındaysa kesiyoruz.
 document.addEventListener('keydown',e=>{
