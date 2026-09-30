@@ -367,11 +367,31 @@ const GUN_DAMAGE = 4;
 const ANIMAL_ATTACK_DAMAGE = 3;
 const ANIMAL_BITE_DAMAGE = 1;
 
-const GUN_AMMO = 9999; // Sınırsız mermi için JSON ile taşınabilen sabit değer.
+const GUN_MAGAZINE = 12;
 const SUPPLY_STATION = { x: 165, z: 268 };
 const SUPPLY_STATION_RANGE = 12;
-const AMMO_PICKUP_COOLDOWN_MS = 20000;
 const ARMOR_PICKUP_COOLDOWN_MS = 60000;
+const BERRY_RESPAWN_MS = 90000;
+const CAVE_BEAR_CENTER = { x: 423, z: 45 };
+const CAVE_BEAR_ATTACK_RADIUS = 28;
+const CAVE_BEAR_DAMAGE = 2;
+
+function berryMulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
+function makeBerryBushSpots(){
+    const rand=berryMulberry32(0xB37D5EED),spots=[];
+    for(let attempt=0;attempt<12000&&spots.length<30;attempt++){
+        const a=rand()*Math.PI*2,r=62+rand()*92,x=255+Math.cos(a)*r,z=35+Math.sin(a)*r;
+        if(x<215||x>450||z<-105||z>205)continue;
+        if(Math.hypot((x-330)/31,(z-100)/25)<1.20)continue;
+        if(Math.hypot(x-423,z-45)<48)continue;
+        if(Math.hypot(x-300,z+8)<22)continue;
+        if(spots.some(q=>Math.hypot(q.x-x,q.z-z)<9))continue;
+        spots.push({id:`berry-bush-${spots.length}`,x,z});
+    }
+    return spots;
+}
+const BERRY_BUSH_SPOTS=makeBerryBushSpots();
+const berryBushStates=new Map();
 
 const CHAT_RESET_MS = 10 * 60 * 1000; // 10 dakika
 const CHAT_HISTORY_LIMIT = 100;
@@ -415,9 +435,9 @@ function createPlayer(ws) {
         alive: true,
 
         weapon: "none",
-        ammo: 0,
-        nextAmmoPickupAt: 0,
+        ammo: GUN_MAGAZINE,
         nextArmorPickupAt: 0,
+        nextBearBiteAt: 0,
 
         connectedAt: Date.now()
     };
@@ -448,6 +468,11 @@ function getAppleCount(treeId) {
 function getCarrot(carrotId) {
     if (!carrots.has(carrotId)) carrots.set(carrotId, { available: true, respawnAt: 0 });
     return carrots.get(carrotId);
+}
+
+function getBerryBush(berryId) {
+    if (!berryBushStates.has(berryId)) berryBushStates.set(berryId, { available: true, respawnAt: 0 });
+    return berryBushStates.get(berryId);
 }
 
 function getAnimal(animalId) {
@@ -611,8 +636,8 @@ function joinGame(player, data) {
     player.pitch = 0;
 
     player.weapon = "none";
-    player.ammo = 0;
-
+    player.ammo = GUN_MAGAZINE;
+    player.nextBearBiteAt = 0;
     sendTo(player, {
         type: "join_accepted",
         state: {
@@ -886,6 +911,26 @@ function handleCarrotPick(player, data) {
     broadcast({ type: "carrot_update", carrotId, available: false });
 }
 
+function handleBerryStateRequest(player) {
+    const states={};
+    for(const spot of BERRY_BUSH_SPOTS){const state=getBerryBush(spot.id);states[spot.id]={available:state.available,respawnAt:state.respawnAt};}
+    sendTo(player,{type:"berry_states",states});
+}
+function handleBerryPick(player,data) {
+    if(!player.inGame||!player.alive)return;
+    const berryId=String((data&&data.berryId)||""),spot=BERRY_BUSH_SPOTS.find(x=>x.id===berryId);
+    if(!spot){sendTo(player,{type:"berry_pick_result",berryId,ok:false,message:"Bu dut çalısı bulunamadı."});return;}
+    if(Math.hypot(player.x-spot.x,player.z-spot.z)>6.5){sendTo(player,{type:"berry_pick_result",berryId,ok:false,message:"Dut çalısına yaklaş."});return;}
+    if(player.hunger>=MAX_NEED){sendTo(player,{type:"berry_pick_result",berryId,ok:false,message:"Karnın zaten tok; dut yiyemezsin."});return;}
+    const state=getBerryBush(berryId);
+    if(!state.available){sendTo(player,{type:"berry_pick_result",berryId,ok:false,message:"Bu çalıdaki dutlar henüz yetişmedi."});return;}
+    state.available=false;state.respawnAt=Date.now()+BERRY_RESPAWN_MS;
+    player.hunger=clampNeed(player.hunger+1.5);sendNeeds(player);
+    sendTo(player,{type:"berry_pick_result",berryId,ok:true,health:player.health,hunger:player.hunger,thirst:player.thirst});
+    broadcast({type:"berry_update",berryId,available:false,respawnAt:state.respawnAt});
+    setTimeout(()=>{if(state.respawnAt&&Date.now()>=state.respawnAt){state.available=true;state.respawnAt=0;broadcast({type:"berry_update",berryId,available:true,respawnAt:0});}},BERRY_RESPAWN_MS+25);
+}
+
 function handleAnimalStatesRequest(player, data) {
     const ids = (data && data.ids) || [];
     const states = {};
@@ -995,14 +1040,12 @@ function handleAmmoPick(player) {
         sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: "Mermi almak için tabancayı kuşan." });
         return;
     }
-    const now = Date.now();
-    if (now < player.nextAmmoPickupAt) {
-        sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: `Mermi istasyonu ${Math.ceil((player.nextAmmoPickupAt - now) / 1000)} sn sonra hazır.` });
+    if (player.ammo >= GUN_MAGAZINE) {
+        sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: "Şarjörün zaten dolu. Mermi kutusunun stoğu sınırsız." });
         return;
     }
-    player.ammo = GUN_AMMO;
-    player.nextAmmoPickupAt = now + AMMO_PICKUP_COOLDOWN_MS;
-    sendTo(player, { type: "ammo_pick_result", ok: true, ammo: player.ammo, respawnMs: AMMO_PICKUP_COOLDOWN_MS, message: "Sınırsız mermi yüklendi." });
+    player.ammo = GUN_MAGAZINE;
+    sendTo(player, { type: "ammo_pick_result", ok: true, ammo: player.ammo, magazine: GUN_MAGAZINE, message: "12 mermi yüklendi; kutunun stoğu sınırsız." });
 }
 function handleArmorPick(player) {
     if (!player.inGame || !player.alive) return;
@@ -1024,23 +1067,28 @@ function handleArmorPick(player) {
     sendNeeds(player);
     sendTo(player, { type: "armor_pick_result", ok: true, armor: player.armor, health: player.health, hunger: player.hunger, thirst: player.thirst, respawnMs: ARMOR_PICKUP_COOLDOWN_MS });
 }
+function handleBearAttack(player,data) {
+    if(!player.inGame||!player.alive)return;
+    const bearId=String((data&&data.bearId)||"");
+    if(!/^cave-bear-[1-3]$/.test(bearId))return;
+    if(Math.hypot(player.x-CAVE_BEAR_CENTER.x,player.z-CAVE_BEAR_CENTER.z)>CAVE_BEAR_ATTACK_RADIUS)return;
+    const now=Date.now();if(now<(player.nextBearBiteAt||0))return;
+    player.nextBearBiteAt=now+1250;
+    damagePlayer(player,CAVE_BEAR_DAMAGE,null,null,"Mağaradaki ayı seni ısırdı.");
+}
+
 function handleWeaponEquip(player, data) {
     if (!player.inGame) return;
-
     const weapon = String((data && data.weapon) || "none");
-
     if (weapon === "gun") {
         player.weapon = "gun";
-        player.ammo = GUN_AMMO;
+        player.ammo = Math.max(0, Math.min(GUN_MAGAZINE, Number(player.ammo) || 0));
     } else if (weapon === "sword") {
         player.weapon = "sword";
-        player.ammo = 0;
     } else {
         player.weapon = "none";
-        player.ammo = 0;
     }
-
-    sendTo(player, { type: "weapon_equipped", weapon: player.weapon, ammo: player.ammo });
+    sendTo(player, { type: "weapon_equipped", weapon: player.weapon, ammo: player.ammo, magazine: GUN_MAGAZINE });
 }
 
 function handleWeaponAttack(player, data) {
@@ -1050,23 +1098,20 @@ function handleWeaponAttack(player, data) {
 
     if (weapon === "gun") {
         if (player.weapon !== "gun") {
-            sendTo(player, { type: "weapon_result", ok: false, message: "Elinde silah yok.", ammo: player.ammo });
+            sendTo(player, { type: "weapon_result", ok: false, message: "Elinde silah yok.", ammo: player.ammo, magazine: GUN_MAGAZINE });
             return;
         }
-
-
-
-        player.ammo = GUN_AMMO;
-        sendTo(player, { type: "weapon_result", ok: true, ammo: player.ammo, unlimited: true });
-
+        if (player.ammo <= 0) {
+            sendTo(player, { type: "weapon_result", ok: false, message: "Mermi bitti. Çiftlikteki kutudan 12 mermi al.", ammo: 0, magazine: GUN_MAGAZINE });
+            return;
+        }
+        player.ammo = Math.max(0, player.ammo - 1);
+        sendTo(player, { type: "weapon_result", ok: true, ammo: player.ammo, magazine: GUN_MAGAZINE });
         const targetId = data.targetId ? String(data.targetId) : null;
         const targetAnimalId = data.targetAnimalId ? String(data.targetAnimalId) : null;
-
         if (targetId) {
             const target = players.get(targetId);
-            if (target && target.inGame && target.alive) {
-                damagePlayer(target, GUN_DAMAGE, player.id, player.name);
-            }
+            if (target && target.inGame && target.alive) damagePlayer(target, GUN_DAMAGE, player.id, player.name);
         } else if (targetAnimalId) {
             damageAnimal(targetAnimalId, GUN_DAMAGE);
         }
@@ -1187,6 +1232,14 @@ wss.on("connection", (ws, req) => {
                 handleCarrotPick(player, data);
                 break;
 
+            case "berry_state_request":
+                handleBerryStateRequest(player);
+                break;
+
+            case "berry_pick":
+                handleBerryPick(player, data);
+                break;
+
             case "animal_states_request":
                 handleAnimalStatesRequest(player, data);
                 break;
@@ -1201,6 +1254,10 @@ wss.on("connection", (ws, req) => {
 
             case "animal_attack":
                 handleAnimalAttack(player, data);
+                break;
+
+            case "bear_attack":
+                handleBearAttack(player, data);
                 break;
 
             case "attack_player":
