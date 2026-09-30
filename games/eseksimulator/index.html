@@ -304,9 +304,21 @@
         
         let ws = null;
         let myId = null;
+        let onlineConnectionCount = 0;
         const otherPlayers = {};
         let controlMode = 'pc';
         const MAP_LIMIT = 510;
+        const CAMP_SITE = { x: 245, z: -205 };
+        const CAMPFIRE_INTERACT_RANGE = 8;
+        const HUNTER_SPAWNS = [
+            { id: 'camp-hunter-1', x: 235, z: -205 },
+            { id: 'camp-hunter-2', x: 255, z: -205 },
+            { id: 'camp-hunter-3', x: 245, z: -193 }
+        ];
+        const HUNTER_MAX_HEALTH = 12;
+        const hunters = [];
+        const hunterProjectiles = [];
+        window.__esekCampSite = CAMP_SITE;
         let viewDistance = 100;
         let sensitivity = 1.1;
         let cameraMode = 'third';
@@ -518,6 +530,19 @@
             if (Math.abs(x + 153.5) < 55 && z < -285 && z > -430) continue;
             createMountain(x, z, 24 + Math.random() * 8, 80 + Math.random() * 35);
         }
+        const outerSea = new THREE.Mesh(
+            new THREE.RingGeometry(MAP_LIMIT - 5, MAP_LIMIT + 2100, 192),
+            new THREE.MeshStandardMaterial({ color: 0x176b83, roughness: 0.2, metalness: 0.08, side: THREE.DoubleSide })
+        );
+        outerSea.rotation.x = -Math.PI / 2;
+        outerSea.position.y = -2.4;
+        outerSea.name = 'Harita çevresini saran açık deniz';
+        scene.add(outerSea);
+        const seaGlint = new THREE.Mesh(
+            new THREE.RingGeometry(MAP_LIMIT + 105, MAP_LIMIT + 108, 192),
+            new THREE.MeshBasicMaterial({ color: 0x71c8d0, transparent: true, opacity: 0.32, side: THREE.DoubleSide })
+        );
+        seaGlint.rotation.x = -Math.PI / 2; seaGlint.position.y = -2.32; scene.add(seaGlint);
 
         // ==========================================
         // OTLAR
@@ -533,13 +558,14 @@
         // Çimler tek tek mesh yerine instanced çizilecek: görünüm korunur, draw-call sayısı ciddi azalır.
         const grassSpots = [];
         const grassAreaRadius = MAP_LIMIT - 80;
-        for (let i = 0; i < 2100; i++) {
+        for (let i = 0; i < 5200; i++) {
             const angle = Math.random() * Math.PI * 2;
             const radius = Math.sqrt(Math.random()) * grassAreaRadius;
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
             const distToFarm = Math.hypot(x - FARM_CX, z - FARM_CZ);
             if (distToFarm < 150) continue;
+            if (Math.hypot(x - CAMP_SITE.x, z - CAMP_SITE.z) < 34) continue;
             let inMountain = false;
             for (const m of mountains) {
                 if (Math.hypot(x - m.x, z - m.z) < m.radius + 1) { inMountain = true; break; }
@@ -2380,8 +2406,8 @@
         const FOREST_POND_CENTER = { x: 300, z: -8 };
         // Haritanın doğu ormanında, üstü tamamen açık ve gerçek zemin çukuruna oturan derin gölet.
         const DEEP_POOL = { x: 330, z: 100, rx: 31, rz: 25, waterY: 0.62, depth: 12.5 };
-        const DEEP_POOL_SWIM_RADIUS = 1.08;
-        const CAVE_SPECS = [{ x: 423, z: 45, heading: -Math.PI / 2, clearRadius: 48 }];
+        const DEEP_POOL_SWIM_RADIUS = 1.18;
+        const CAVE_SPECS = [{ x: 423, z: 45, heading: -Math.PI / 2, clearRadius: 60 }];
         const forestBees = [], caveBears = [], deepPoolRipples = [], caveRoots = [], caveCollisionCircles = [];
         function deepPoolNormAt(x, z) {
             return Math.hypot((x - DEEP_POOL.x) / DEEP_POOL.rx, (z - DEEP_POOL.z) / DEEP_POOL.rz);
@@ -2447,8 +2473,8 @@
             const smallUndulation = Math.sin(x * 0.11 + z * 0.07) * 0.22;
             const baseGroundY = (broadHills + smallUndulation) * farmFlat * cityFlat * roadFlat * parkingFlat * beachParkingFlat * beachFlat * pondFlat * edgeFade + pondBowl;
             const poolNorm = deepPoolNormAt(x, z);
-            if (poolNorm < 1.14) {
-                const bowlBlend = smoothStep(0.38, 1.14, poolNorm);
+            if (poolNorm < 1.26) {
+                const bowlBlend = smoothStep(0.38, 1.26, poolNorm);
                 const poolFloorY = DEEP_POOL.waterY - DEEP_POOL.depth;
                 return poolFloorY + (baseGroundY - poolFloorY) * bowlBlend;
             }
@@ -2496,6 +2522,7 @@
             const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
             if (Math.hypot(x - FARM_CX, z - FARM_CZ) < 178) continue;
             if (deepPoolNormAt(x, z) < 1.26 || forestNearCave(x, z)) continue;
+            if(Math.hypot(x - CAMP_SITE.x, z - CAMP_SITE.z) < 36) continue;
             if (Math.hypot(x - CITY_CENTER_X, z - CITY_CENTER_Z) < CITY_RADIUS + 20) continue;
             if (distanceToRoadAxis(x, z) < 18) continue;
             if (Math.abs(x - PARKING_CENTER.x) < 27 && Math.abs(z - PARKING_CENTER.z) < 17) continue;
@@ -2828,16 +2855,16 @@ function createDeepPoolAndCave() {
     const floor = new THREE.Mesh(new THREE.CircleGeometry(1, 64), floorMaterial);
     floor.rotation.x = -Math.PI / 2; floor.scale.set(DEEP_POOL.rx * 0.38, DEEP_POOL.rz * 0.38, 1);
     floor.position.set(DEEP_POOL.x, bottomY + 0.08, DEEP_POOL.z); floor.name = 'Derin gölet dibi'; floor.receiveShadow = true; scene.add(floor);
-    const shore = new THREE.Mesh(new THREE.RingGeometry(1.14, 1.22, 72), new THREE.MeshLambertMaterial({ color: 0x756f5c, side: THREE.DoubleSide }));
+    const shore = new THREE.Mesh(new THREE.RingGeometry(1.26, 1.33, 72), new THREE.MeshLambertMaterial({ color: 0x756f5c, side: THREE.DoubleSide }));
     shore.rotation.x = -Math.PI / 2; shore.scale.set(DEEP_POOL.rx, DEEP_POOL.rz, 1);
     shore.position.set(DEEP_POOL.x, 0.055, DEEP_POOL.z); scene.add(shore);
     const waterMaterial = new THREE.MeshPhongMaterial({ color: 0x268ca4, transparent: true, opacity: 0.78, shininess: 88, side: THREE.DoubleSide, depthWrite: false });
     const water = new THREE.Mesh(new THREE.CircleGeometry(1, 72), waterMaterial);
-    water.rotation.x = -Math.PI / 2; water.scale.set(DEEP_POOL.rx * 1.14, DEEP_POOL.rz * 1.14, 1);
+    water.rotation.x = -Math.PI / 2; water.scale.set(DEEP_POOL.rx * 1.26, DEEP_POOL.rz * 1.26, 1);
     water.position.set(DEEP_POOL.x, DEEP_POOL.waterY, DEEP_POOL.z); water.renderOrder = 4;
     water.name = 'Açık gökyüzünün altındaki derin yüzülebilir gölet'; scene.add(water);
     const waterFoam = new THREE.Mesh(new THREE.RingGeometry(0.985, 1.012, 72), new THREE.MeshBasicMaterial({ color: 0xc7edf0, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false }));
-    waterFoam.rotation.x = -Math.PI / 2; waterFoam.scale.set(DEEP_POOL.rx * 1.14, DEEP_POOL.rz * 1.14, 1);
+    waterFoam.rotation.x = -Math.PI / 2; waterFoam.scale.set(DEEP_POOL.rx * 1.26, DEEP_POOL.rz * 1.26, 1);
     waterFoam.position.set(DEEP_POOL.x, DEEP_POOL.waterY + 0.018, DEEP_POOL.z); waterFoam.renderOrder = 5; scene.add(waterFoam);
     const rippleGeo = new THREE.RingGeometry(0.96, 1, 48);
     for (let i = 0; i < 4; i++) {
@@ -2849,8 +2876,8 @@ function createDeepPoolAndCave() {
     for (let i = 0; i < 36; i++) {
         const a = i * Math.PI * 2 / 36, s = 0.65 + (i % 4) * 0.20;
         const rock = new THREE.Mesh(rimRockGeo, rockMaterial);
-        const x = DEEP_POOL.x + Math.cos(a) * DEEP_POOL.rx * 1.18;
-        const z = DEEP_POOL.z + Math.sin(a) * DEEP_POOL.rz * 1.18;
+        const x = DEEP_POOL.x + Math.cos(a) * DEEP_POOL.rx * 1.31;
+        const z = DEEP_POOL.z + Math.sin(a) * DEEP_POOL.rz * 1.31;
         rock.position.set(x, terrainHeightAt(x, z) + 0.35, z);
         rock.scale.set(s * 1.25, s * 0.72, s); rock.rotation.set(a * 0.12, a, a * 0.08);
         rock.castShadow = true; rock.receiveShadow = true; scene.add(rock);
@@ -2859,29 +2886,33 @@ function createDeepPoolAndCave() {
     const cave = CAVE_SPECS[0];
     const caveRoot = new THREE.Group();
     caveRoot.position.set(cave.x, terrainHeightAt(cave.x, cave.z), cave.z); caveRoot.rotation.y = cave.heading;
-    const shellGeo = new THREE.SphereGeometry(1, 32, 22, 0.50, Math.PI * 2 - 1.00, 0, Math.PI * 0.76);
+    // Opaque dome with one intentional, wide front opening; the back and both sides remain solid.
+    const entranceGap = 1.58;
+    const shellGeo = new THREE.SphereGeometry(1, 56, 32, Math.PI / 2 + entranceGap / 2, Math.PI * 2 - entranceGap, 0, Math.PI * 0.72);
     const shell = new THREE.Mesh(shellGeo, new THREE.MeshStandardMaterial({ color: 0x514e49, roughness: 1, side: THREE.DoubleSide }));
-    shell.scale.set(11.5, 8.4, 16.5); shell.position.set(0, 5.4, -5.8); shell.castShadow = true; shell.receiveShadow = true; caveRoot.add(shell);
-    const caveFloor = new THREE.Mesh(new THREE.BoxGeometry(19, 0.22, 27), floorMaterial);
-    caveFloor.position.set(0, 0.02, -6.2); caveFloor.receiveShadow = true; caveRoot.add(caveFloor);
-    const caveLantern = new THREE.PointLight(0xffbb70, 2.1, 27, 2);
-    caveLantern.position.set(0, 4.35, -8.2); caveRoot.add(caveLantern);
+    shell.scale.set(14.5, 9.6, 21.5); shell.position.set(0, 5.6, -7.5); shell.castShadow = true; shell.receiveShadow = true; caveRoot.add(shell);
+    const caveFloor = new THREE.Mesh(new THREE.BoxGeometry(27, 0.22, 36), floorMaterial);
+    caveFloor.position.set(0, 0.02, -7.8); caveFloor.receiveShadow = true; caveRoot.add(caveFloor);
+    const caveLantern = new THREE.PointLight(0xffbb70, 2.4, 34, 2);
+    caveLantern.position.set(0, 4.8, -10.2); caveRoot.add(caveLantern);
     const lanternGlow = new THREE.Mesh(new THREE.SphereGeometry(.24,10,8),new THREE.MeshBasicMaterial({color:0xffbd70}));
     lanternGlow.position.copy(caveLantern.position); caveRoot.add(lanternGlow);
-    const arch = new THREE.Mesh(new THREE.TorusGeometry(6.0, 1.35, 12, 28), rockMaterial);
-    arch.position.set(0, 5.1, 0.65); caveRoot.add(arch);
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(8.2, 1.55, 14, 36), rockMaterial);
+    arch.position.set(0, 5.8, 2.0); caveRoot.add(arch);
     const boulderGeometry = new THREE.DodecahedronGeometry(1, 1);
     function addCaveCollider(localX, localZ, radius) {
         const c = Math.cos(cave.heading), q = Math.sin(cave.heading);
         caveCollisionCircles.push({ x: cave.x + localX*c + localZ*q, z: cave.z - localX*q + localZ*c, radius });
     }
     const rockPositions = [
-        [-9.0,1.2,0.6,3.4,2.7,3.3], [9.0,1.2,0.6,3.4,2.8,3.3],
-        [-10.2,3.7,-3.0,2.8,3.4,4.0], [10.2,3.7,-3.0,2.8,3.4,4.0],
-        [-10.0,3.8,-8.4,2.9,3.7,4.1], [10.0,3.8,-8.4,2.9,3.7,4.1],
-        [-7.6,6.7,-13.0,3.8,3.2,4.0], [0,8.2,-13.5,4.4,2.9,4.2], [7.6,6.7,-13.0,3.8,3.2,4.0],
-        [-6.4,0.25,2.1,3.3,1.0,3.6], [6.4,0.25,2.1,3.3,1.0,3.6],
-        [-12.0,1.1,-5.0,2.0,1.7,2.2], [12.0,1.1,-5.0,2.0,1.7,2.2]
+        [-12.8,1.2,1.8,4.1,3.0,4.4], [12.8,1.2,1.8,4.1,3.0,4.4],
+        [-13.6,3.6,-3.6,4.0,4.5,5.0], [13.6,3.6,-3.6,4.0,4.5,5.0],
+        [-13.8,3.8,-10.0,4.0,4.8,5.2], [13.8,3.8,-10.0,4.0,4.8,5.2],
+        [-10.0,7.0,-19.0,5.2,4.0,5.3], [-4.2,8.0,-22.0,5.2,4.1,4.8],
+        [4.2,8.0,-22.0,5.2,4.1,4.8], [10.0,7.0,-19.0,5.2,4.0,5.3],
+        [-10.8,0.25,3.4,3.8,1.0,3.6], [10.8,0.25,3.4,3.8,1.0,3.6],
+        [-15.2,1.3,-6.0,2.7,2.2,3.0], [15.2,1.3,-6.0,2.7,2.2,3.0],
+        [-14.6,1.0,-15.2,3.0,2.3,3.6], [14.6,1.0,-15.2,3.0,2.3,3.6]
     ];
     for (const [x,y,z,sx,sy,sz] of rockPositions) {
         const rock = new THREE.Mesh(boulderGeometry, rockMaterial);
@@ -2889,9 +2920,9 @@ function createDeepPoolAndCave() {
         rock.castShadow = true; rock.receiveShadow = true; caveRoot.add(rock);
         if (y <= 1.5) addCaveCollider(x,z,Math.max(sx,sz)*0.46);
     }
-    // Solid collision along both sides and the rear; the broad entrance remains open.
-    for (const side of [-1,1]) for (const z of [0,-4,-8,-12,-15]) addCaveCollider(side*10.0,z,2.5);
-    for (const x of [-7,-3.5,0,3.5,7]) addCaveCollider(x,-17.5,2.35);
+    // Solid side/rear collision rings; leave the center of the front arch open for bears and players.
+    for (const side of [-1,1]) for (const z of [3,-3,-9,-15,-20]) addCaveCollider(side*13.6,z,3.0);
+    for (const x of [-10,-5,0,5,10]) addCaveCollider(x,-24.0,3.1);
     // Stalactites, stalagmites and cool crystal clusters make the interior readable and detailed.
     const crystalMat = new THREE.MeshStandardMaterial({ color: 0x48aeb6, emissive: 0x10383b, roughness: 0.32, metalness: 0.18 });
     for (let i=0;i<8;i++) {
@@ -2989,15 +3020,22 @@ function updateDeepPoolAndCaveLife(now) {
             if (!u.alive) { bear.rotation.z=Math.min(1.45,bear.rotation.z+0.018); continue; }
             const dt=u.lastUpdate ? Math.min(.05,Math.max(0,(now-u.lastUpdate)/1000)) : 0.016; u.lastUpdate=now;
             const dx=playerLocal.x-bear.position.x, dz=playerLocal.z-bear.position.z, distance=Math.hypot(dx,dz);
-            const playerInside=gameStarted&&!playerIsDead&&Math.abs(playerLocal.x)<13&&playerLocal.z>-22&&playerLocal.z<7;
-            const chasing=playerInside&&distance<19;
-            let tx=u.homeX+Math.sin(t*.43+u.phase)*2.1, tz=u.homeZ+Math.cos(t*.37+u.phase)*1.8;
+            const nearDen=gameStarted&&!playerIsDead&&Math.abs(playerLocal.x)<30&&playerLocal.z>-34&&playerLocal.z<44;
+            const chasing=nearDen&&distance<22;
+            const insidePatrol=[[-7,-17],[7,-17],[-8,-8],[8,-7],[-6,1],[6,2],[0,7]];
+            const outsidePatrol=[[-7,15],[7,18],[-9,27],[9,29],[0,22]];
+            if(!u.roamTarget||Math.hypot(u.roamTarget.x-bear.position.x,u.roamTarget.z-bear.position.z)<1.1){
+                const goOutside=Math.random()<.38, pool=goOutside?outsidePatrol:insidePatrol, point=pool[Math.floor(Math.random()*pool.length)];
+                u.roamTarget={x:point[0],z:point[1]};
+            }
+            let tx=u.roamTarget.x, tz=u.roamTarget.z;
             if(chasing){tx=playerLocal.x;tz=playerLocal.z;}
-            const mx=tx-bear.position.x,mz=tz-bear.position.z,md=Math.hypot(mx,mz),speed=chasing?2.25:.55;
+            const mx=tx-bear.position.x,mz=tz-bear.position.z,md=Math.hypot(mx,mz),speed=chasing?2.25:1.15;
             const moving=md>.22;
             if(moving){const step=Math.min(md,speed*dt);bear.position.x+=mx/md*step;bear.position.z+=mz/md*step;}
-            bear.position.x=THREE.MathUtils.clamp(bear.position.x,-7.2,7.2);
-            bear.position.z=THREE.MathUtils.clamp(bear.position.z,-15.0,-1.3);
+            const sideLimit=bear.position.z<8?8.8:17.0;
+            bear.position.x=THREE.MathUtils.clamp(bear.position.x,-sideLimit,sideLimit);
+            bear.position.z=THREE.MathUtils.clamp(bear.position.z,-23.0,33.0);
             bear.position.y=.025+(moving?Math.abs(Math.sin(t*7+u.phase))*.075:Math.sin(t*1.5+u.phase)*.018);
             if(moving)bear.rotation.y=Math.atan2(mx,mz);
             const attacking=chasing&&distance<3.05;
@@ -3109,7 +3147,7 @@ var wallMats=[0xffffff,0xf0d9c0,0xc9d6e3,0xd9c6b8,0xb9c4c9].map(function(c){retu
 var roofMat=new THREE.MeshStandardMaterial({map:roofT,roughness:.95});
 function tower(w,h,d,x,y,z,mat){var g=new THREE.BoxGeometry(w,h,d),uv=g.attributes.uv,fw=Math.max(1,Math.round(w/12)),fd=Math.max(1,Math.round(d/12)),fh=Math.max(1,Math.round(h/16));
   for(var i=0;i<uv.count;i++){var f=Math.floor(i/4),u=uv.getX(i),v=uv.getY(i);if(f<2)uv.setXY(i,u*fd,v*fh);else if(f>=4)uv.setXY(i,u*fw,v*fh);else uv.setXY(i,u*3,v*3)}
-  var m=new THREE.Mesh(g,[mat,mat,roofMat,roofMat,mat,mat]);m.position.set(x,y+h/2,z);m.castShadow=m.receiveShadow=true;cityRoot.add(m);buildings.push({x:CITY_CENTER_X+x*CITY_MODEL_SCALE,z:CITY_CENTER_Z+z*CITY_MODEL_SCALE,halfW:w*CITY_MODEL_SCALE/2+1.2,halfD:d*CITY_MODEL_SCALE/2+1.2})}
+  var m=new THREE.Mesh(g,[mat,mat,roofMat,roofMat,mat,mat]);m.position.set(x,y+h/2,z);m.castShadow=m.receiveShadow=true;cityRoot.add(m);buildings.push({x:CITY_CENTER_X+x*CITY_MODEL_SCALE,z:CITY_CENTER_Z+z*CITY_MODEL_SCALE,halfW:w*CITY_MODEL_SCALE/2+2.0,halfD:d*CITY_MODEL_SCALE/2+2.0,kind:'cityBuilding'})}
 function inst(g,m,list,cast){var im=new THREE.InstancedMesh(g,m,list.length),o=new THREE.Object3D();
   list.forEach(function(a,i){o.position.set(a[0],a[1],a[2]);o.rotation.set(0,a[3]||0,0);var s=a[4]||1;o.scale.set(s,a[5]||s,s);o.updateMatrix();im.setMatrixAt(i,o.matrix);if(a[6]!=null)im.setColorAt(i,new THREE.Color(a[6]))});
   im.castShadow=!!cast;im.receiveShadow=true;cityRoot.add(im);return im}
@@ -3302,6 +3340,7 @@ function stepCar(c,dt){
             if(Math.hypot(x,z)>326)continue;
             if(Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<31)continue;
             if(forestNearCave(x,z))continue;
+            if(Math.hypot(x-CAMP_SITE.x,z-CAMP_SITE.z)<42)continue;
             if(Math.hypot(x-FARM_CX,z-FARM_CZ)<170)continue;
             if(Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<CITY_RADIUS+22)continue;
             if(!canPlaceForestTree(x,z))continue;
@@ -3313,6 +3352,7 @@ function stepCar(c,dt){
             const x=Math.cos(a)*r, z=Math.sin(a)*r;
             if(Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<31)continue;
             if(forestNearCave(x,z))continue;
+            if(Math.hypot(x-CAMP_SITE.x,z-CAMP_SITE.z)<42)continue;
             if(Math.hypot(x-FARM_CX,z-FARM_CZ)<170)continue;
             if(Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<CITY_RADIUS+24)continue;
             if(Math.abs(x-BEACH_PARKING_CENTER.x)<140&&z<-382)continue;
@@ -3517,8 +3557,82 @@ function stepCar(c,dt){
             ['goat','forest-goat-1',205,-107],['goat','forest-goat-2',260,-75],['goat','forest-goat-3',286,-93]
         ];
         animalSpawns.forEach((a,i)=>createWildAnimal(a[0],a[1],a[2],a[3],i+1));
+        const spreadRand=mulberry32(0x5A17C0DE),spreadSectors=Array(12).fill(0),spreadTypes=['deer','rabbit','fox','goat','boar','wolf'];
+        let spreadCount=0;
+        for(let attempt=0;attempt<30000&&spreadCount<78;attempt++){
+            const angle=spreadRand()*Math.PI*2,radius=220+spreadRand()*210,x=Math.cos(angle)*radius,z=Math.sin(angle)*radius;
+            const sector=Math.floor(angle/(Math.PI*2)*spreadSectors.length);
+            if(spreadSectors[sector]>=7||radius>MAP_LIMIT-68)continue;
+            if(Math.hypot(x-CITY_CENTER_X,z-CITY_CENTER_Z)<CITY_RADIUS+28)continue;
+            if(Math.hypot(x-FARM_CX,z-FARM_CZ)<165)continue;
+            if(Math.hypot(x-CAMP_SITE.x,z-CAMP_SITE.z)<42)continue;
+            if(Math.hypot(x-FOREST_POND_CENTER.x,z-FOREST_POND_CENTER.z)<27)continue;
+            if(deepPoolNormAt(x,z)<1.7||forestNearCave(x,z))continue;
+            if(distanceToRoadAxis(x,z)<19)continue;
+            if(Math.hypot(x-BEACH_PARKING_CENTER.x,z-BEACH_PARKING_CENTER.z)<155)continue;
+            if(wildlife.some(a=>Math.hypot(x-a.position.x,z-a.position.z)<24))continue;
+            const type=spreadTypes[Math.floor(spreadRand()*spreadTypes.length)],id=`roaming-wild-${String(spreadCount+1).padStart(3,'0')}`;
+            createWildAnimal(type,id,x,z,100+spreadCount);spreadSectors[sector]++;spreadCount++;
+        }
         function paintAnimalStatus(animal){const c=animal.userData.statusCanvas,ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='rgba(10,14,18,.78)';ctx.beginPath();ctx.roundRect(2,4,252,56,14);ctx.fill();ctx.font='bold 21px Arial';ctx.fillStyle='#fff';ctx.textAlign='left';ctx.fillText(animal.userData.label,12,25);const rows=[[animal.userData.health,'#ef5050'],[animal.userData.hunger,'#80c84f'],[animal.userData.thirst,'#42a9ed']];for(let r=0;r<3;r++){ctx.fillStyle='#20272b';ctx.fillRect(118,11+r*13,122,7);ctx.fillStyle=rows[r][1];ctx.fillRect(118,11+r*13,122*Math.max(0,Math.min(1,rows[r][0]/9)),7);}animal.userData.statusTex.needsUpdate=true;}
         wildlife.forEach(paintAnimalStatus);
+        const hunterShirtMat=new THREE.MeshStandardMaterial({color:0x44513b,roughness:.92}),hunterPantsMat=new THREE.MeshStandardMaterial({color:0x343b31,roughness:.95});
+        const hunterSkinMat=new THREE.MeshStandardMaterial({color:0xb98c6b,roughness:.9}),hunterHatMat=new THREE.MeshStandardMaterial({color:0x4a4933,roughness:.94});
+        const hunterGunMat=new THREE.MeshStandardMaterial({color:0x272b2b,metalness:.48,roughness:.48}),hunterFlashMat=new THREE.MeshBasicMaterial({color:0xffcc57});
+        function paintHunterStatus(h){const c=h.userData.statusCanvas,ctx=c.getContext('2d');ctx.clearRect(0,0,220,56);ctx.fillStyle='rgba(10,12,10,.78)';ctx.beginPath();ctx.roundRect(1,1,218,54,12);ctx.fill();ctx.font='bold 19px Arial';ctx.fillStyle='#fff';ctx.fillText('AVCI',12,22);ctx.fillStyle='#222';ctx.fillRect(12,33,196,12);ctx.fillStyle=h.userData.alive?'#d04a3a':'#666';ctx.fillRect(12,33,196*Math.max(0,h.userData.health/HUNTER_MAX_HEALTH),12);h.userData.statusTex.needsUpdate=true;}
+        function createCampHunter(spawn,index){
+            const g=new THREE.Group(),body=new THREE.Mesh(new THREE.BoxGeometry(.66,.88,.38),hunterShirtMat);body.position.y=1.12;g.add(body);
+            const vest=new THREE.Mesh(new THREE.BoxGeometry(.54,.6,.405),new THREE.MeshStandardMaterial({color:0x66573e,roughness:.94}));vest.position.set(0,1.14,.015);g.add(vest);
+            const head=new THREE.Mesh(new THREE.SphereGeometry(.24,10,8),hunterSkinMat);head.position.y=1.82;g.add(head);
+            const hat=new THREE.Mesh(new THREE.CylinderGeometry(.29,.29,.10,10),hunterHatMat);hat.position.y=2.05;g.add(hat);
+            const crown=new THREE.Mesh(new THREE.CylinderGeometry(.20,.23,.26,9),hunterHatMat);crown.position.y=2.21;g.add(crown);
+            const legs=[];for(const side of [-1,1]){const leg=new THREE.Group();leg.position.set(side*.19,.70,0);const limb=new THREE.Mesh(new THREE.BoxGeometry(.23,.72,.27),hunterPantsMat);limb.position.y=-.34;leg.add(limb);g.add(leg);legs.push(leg);}
+            const armL=new THREE.Group(),armR=new THREE.Group();armL.position.set(-.37,1.42,.10);armR.position.set(.37,1.42,.12);
+            for(const arm of [armL,armR]){const mesh=new THREE.Mesh(new THREE.BoxGeometry(.19,.62,.22),hunterShirtMat);mesh.position.y=-.25;arm.add(mesh);g.add(arm);}
+            const rifle=new THREE.Group();const receiver=new THREE.Mesh(new THREE.BoxGeometry(.20,.16,.54),hunterGunMat);receiver.position.set(0,0,.34);rifle.add(receiver);
+            const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.035,.045,.72,7),hunterGunMat);barrel.rotation.x=Math.PI/2;barrel.position.set(0,.01,.88);rifle.add(barrel);
+            const stock=new THREE.Mesh(new THREE.BoxGeometry(.14,.14,.36),new THREE.MeshStandardMaterial({color:0x654329,roughness:.86}));stock.position.set(0,-.02,-.08);rifle.add(stock);
+            const sight=new THREE.Mesh(new THREE.BoxGeometry(.05,.09,.13),hunterGunMat);sight.position.set(0,.11,.43);rifle.add(sight);
+            const muzzle=new THREE.Object3D();muzzle.position.set(0,.01,1.25);rifle.add(muzzle);
+            const flash=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),hunterFlashMat);flash.position.copy(muzzle.position);flash.visible=false;rifle.add(flash);
+            rifle.position.set(.10,1.30,.32);rifle.rotation.x=-.12;armR.add(rifle);
+            const statusCanvas=document.createElement('canvas');statusCanvas.width=220;statusCanvas.height=56;const statusTex=new THREE.CanvasTexture(statusCanvas);
+            const status=new THREE.Sprite(new THREE.SpriteMaterial({map:statusTex,transparent:true,depthTest:false}));status.position.y=2.65;status.scale.set(2.4,.62,1);g.add(status);
+            g.position.set(spawn.x,terrainHeightAt(spawn.x,spawn.z),spawn.z);g.rotation.y=index*Math.PI/2;
+            g.userData={id:spawn.id,health:HUNTER_MAX_HEALTH,alive:true,homeX:spawn.x,homeZ:spawn.z,phase:index*2.1,legs,armL,armR,rifle,muzzle,flash,statusCanvas,statusTex,status,deathAt:0,recoilUntil:0,aimUntil:0,flashUntil:0};
+            scene.add(g);hunters.push(g);paintHunterStatus(g);return g;
+        }
+        HUNTER_SPAWNS.forEach(createCampHunter);
+        function updateCampHunters(now,dt){
+            const t=now*.001;
+            for(const h of hunters){const u=h.userData;
+                if(!u.alive){h.rotation.z=Math.min(1.48,h.rotation.z+.05);if(u.deathAt&&now-u.deathAt>1100)h.visible=false;continue;}
+                h.visible=true;
+                const dx=playerDonkey.position.x-h.position.x,dz=playerDonkey.position.z-h.position.z,distance=Math.hypot(dx,dz);
+                if(gameStarted&&!playerIsDead&&distance<38){h.rotation.y=Math.atan2(dx,dz);u.aimUntil=now+600;}
+                else if(now>=u.aimUntil){const tx=u.homeX+Math.sin(t*.20+u.phase)*4.8,tz=u.homeZ+Math.cos(t*.18+u.phase)*4.2,mx=tx-h.position.x,mz=tz-h.position.z;
+                    if(Math.hypot(mx,mz)>.18){h.position.x+=mx* Math.min(1,dt*.72)/Math.hypot(mx,mz);h.position.z+=mz*Math.min(1,dt*.72)/Math.hypot(mx,mz);h.rotation.y=Math.atan2(mx,mz);u.legs[0].rotation.x=Math.sin(t*4+u.phase)*.32;u.legs[1].rotation.x=-u.legs[0].rotation.x;}
+                }
+                h.position.y=terrainHeightAt(h.position.x,h.position.z);
+                u.armR.rotation.x=now<u.recoilUntil?-.38:0;u.armL.rotation.x=now<u.recoilUntil?-.17:0;
+                u.flash.visible=now<u.flashUntil;
+                if(u.flash.visible)u.flash.scale.setScalar(.7+Math.random()*.8);
+            }
+        }
+        function playHunterShot(data){
+            const h=hunters.find(x=>x.userData.id===data.hunterId);if(!h||!h.userData.alive)return;
+            const u=h.userData,target=data.targetId===myId?playerDonkey:otherPlayers[data.targetId];
+            const end=target?target.position.clone().add(new THREE.Vector3(0,1.05,0)):new THREE.Vector3(Number(data.x)||0,(Number(data.y)||0)+1.05,Number(data.z)||0);
+            const dx=end.x-h.position.x,dz=end.z-h.position.z;h.rotation.y=Math.atan2(dx,dz);u.aimUntil=performance.now()+450;u.recoilUntil=performance.now()+220;u.flashUntil=performance.now()+95;
+            h.updateMatrixWorld(true);const start=u.muzzle.getWorldPosition(new THREE.Vector3());
+            const bullet=new THREE.Mesh(new THREE.SphereGeometry(.085,7,6),new THREE.MeshBasicMaterial({color:0xffdc72}));bullet.position.copy(start);scene.add(bullet);
+            hunterProjectiles.push({mesh:bullet,start,end,started:performance.now(),duration:250});
+        }
+        function updateHunterProjectiles(now){
+            for(let i=hunterProjectiles.length-1;i>=0;i--){const p=hunterProjectiles[i],t=Math.min(1,(now-p.started)/p.duration);
+                p.mesh.position.lerpVectors(p.start,p.end,t);if(t>=1){scene.remove(p.mesh);p.mesh.geometry.dispose();p.mesh.material.dispose();hunterProjectiles.splice(i,1);}
+            }
+        }
         // Ayrı tür siluetleri ve etkileşimli hayvanlar çevre ölçeğini gösterir.
         // Bulutlar
         const clouds = [];
@@ -3672,6 +3786,9 @@ function stepCar(c,dt){
                     const data = JSON.parse(event.data);
                     if (data.type === 'init') {
                         myId = data.id;
+                    } else if (data.type === 'online_count') {
+                        onlineConnectionCount=Math.max(0,Number(data.count)||0);
+                        onlineCountEl.textContent=String(onlineConnectionCount);
                     } else if (data.type === 'pong') {
                         playerPingMs = Math.max(0, Math.round(performance.now() - Number(data.timestamp)));
                         sendSocketMessage('ping_result', { pingMs: playerPingMs });
@@ -3688,7 +3805,7 @@ function stepCar(c,dt){
                     } else if (data.type === 'players') {
                         latestServerPlayers = data.players || {};
                         const activeCount = Number.isFinite(data.count) ? data.count : Object.values(latestServerPlayers).filter(p => p.inGame).length;
-                        onlineCountEl.textContent = String(activeCount);
+                        onlineCountEl.textContent = String(Math.max(onlineConnectionCount,activeCount,gameStarted?1:0));
                         refreshPlayerList(latestServerPlayers);
                         for (const [id, pData] of Object.entries(latestServerPlayers)) {
                             if (id === myId || !pData.inGame) continue;
@@ -3908,7 +4025,8 @@ function stepCar(c,dt){
             if (!playerListRows) return;
             playerListRows.replaceChildren();
             const active = Object.entries(players).filter(([, p]) => p && p.inGame);
-            playerCountText.textContent = `${active.length} kişi`;
+            if(gameStarted&&myId&&!active.some(([id])=>id===myId))active.unshift([myId,{inGame:true,name:getPlayerName(),platform:controlMode,pingMs:playerPingMs}]);
+            playerCountText.textContent = `${Math.max(active.length,gameStarted?1:0)} kişi`;
             if (!active.length) {
                 const empty = document.createElement('div'); empty.className = 'player-row';
                 empty.textContent = gameStarted ? 'Oyuncu listesi yükleniyor…' : 'Şu an oyunda kimse yok';
@@ -4357,9 +4475,12 @@ function stepCar(c,dt){
                 if (dist < m.radius + radius + 1.25) return true;
             }
             for (let b of buildings) {
-                if (x + radius > b.x - b.halfW && x - radius < b.x + b.halfW &&
-                    z + radius > b.z - b.halfD && z - radius < b.z + b.halfD) return true;
+                const extra=b.kind==='cityBuilding'?0.9:0, pad=radius+extra;
+                if (x + pad > b.x - b.halfW && x - pad < b.x + b.halfW &&
+                    z + pad > b.z - b.halfD && z - pad < b.z + b.halfD) return true;
             }
+            // Tüfekli kamp muhafızları da yürüyüş yolunda fiziksel engel olur.
+            for(const hunter of hunters)if(hunter.visible&&Math.hypot(x-hunter.position.x,z-hunter.position.z)<radius+.58)return true;
             // Hareketli çiftlik/şehir insanları da collider'dır.
             if (typeof townNpcs !== 'undefined') for (const npc of townNpcs) {
                 if (npc && npc.visible && Math.hypot(x-npc.position.x,z-npc.position.z)<radius+.48) return true;
@@ -4432,6 +4553,8 @@ function stepCar(c,dt){
                 if (c.position.x > 350) c.position.x = -350;
             }
 
+            updateCampHunters(now,deltaSec);
+            updateHunterProjectiles(now);
             for (let b of birds) {
                 b.userData.angle += b.userData.speed * 0.01;
                 b.position.x = b.userData.centerX + Math.cos(b.userData.angle) * b.userData.radius;
@@ -4931,6 +5054,7 @@ function stepCar(c,dt){
                 const pending=joinPending||{mode:controlMode,isResume:false};joinPending=null;currentPlayerName=String((data.state&&data.state.name)||'Guest-000');setNameError('');applyNeeds(data.state||{});sendSocketMessage('berry_state_request',{});
                 if(pending.isResume)completeResume(pending.mode);else startGameOriginal(pending.mode);
                 setGameUiVisible(true);sendSocketMessage('animal_states_request',{ids:[...wildlife.map(a=>a.userData.id),...caveBears.map(a=>a.userData.id)]});
+                sendSocketMessage('hunter_state_request',{});sendSocketMessage('campfire_state_request',{});
                 sendSocketMessage('apple_state_request',{trees:orchardTrees.map(t=>({id:t.id,x:t.x,z:t.z}))});
             } else if(data.type==='join_denied'){
                 if(joinPending&&joinPending.isResume){gameStarted=false;releaseFirstPersonPointerLock();}
@@ -4950,7 +5074,15 @@ function stepCar(c,dt){
             } else if(data.type==='action_denied'){
                 interactPromptEl.textContent=data.message||'Etkileşim yapılamadı.';interactPromptEl.style.display='block';setTimeout(()=>{if(!currentTargetAction)interactPromptEl.style.display='none';},1000);
             } else if(data.type==='chat_error')appendExtendedSystem(data.message||'Mesaj gönderilemedi.');
-            else if(data.type==='animal_states'){
+            else if(data.type==='hunter_states'){
+                for(const [id,state] of Object.entries(data.states||{})){const h=hunters.find(x=>x.userData.id===id);if(!h)continue;const u=h.userData;u.health=Number(state.health)||0;u.alive=!!state.alive;u.deathAt=u.alive?0:performance.now();h.visible=u.alive;h.rotation.z=0;paintHunterStatus(h);}
+            } else if(data.type==='hunter_state'){
+                const h=hunters.find(x=>x.userData.id===data.id);if(h){const u=h.userData;u.health=Number(data.health)||0;u.alive=!!data.alive;u.deathAt=u.alive?0:performance.now();h.visible=true;h.rotation.z=0;paintHunterStatus(h);}
+            } else if(data.type==='hunter_shot'){
+                playHunterShot(data);
+            } else if(data.type==='campfire_state'){
+                window.__campfireLit=!!data.lit;window.dispatchEvent(new CustomEvent('esek-campfire-state',{detail:{lit:window.__campfireLit}}));
+            } else if(data.type==='animal_states'){
                 for(const [id,state] of Object.entries(data.states||{})){
                     const a=wildlife.find(x=>x.userData.id===id);
                     if(a){a.userData.health=state.health;a.userData.hunger=state.hunger??a.userData.hunger;a.userData.thirst=state.thirst??a.userData.thirst;a.userData.alive=state.alive;if(!state.alive)a.userData.deadAt=performance.now();paintAnimalStatus(a);}
@@ -4988,6 +5120,7 @@ function stepCar(c,dt){
                 if(joinPending)sendPendingJoin();
                 sendSocketMessage('apple_state_request',{trees:orchardTrees.map(t=>({id:t.id,x:t.x,z:t.z}))});
                 sendSocketMessage('animal_states_request',{ids:[...wildlife.map(a=>a.userData.id),...caveBears.map(a=>a.userData.id)]});
+                if(gameStarted){sendSocketMessage('hunter_state_request',{});sendSocketMessage('campfire_state_request',{});}
             });
             socket.addEventListener('close',()=>{if(joinPending){joinPending.sent=false;setNameError('Sunucu bağlantısı kesildi. Tekrar deneyebilirsin.');}});
         }
@@ -5011,7 +5144,7 @@ function stepCar(c,dt){
             const farmPond={x:FARM_CX-16*1.20,z:FARM_CZ+11*1.20,radius:5.0};
             const waterTargets=[
                 {x:FOREST_POND_CENTER.x,z:FOREST_POND_CENTER.z,radius:12.8},
-                {x:DEEP_POOL.x,z:DEEP_POOL.z,radius:DEEP_POOL.rx*0.82},
+                {x:DEEP_POOL.x,z:DEEP_POOL.z,radius:DEEP_POOL.rx*1.24},
                 {x:farmPond.x,z:farmPond.z,radius:farmPond.radius},
                 {x:Math.max(BEACH_PARKING_CENTER.x-122,Math.min(BEACH_PARKING_CENTER.x+122,x)),z:BEACH_WATER_EDGE+1.0,radius:6.2}
             ];
@@ -5022,6 +5155,8 @@ function stepCar(c,dt){
                     best={type:'water',distance};
                 }
             }
+            const fireDistance=Math.hypot(x-CAMP_SITE.x,z-CAMP_SITE.z);
+            if(fireDistance<=CAMPFIRE_INTERACT_RANGE&&fireDistance<bestDistance)best={type:'campfire',distance:fireDistance};
             return best;
         }
         function scanInteraction(now){
@@ -5029,9 +5164,12 @@ function stepCar(c,dt){
             if(!gameStarted||playerIsDead){currentTargetAction=null;interactPromptEl.style.display='none';mobOpenBtn.style.display='none';return;}
             currentTargetAction=getAimedPoint(playerDonkey.position.x,playerDonkey.position.y,playerDonkey.position.z);
             if(currentTargetAction){
-                const label=getActionLabel('interact')+' · '+(currentTargetAction.type==='apple'?'Elma ye':'Su iç');
-                interactPromptEl.textContent=label;interactPromptEl.style.display='block';
-                if(controlMode==='mobile'){mobOpenBtn.textContent=currentTargetAction.type==='apple'?'🍎 YE':'💧 İÇ';mobOpenBtn.style.display='flex';}
+                const actionLabel=currentTargetAction.type==='apple'?'Elma ye':currentTargetAction.type==='water'?'Su iç':(window.__campfireLit?'Ateşi söndür':'Ateşi yak');
+                interactPromptEl.textContent=getActionLabel('interact')+' · '+actionLabel;interactPromptEl.style.display='block';
+                if(controlMode==='mobile'){
+                    mobOpenBtn.textContent=currentTargetAction.type==='apple'?'🍎 YE':currentTargetAction.type==='water'?'💧 İÇ':(window.__campfireLit?'🔥 SÖNDÜR':'🔥 YAK');
+                    mobOpenBtn.style.display='flex';
+                }
             }else{interactPromptEl.style.display='none';mobOpenBtn.style.display='none';}
         }
         function performInteraction() {
@@ -5040,6 +5178,8 @@ function stepCar(c,dt){
                 if(needs.hunger>=9){showFullWarning('Karnın zaten tok, daha fazla elma yiyemezsin.');return;}sendSocketMessage('apple_pick',{treeId:currentTargetAction.treeId});actionAnimationType='eat';actionAnimationUntil=performance.now()+900;
             }else if(currentTargetAction.type==='water'){
                 if(needs.thirst>=9){showFullWarning('Susuzluğun zaten dolu, daha fazla su içemezsin.');return;}sendSocketMessage('drink',{});actionAnimationType='drink';actionAnimationUntil=performance.now()+1100;
+            }else if(currentTargetAction.type==='campfire'){
+                sendSocketMessage('campfire_toggle',{});actionAnimationType='warm';actionAnimationUntil=performance.now()+800;
             }
         }
         document.addEventListener('keydown',e=>{
@@ -5073,6 +5213,7 @@ function stepCar(c,dt){
                     best = { type: 'animal', animal: a, distance };
                 }
             }
+            for(const h of hunters){if(!h.userData.alive)continue;const distance=Math.hypot(h.position.x-px,h.position.z-pz);if(distance<=ATTACK_RANGE&&distance<bestDistance){bestDistance=distance;best={type:'hunter',hunter:h,distance};}}
             return best;
         }
         // ===== SALDIRI MENZİLİ DÜZENLEMESİ BİTİŞ =====
@@ -5086,6 +5227,7 @@ function stepCar(c,dt){
             actionAnimationUntil=attackAnimationUntil;
             if(!target)return;
             if(target.type==='player')sendSocketMessage('attack_player',{targetId:target.id});
+            else if(target.type==='hunter')sendSocketMessage('attack_hunter',{hunterId:target.hunter.userData.id});
             else {
                 const a=target.animal;
                 sendSocketMessage('attack_animal',{animalId:a.userData.id,animalName:a.userData.label,x:a.position.x,z:a.position.z});
@@ -5614,16 +5756,36 @@ function makeCarrot(){
   return g;
 }
 function makeCampfire(){
-  const g=new THREE.Group();
-  for(let i=0;i<3;i++){const log=new THREE.Mesh(new THREE.CylinderGeometry(.09,.11,1.0,8),makeMat(0x6b3e20));log.rotation.z=Math.PI/2;log.rotation.y=i*Math.PI/3;log.position.y=.10;g.add(log);}
-  const flame=new THREE.Mesh(new THREE.ConeGeometry(.28,.65,8),new THREE.MeshBasicMaterial({color:0xff7a16,transparent:true,opacity:.9}));flame.position.y=.48;g.add(flame);
-  g.userData.flame=flame; return g;
+  const g=new THREE.Group(),stoneMat=makeMat(0x68635a),logMat=makeMat(0x5a3823);
+  for(let i=0;i<12;i++){const a=i*Math.PI*2/12,stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.34,0),stoneMat);stone.position.set(Math.cos(a)*1.12,.14,Math.sin(a)*1.12);stone.scale.set(1,.72,1.25);g.add(stone);}
+  for(let i=0;i<3;i++){const log=new THREE.Mesh(new THREE.CylinderGeometry(.13,.15,2.0,8),logMat);log.rotation.z=Math.PI/2;log.rotation.y=i*Math.PI/3;log.position.y=.22;g.add(log);}
+  const ember=new THREE.Mesh(new THREE.SphereGeometry(.38,10,8),new THREE.MeshBasicMaterial({color:0x3e2820}));ember.position.y=.30;g.add(ember);
+  const flames=[];for(let i=0;i<3;i++){const flame=new THREE.Mesh(new THREE.ConeGeometry(.34-i*.04,.84+i*.13,8),new THREE.MeshBasicMaterial({color:i===0?0xff6b13:0xffb32c,transparent:true,opacity:.92,depthWrite:false}));flame.position.set((i-1)*.24,.72+i*.06,0);flame.visible=false;g.add(flame);flames.push(flame);}
+  const light=new THREE.PointLight(0xff8a35,0,19,2);light.position.y=1.1;light.visible=false;g.add(light);
+  g.userData={flame:flames[0],flames,light,ember};return g;
 }
 
-/* -------------------- kamp ateşleri -------------------- */
-(function createCampfires(){
-  const spots=[[265,-30],[330,45],[245,75],[360,-70]];
-  for(const [x,z] of spots){const g=makeCampfire();g.position.set(x,groundY(x,z),z);g.name='Kamp ateşi';scene.add(g);campfires.push(g);}
+/* -------------------- tek, geniş kamp alanı ve etkileşimli ateş -------------------- */
+function addCampTent(x,z,rotation,color){
+  const tent=new THREE.Group(),cloth=new THREE.MeshStandardMaterial({color,roughness:.98,side:THREE.DoubleSide});
+  const shell=new THREE.Mesh(new THREE.ConeGeometry(3.2,3.8,4,1),cloth);shell.position.y=1.9;shell.rotation.y=Math.PI/4;tent.add(shell);
+  const entrance=new THREE.Mesh(new THREE.PlaneGeometry(1.25,1.75),new THREE.MeshStandardMaterial({color:0x211e1a,side:THREE.DoubleSide}));entrance.position.set(0,.88,1.48);tent.add(entrance);
+  tent.position.set(CAMP_SITE.x+x,groundY(CAMP_SITE.x+x,CAMP_SITE.z+z),CAMP_SITE.z+z);tent.rotation.y=rotation;scene.add(tent);
+}
+(function createCampSite(){
+  const cx=CAMP_SITE.x,cz=CAMP_SITE.z,base=groundY(cx,cz)-.10;
+  const clearing=new THREE.Mesh(new THREE.CircleGeometry(23,64),new THREE.MeshStandardMaterial({color:0x75644a,roughness:1}));clearing.rotation.x=-Math.PI/2;clearing.position.set(cx,base,cz);clearing.receiveShadow=true;scene.add(clearing);
+  const outerRing=new THREE.Mesh(new THREE.TorusGeometry(22.4,.22,7,72),new THREE.MeshStandardMaterial({color:0x584c3a,roughness:1}));outerRing.rotation.x=Math.PI/2;outerRing.position.set(cx,base+.03,cz);scene.add(outerRing);
+  addCampTent(-14,-10,-.22,0x52624b);addCampTent(14,-11,.32,0x596b50);addCampTent(-13,12,.10,0x6c563f);
+  for(const [x,z,rot] of [[-4,-5,0],[4,-5,0],[-4,5,Math.PI/2],[4,5,Math.PI/2]]){const bench=new THREE.Mesh(new THREE.CylinderGeometry(.26,.29,4.2,8),new THREE.MeshStandardMaterial({color:0x69452b,roughness:.94}));bench.rotation.z=Math.PI/2;bench.rotation.y=rot;bench.position.set(cx+x,groundY(cx+x,cz+z)+.38,cz+z);bench.castShadow=true;scene.add(bench);}
+  const crateMat=new THREE.MeshStandardMaterial({color:0x76502c,roughness:.95});
+  for(const [x,z] of [[10,8],[12,8],[10,10]]){const crate=new THREE.Mesh(new THREE.BoxGeometry(1.25,1.0,1.1),crateMat);crate.position.set(cx+x,groundY(cx+x,cz+z)+.5,cz+z);crate.castShadow=true;scene.add(crate);}
+  const marker=new THREE.Mesh(new THREE.BoxGeometry(3.8,1.4,.18),new THREE.MeshStandardMaterial({color:0x3a3327,roughness:.95}));marker.position.set(cx+16,groundY(cx+16,cz+4)+2.4,cz+4);marker.rotation.y=-.45;scene.add(marker);
+  const signText=document.createElement('canvas');signText.width=512;signText.height=160;const ctx=signText.getContext('2d');ctx.fillStyle='#322719';ctx.fillRect(0,0,512,160);ctx.strokeStyle='#d1ad65';ctx.lineWidth=10;ctx.strokeRect(8,8,496,144);ctx.font='bold 62px Arial';ctx.fillStyle='#f4e6c2';ctx.textAlign='center';ctx.fillText('KAMP ALANI',256,100);
+  const signTex=new THREE.CanvasTexture(signText),sign=new THREE.Mesh(new THREE.PlaneGeometry(3.6,1.15),new THREE.MeshBasicMaterial({map:signTex,transparent:true,side:THREE.DoubleSide}));sign.position.set(cx+16,groundY(cx+16,cz+4)+2.4,cz+4.12);sign.rotation.y=-.45;scene.add(sign);
+  const fire=makeCampfire();fire.position.set(cx,groundY(cx,cz)+.05,cz);fire.name='E ile yakılıp söndürülen kamp ateşi';scene.add(fire);campfires.push(fire);
+  window.__campfireLit=false;
+  window.addEventListener('esek-campfire-state',event=>{const lit=!!(event.detail&&event.detail.lit);window.__campfireLit=lit;fire.userData.flames.forEach(flame=>flame.visible=lit);fire.userData.light.visible=lit;fire.userData.ember.material.color.setHex(lit?0xff8a26:0x3e2820);});
 })();
 
 /* -------------------- havuçlar -------------------- */
@@ -5867,6 +6029,7 @@ function nearestWeaponTarget(range){
   };
   for(const a of wildlife||[])considerAnimal(a);
   for(const a of caveBears||[])considerAnimal(a);
+  for(const h of hunters||[]){if(!h.userData.alive)continue;const d=Math.hypot(h.position.x-px,h.position.z-pz);if(d<bd){bd=d;best={type:'hunter',hunter:h,position:h.position.clone(),d};}}
   return best;
 }
 function useHeldWeapon(){
@@ -5875,12 +6038,13 @@ function useHeldWeapon(){
     if(heldItem.ammo<=0){updateAmmoHud();showFullWarning('Mermi bitti. Çiftlikteki kutudan 12 mermi al.');return;}
     heldItem.ammo=Math.max(0,Number(heldItem.ammo)-1);updateAmmoHud();playGunFx();
     const target=nearestWeaponTarget(30),p=target&&target.type==='animal'?target.animal.getWorldPosition(new THREE.Vector3()):null;
-    sendSocketMessage('weapon_attack',{weapon:'gun',targetId:target&&target.type==='player'?target.id:null,targetAnimalId:target&&target.type==='animal'?target.animal.userData.id:null,x:p?p.x:playerDonkey.position.x,z:p?p.z:playerDonkey.position.z,yaw:playerDonkey.rotation.y});
+    sendSocketMessage('weapon_attack',{weapon:'gun',targetId:target&&target.type==='player'?target.id:null,targetAnimalId:target&&target.type==='animal'?target.animal.userData.id:null,targetHunterId:target&&target.type==='hunter'?target.hunter.userData.id:null,x:p?p.x:target&&target.position?target.position.x:playerDonkey.position.x,z:p?p.z:target&&target.position?target.position.z:playerDonkey.position.z,yaw:playerDonkey.rotation.y});
   }else if(heldItem.type==='sword'){
     playSwordFx();
     const target=nearestWeaponTarget(4.8);
     if(!target){actionAnimationType='attack';actionAnimationUntil=performance.now()+440;return;}
     if(target.type==='player')sendSocketMessage('weapon_attack',{weapon:'sword',targetId:target.id});
+    else if(target.type==='hunter')sendSocketMessage('weapon_attack',{weapon:'sword',targetHunterId:target.hunter.userData.id});
     else sendSocketMessage('weapon_attack',{weapon:'sword',targetAnimalId:target.animal.userData.id,x:target.position.x,z:target.position.z});
   }
   actionAnimationType='attack';actionAnimationUntil=performance.now()+440;
@@ -6041,7 +6205,7 @@ function updateExtraWorld(){
     }
   }
   const t=performance.now()*0.004;
-  campfires.forEach((f,i)=>{if(f.userData.flame)f.userData.flame.scale.y=.9+.15*Math.sin(t+i*1.7);});
+  campfires.forEach((f,i)=>{const u=f.userData;if(u.flames)u.flames.forEach((flame,j)=>{flame.scale.y=.88+.17*Math.sin(t+i*1.7+j*.9);flame.rotation.y=Math.sin(t*.6+j)*.16;});if(u.light&&u.light.visible)u.light.intensity=2.3+.55*Math.sin(t*1.8+i);});
   updateWeaponFx();
   updateDamageFlash();
   updateAmmoHud();
