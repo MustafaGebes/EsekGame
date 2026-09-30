@@ -373,8 +373,22 @@ const SUPPLY_STATION_RANGE = 12;
 const ARMOR_PICKUP_COOLDOWN_MS = 60000;
 const BERRY_RESPAWN_MS = 90000;
 const CAVE_BEAR_CENTER = { x: 423, z: 45 };
-const CAVE_BEAR_ATTACK_RADIUS = 28;
+const CAVE_BEAR_ATTACK_RADIUS = 50;
 const CAVE_BEAR_DAMAGE = 2;
+const CAMP_SITE = { x: 245, z: -205 };
+const CAMPFIRE_RANGE = 10;
+const CAMPFIRE_INTERACT_RANGE = 8;
+const HUNTER_MAX_HEALTH = 12;
+const HUNTER_RESPAWN_MS = 5 * 60 * 1000;
+const HUNTER_SHOT_RANGE = 34;
+const HUNTER_SHOT_INTERVAL_MS = 3000;
+const HUNTER_SHOT_DAMAGE = 1;
+const HUNTER_SPAWNS = [
+    { id: 'camp-hunter-1', x: 235, z: -205 },
+    { id: 'camp-hunter-2', x: 255, z: -205 },
+    { id: 'camp-hunter-3', x: 245, z: -193 }
+];
+let campfireLit = false;
 
 function berryMulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
 function makeBerryBushSpots(){
@@ -438,6 +452,7 @@ function createPlayer(ws) {
         ammo: GUN_MAGAZINE,
         nextArmorPickupAt: 0,
         nextBearBiteAt: 0,
+        lastDamageAt: Date.now(),
 
         connectedAt: Date.now()
     };
@@ -459,6 +474,9 @@ function activePlayerCount() {
 const apples = new Map();   // treeId -> count
 const carrots = new Map();  // carrotId -> { available, respawnAt }
 const animals = new Map();  // animalId -> { health, hunger, thirst, alive }
+const hunters = new Map(HUNTER_SPAWNS.map(h => [h.id, {
+    health: HUNTER_MAX_HEALTH, alive: true, respawnAt: 0, nextShotAt: 0
+}]));
 
 function getAppleCount(treeId) {
     if (!apples.has(treeId)) apples.set(treeId, APPLE_MAX);
@@ -542,14 +560,17 @@ function getPublicPlayer(p) {
 function broadcastPlayers() {
     const obj = {};
     let count = 0;
-
     for (const p of players.values()) {
         if (!p.inGame) continue;
         obj[p.id] = getPublicPlayer(p);
         count++;
     }
-
     broadcast({ type: "players", players: obj, count });
+}
+
+function broadcastOnlineCount() {
+    const count = activePlayerCount();
+    for (const p of players.values()) sendTo(p, { type: "online_count", count });
 }
 
 function sendNeeds(player) {
@@ -628,6 +649,7 @@ function joinGame(player, data) {
     player.hunger = MAX_NEED;
     player.thirst = MAX_NEED;
     player.armor = 0;
+    player.lastDamageAt = Date.now();
 
     player.x = SPAWN.x;
     player.y = SPAWN.y;
@@ -652,6 +674,7 @@ function joinGame(player, data) {
     sendTo(player, { type: "chat_history", messages: chatHistory.slice(-CHAT_HISTORY_LIMIT) });
 
     broadcastPlayers();
+    broadcastOnlineCount();
 }
 
 function leaveGame(player) {
@@ -660,6 +683,7 @@ function leaveGame(player) {
     player.name = null;
     player.isAccount = false;
     broadcastPlayers();
+    broadcastOnlineCount();
 }
 
 // ============================================================
@@ -668,10 +692,18 @@ function leaveGame(player) {
 
 function applyPlayerDamage(target, amount) {
     const damage = Math.max(0, Number(amount) || 0);
+    if (damage <= 0) return;
+    target.lastDamageAt = Date.now();
     const armor = clampNeed(target.armor);
-    const absorbed = Math.min(armor, damage * 0.5);
-    target.armor = clampNeed(armor - absorbed);
-    target.health = clampNeed(target.health - (damage - absorbed));
+    if (armor > 0) {
+        // Kalkan hasarı önce kendi dayanıklılığından karşılar; kalan hasar %50 azaltılarak cana gider.
+        const absorbed = Math.min(armor, damage);
+        const overflow = damage - absorbed;
+        target.armor = clampNeed(armor - absorbed);
+        target.health = clampNeed(target.health - overflow * 0.5);
+    } else {
+        target.health = clampNeed(target.health - damage);
+    }
 }
 function damagePlayer(target, amount, attackerId, killerName, reason) {
     if (!target.inGame || !target.alive) return;
@@ -1076,6 +1108,43 @@ function handleBearAttack(player,data) {
     player.nextBearBiteAt=now+1250;
     damagePlayer(player,CAVE_BEAR_DAMAGE,null,null,"Mağaradaki ayı seni ısırdı.");
 }
+function hunterPublicState(id, state) {
+    return { id, health: state.health, alive: state.alive, respawnAt: state.respawnAt || 0 };
+}
+function handleHunterStateRequest(player) {
+    if (!player.inGame) return;
+    const states = {};
+    for (const [id, state] of hunters) states[id] = hunterPublicState(id, state);
+    sendTo(player, { type: "hunter_states", states, campfireLit });
+}
+function damageHunter(player, hunterId, amount, weapon) {
+    const spawn = HUNTER_SPAWNS.find(h => h.id === hunterId);
+    const state = hunters.get(hunterId);
+    if (!spawn || !state || !state.alive || !player.inGame || !player.alive) return false;
+    const limit = weapon === "gun" ? 42 : weapon === "sword" ? 10.5 : 7.5;
+    if (Math.hypot(player.x - spawn.x, player.z - spawn.z) > limit) return false;
+    state.health = Math.max(0, state.health - amount);
+    if (state.health <= 0) {
+        state.alive = false;
+        state.respawnAt = Date.now() + HUNTER_RESPAWN_MS;
+    }
+    broadcast({ type: "hunter_state", ...hunterPublicState(hunterId, state) });
+    return true;
+}
+function handleAttackHunter(player, data) {
+    if (!player.inGame || !player.alive || player.weapon !== "none") return;
+    const hunterId = String((data && data.hunterId) || "");
+    damageHunter(player, hunterId, FIST_DAMAGE, "fist");
+}
+function handleCampfireToggle(player) {
+    if (!player.inGame || !player.alive) return;
+    if (Math.hypot(player.x - CAMP_SITE.x, player.z - CAMP_SITE.z) > CAMPFIRE_RANGE) {
+        sendTo(player, { type: "action_denied", message: "Kamp ateşi için kamp alanına yaklaş." });
+        return;
+    }
+    campfireLit = !campfireLit;
+    broadcast({ type: "campfire_state", lit: campfireLit });
+}
 
 function handleWeaponEquip(player, data) {
     if (!player.inGame) return;
@@ -1109,11 +1178,14 @@ function handleWeaponAttack(player, data) {
         sendTo(player, { type: "weapon_result", ok: true, ammo: player.ammo, magazine: GUN_MAGAZINE });
         const targetId = data.targetId ? String(data.targetId) : null;
         const targetAnimalId = data.targetAnimalId ? String(data.targetAnimalId) : null;
+        const targetHunterId = data.targetHunterId ? String(data.targetHunterId) : null;
         if (targetId) {
             const target = players.get(targetId);
             if (target && target.inGame && target.alive) damagePlayer(target, GUN_DAMAGE, player.id, player.name);
         } else if (targetAnimalId) {
             damageAnimal(targetAnimalId, GUN_DAMAGE);
+        } else if (targetHunterId) {
+            damageHunter(player, targetHunterId, GUN_DAMAGE, "gun");
         }
         return;
     }
@@ -1126,6 +1198,7 @@ function handleWeaponAttack(player, data) {
 
         const targetId = data.targetId ? String(data.targetId) : null;
         const targetAnimalId = data.targetAnimalId ? String(data.targetAnimalId) : null;
+        const targetHunterId = data.targetHunterId ? String(data.targetHunterId) : null;
 
         if (targetId) {
             const target = players.get(targetId);
@@ -1134,6 +1207,8 @@ function handleWeaponAttack(player, data) {
             }
         } else if (targetAnimalId) {
             damageAnimal(targetAnimalId, SWORD_DAMAGE);
+        } else if (targetHunterId) {
+            damageHunter(player, targetHunterId, SWORD_DAMAGE, "sword");
         }
         return;
     }
@@ -1149,6 +1224,7 @@ function handleRespawn(player) {
     player.hunger = MAX_NEED;
     player.thirst = MAX_NEED;
     player.armor = 0;
+    player.lastDamageAt = Date.now();
 
     player.x = SPAWN.x;
     player.y = SPAWN.y;
@@ -1173,6 +1249,7 @@ wss.on("connection", (ws, req) => {
     console.log(`[WS] Bağlandı: ${player.id} ${req.socket.remoteAddress || ""}`);
 
     sendTo(player, { type: "init", id: player.id });
+    broadcastOnlineCount();
 
     ws.on("message", (raw) => {
         let data;
@@ -1260,6 +1337,22 @@ wss.on("connection", (ws, req) => {
                 handleBearAttack(player, data);
                 break;
 
+            case "hunter_state_request":
+                handleHunterStateRequest(player);
+                break;
+
+            case "attack_hunter":
+                handleAttackHunter(player, data);
+                break;
+
+            case "campfire_state_request":
+                if (player.inGame) sendTo(player, { type: "campfire_state", lit: campfireLit });
+                break;
+
+            case "campfire_toggle":
+                handleCampfireToggle(player);
+                break;
+
             case "attack_player":
                 handleAttackPlayer(player, data);
                 break;
@@ -1292,6 +1385,7 @@ wss.on("connection", (ws, req) => {
         leaveGame(player);
         players.delete(player.id);
         broadcastPlayers();
+        broadcastOnlineCount();
     });
 
     ws.on("error", (err) => {
@@ -1308,38 +1402,65 @@ setInterval(() => {
     if (activePlayerCount() > 0) broadcastPlayers();
 }, 150);
 
-// İhtiyaç azalması (2 sn'de bir)
+// Avcıların mermi animasyonu/hasarı ve öldükten 5 dakika sonra yeniden doğması.
 setInterval(() => {
+    const now = Date.now();
+    for (const [id, state] of hunters) {
+        if (!state.alive && state.respawnAt && now >= state.respawnAt) {
+            state.alive = true;
+            state.health = HUNTER_MAX_HEALTH;
+            state.respawnAt = 0;
+            state.nextShotAt = now + 1500;
+            broadcast({ type: "hunter_state", ...hunterPublicState(id, state) });
+        }
+        if (!state.alive || now < state.nextShotAt) continue;
+        const spawn = HUNTER_SPAWNS.find(h => h.id === id);
+        if (!spawn) continue;
+        let target = null;
+        let bestDistance = HUNTER_SHOT_RANGE;
+        for (const p of players.values()) {
+            if (!p.inGame || !p.alive) continue;
+            const d = Math.hypot(p.x - spawn.x, p.z - spawn.z);
+            if (d < bestDistance) { bestDistance = d; target = p; }
+        }
+        if (!target) continue;
+        state.nextShotAt = now + HUNTER_SHOT_INTERVAL_MS;
+        broadcast({ type: "hunter_shot", hunterId: id, targetId: target.id, x: target.x, y: target.y, z: target.z });
+        damagePlayer(target, HUNTER_SHOT_DAMAGE, null, "Kamp avcısı", "Kamp avcısı tüfeğiyle sana ateş etti.");
+    }
+}, 400);
+
+// İhtiyaç azalması ve hasar kesildikten sonra sağlık yenilenmesi (2 sn'de bir).
+setInterval(() => {
+    const now = Date.now();
     for (const p of players.values()) {
         if (!p.inGame || !p.alive) continue;
-
-        p.hunger = clampNeed(p.hunger - 0.03);
-        p.thirst = clampNeed(p.thirst - 0.04);
-
+        const regenerating = p.health < MAX_NEED && now - (p.lastDamageAt || 0) >= 5000 && p.hunger > 0 && p.thirst > 0;
+        const needDrain = regenerating ? 0.06 : 0.03;
+        p.hunger = clampNeed(p.hunger - needDrain);
+        p.thirst = clampNeed(p.thirst - (regenerating ? 0.08 : 0.04));
+        if (regenerating) p.health = clampNeed(p.health + 0.5);
         if (p.hunger <= 0 || p.thirst <= 0) {
             p.health = clampNeed(p.health - 0.1);
-
+            p.lastDamageAt = now;
             if (p.health <= 0) {
                 p.alive = false;
-
                 sendTo(p, {
                     type: "needs",
                     health: 0,
+                    armor: p.armor,
                     hunger: p.hunger,
                     thirst: p.thirst,
                     alive: false
                 });
-
                 broadcast({ type: "player_death", id: p.id, reason: "Açlık/susuzluk canını tüketti.", killerName: null });
                 broadcastPlayers();
                 continue;
             }
         }
-
         sendNeeds(p);
     }
 }, 2000);
-
 // Elma yenilenmesi
 setInterval(() => {
     for (const [treeId, count] of apples.entries()) {
