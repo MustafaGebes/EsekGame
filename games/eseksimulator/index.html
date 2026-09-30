@@ -193,7 +193,7 @@
         </div>
     </div>
 
-    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık: Saldır / Sürükle: Bak | E: Al / Etkileşim | G: Bırak | Sol Tık: Saldır/Ateş | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
+    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık: Saldır / Sürükle: Bak | E: Al / Etkileşim | Q: Bırak | Sol Tık: Saldır/Ateş | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
 
     <div id="hud">
         <div><span class="label">Saat:</span> <span id="hudTime">00:00</span></div>
@@ -3404,7 +3404,7 @@ function stepCar(c,dt){
             donkey.userData.displayName = safeName;
         }
 
-        const DONKEY_BASE_SCALE = 0.85; // Oyuncu eşeği önceki boyuttan biraz daha küçük.
+        const DONKEY_BASE_SCALE = 0.799; // Oyuncu eşeği önceki boyuttan biraz daha küçük.
         const playerDonkey = createDonkeyModel();
         playerDonkey.scale.setScalar(DONKEY_BASE_SCALE);
         playerDonkey.visible = false;
@@ -3449,6 +3449,7 @@ function stepCar(c,dt){
                             if (id === myId || !pData.inGame) continue;
                             if (!otherPlayers[id]) {
                                 const newDonkey = createDonkeyModel();
+                                newDonkey.scale.setScalar(DONKEY_BASE_SCALE);
                                 scene.add(newDonkey);
                                 otherPlayers[id] = newDonkey;
                             }
@@ -3457,7 +3458,7 @@ function stepCar(c,dt){
                             other.position.set(pData.x || 0, pData.y || 0, pData.z || 0);
                             other.rotation.y = pData.yaw || 0;
                             if (other.userData.neckHeadGroup) other.userData.neckHeadGroup.rotation.x = pData.pitch || 0;
-                            const targetScale = pData.isCrouching ? 0.6 : 1.0;
+                            const targetScale = DONKEY_BASE_SCALE * (pData.isCrouching ? 0.6 : 1.0);
                             other.scale.y += (targetScale - other.scale.y) * 0.5;
                             other.userData.isMoving = !!pData.isMoving;
                             other.userData.isJumping = !!pData.isJumping;
@@ -4560,6 +4561,19 @@ function stepCar(c,dt){
             if(data.thirst!==undefined)needs.thirst=Math.max(0,Math.min(9,Number(data.thirst)||0));
             renderNeeds();
         }
+        function showFullWarning(text) {
+            let el = document.getElementById('fullWarningToast');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'fullWarningToast';
+                el.style.cssText = 'position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:400;display:none;padding:11px 18px;border-radius:11px;background:rgba(24,13,8,.92);border:1px solid rgba(255,170,60,.65);color:#ffd08a;font:800 15px Arial;text-align:center;pointer-events:none;box-shadow:0 10px 28px rgba(0,0,0,.45);max-width:80vw;';
+                document.body.appendChild(el);
+            }
+            el.textContent = String(text || '');
+            el.style.display = 'block';
+            clearTimeout(showFullWarning._t);
+            showFullWarning._t = setTimeout(() => { el.style.display = 'none'; }, 1700);
+        }
         function showDeath(reason) {
             playerIsDead=true;deathScreenShowing=true;gameStarted=false;releaseFirstPersonPointerLock();joinPending=null;
             playerDonkey.visible=true;playerDonkey.position.y=terrainHeightAt(playerDonkey.position.x,playerDonkey.position.z)+.3;playerDonkey.rotation.z=Math.PI/2;playerDonkey.userData.legs.forEach(l=>l.rotation.x=.65);
@@ -4604,10 +4618,11 @@ function stepCar(c,dt){
             } else if(data.type==='animal_state'){
                 const a=wildlife.find(x=>x.userData.id===data.id);if(a){a.userData.health=data.health;a.userData.hunger=data.hunger??a.userData.hunger;a.userData.thirst=data.thirst??a.userData.thirst;a.userData.alive=data.alive;if(data.care){a.userData.careAction=data.care;a.userData.careAnimUntil=performance.now()+1500;}if(!data.alive)a.userData.deadAt=performance.now();paintAnimalStatus(a);}
             } else if(data.type==='combat_hit'){
-                const victim=otherPlayers[data.targetId];if(victim){victim.userData.hitUntil=performance.now()+220;victim.userData.health=data.health;}
+                const victim=otherPlayers[data.targetId];if(victim){victim.userData.hitUntil=performance.now()+340;victim.userData.health=data.health;}
+                if(data.targetId===myId){playerDonkey.userData.hitUntil=performance.now()+340;actionAnimationType='hurt';actionAnimationUntil=performance.now()+420;}
                 if(data.attackerId===myId){actionAnimationType='attack';attackAnimationUntil=performance.now()+450;}
             } else if(data.type==='animal_bite'){
-                if(data.targetId===myId){applyNeeds({health:data.health});actionAnimationType='hurt';actionAnimationUntil=performance.now()+500;}
+                if(data.targetId===myId){applyNeeds({health:data.health});playerDonkey.userData.hitUntil=performance.now()+340;actionAnimationType='hurt';actionAnimationUntil=performance.now()+500;}
             } else if(data.type==='player_death'){
                 const dead=otherPlayers[data.id];if(dead){dead.rotation.z=Math.PI/2;dead.userData.isMoving=false;}
                 if(data.id===myId)showDeath(data.reason||`${data.killerName||'Bir tehlike'} seni yendi.`);
@@ -4678,9 +4693,9 @@ function stepCar(c,dt){
         function performInteraction() {
             if(!gameStarted||!currentTargetAction||!ws||ws.readyState!==WebSocket.OPEN)return;
             if(currentTargetAction.type==='apple'){
-                sendSocketMessage('apple_pick',{treeId:currentTargetAction.treeId});actionAnimationType='eat';actionAnimationUntil=performance.now()+900;
+                if(needs.hunger>=9){showFullWarning('Karnın zaten tok, daha fazla elma yiyemezsin.');return;}sendSocketMessage('apple_pick',{treeId:currentTargetAction.treeId});actionAnimationType='eat';actionAnimationUntil=performance.now()+900;
             }else if(currentTargetAction.type==='water'){
-                sendSocketMessage('drink',{});actionAnimationType='drink';actionAnimationUntil=performance.now()+1100;
+                if(needs.thirst>=9){showFullWarning('Susuzluğun zaten dolu, daha fazla su içemezsin.');return;}sendSocketMessage('drink',{});actionAnimationType='drink';actionAnimationUntil=performance.now()+1100;
             }
         }
         document.addEventListener('keydown',e=>{
@@ -5221,7 +5236,7 @@ const worldItems=[];
 const carrotItems=[];
 const campfires=[];
 const ITEM_PICKUP_RANGE=3.4;
-const DROP_KEY='g';
+const DROP_KEY='q';
 const CARROT_RESPAWN_MS=5*60*1000;
 
 /* -------------------- yardımcılar -------------------- */
@@ -5306,17 +5321,18 @@ addWorldWeapon('gun',375,120);
 
 function heldVisual(){
   if(!heldItem||typeof playerDonkey==='undefined'||!playerDonkey)return;
-  if(heldItem.group){heldItem.group.removeFromParent();heldItem.group=null;}
+  if(heldItem.group){if(heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);heldItem.group=null;}
   const g=heldItem.type==='sword'?makeSword():makeGun();
   // Eşeğin sağ tarafı.
-  g.position.set(.72,.75,.28);
+  g.position.set(HELD_POS.x,HELD_POS.y,HELD_POS.z);
   g.rotation.set(0,0,heldItem.type==='sword'?.35:0);
   playerDonkey.add(g); heldItem.group=g;
 }
-function clearHeld(){if(heldItem&&heldItem.group)heldItem.group.removeFromParent();heldItem=null;}
+function clearHeld(){if(heldItem&&heldItem.group&&heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);heldItem=null;}
 function pickupItem(item){
   if(!item||!item.visible)return;
   if(item.userData.kind==='carrot'){
+    if(needs.hunger>=9){showFullWarning('Karnın zaten tok, havucu şimdi alamazsın.');return;}
     if(!ws||ws.readyState!==WebSocket.OPEN)return;
     sendSocketMessage('carrot_pick',{carrotId:item.userData.id});
     item.visible=false;item.userData.available=false;item.userData.respawnAt=Date.now()+CARROT_RESPAWN_MS;
@@ -5361,7 +5377,7 @@ function updatePickupPrompt(){  nearbyPickup=findNearby();  if(!interactPromptEl
 document.addEventListener('keydown',e=>{
   if(!gameStarted||playerIsDead||e.target.closest('input,textarea,#chatPanel'))return;
   const k=(e.key||'').toLowerCase();
-  if(k==='g'){
+  if(k===DROP_KEY){
     e.preventDefault();dropHeld();return;
   }
   if(k==='e'){
@@ -5384,11 +5400,13 @@ function nearestWeaponTarget(range){
 function useHeldWeapon(){
   if(!heldItem||!ws||ws.readyState!==WebSocket.OPEN)return;
   if(heldItem.type==='gun'){
-    if(heldItem.ammo<=0){if(typeof appendChatMessage==='function')appendChatMessage({system:true,text:'Mermi bitti.'});return;}
+    if(heldItem.ammo<=0){showFullWarning('Mermi bitti! Silahı bırakıp yenisini al.');return;}
     heldItem.ammo--;
+    playGunFx();
     const target=nearestWeaponTarget(30);
     sendSocketMessage('weapon_attack',{weapon:'gun',targetId:target&&target.type==='player'?target.id:null,targetAnimalId:target&&target.type==='animal'?target.animal.userData.id:null,x:target&&target.type==='animal'?target.animal.position.x:playerDonkey.position.x,z:target&&target.type==='animal'?target.animal.position.z:playerDonkey.position.z,yaw:playerDonkey.rotation.y});
   }else if(heldItem.type==='sword'){
+    playSwordFx();
     const target=nearestWeaponTarget(4.8);
     if(!target)return;
     if(target.type==='player')sendSocketMessage('weapon_attack',{weapon:'sword',targetId:target.id});
@@ -5420,15 +5438,101 @@ function bindItemSocket(){
         const c=carrotItems.find(x=>x.userData.id===data.carrotId);if(c&&!data.ok){c.userData.available=true;c.visible=true;c.userData.respawnAt=0;}
       }else if(data.type==='weapon_result'){
         if(heldItem&&heldItem.type==='gun'&&Number.isFinite(Number(data.ammo)))heldItem.ammo=Number(data.ammo);
+        updateAmmoHud();
         if(!data.ok&&typeof appendChatMessage==='function')appendChatMessage({system:true,text:data.message||'Silah kullanılamadı.'});
       }else if(data.type==='weapon_equipped'){
         if(heldItem&&heldItem.type===data.weapon&&Number.isFinite(Number(data.ammo)))heldItem.ammo=Number(data.ammo);
+        updateAmmoHud();
       }
     }catch(_){ }
   });
 }
 setInterval(bindItemSocket,500);
 
+function setDonkeyRed(group,on){
+  group.traverse(o=>{
+    if(!o.isMesh||!o.material||!o.material.emissive)return;
+    const m=o.material;
+    if(m.__flashBase===undefined)m.__flashBase=m.emissive.getHex();
+    m.emissive.setHex(on?0xff2a2a:m.__flashBase);
+  });
+}
+function updateDamageFlash(){
+  const now=performance.now();
+  const list=[playerDonkey];
+  for(const id in otherPlayers)list.push(otherPlayers[id]);
+  for(const g of list){
+    if(!g||!g.userData.hitUntil)continue;
+    if(now<g.userData.hitUntil)setDonkeyRed(g,Math.floor((g.userData.hitUntil-now)/90)%2===0);
+    else{setDonkeyRed(g,false);g.userData.hitUntil=0;}
+  }
+}
+const HELD_POS={x:.62,y:1.35,z:.45};
+const ammoHudEl=document.createElement('div');
+ammoHudEl.id='ammoHud';
+ammoHudEl.style.cssText='position:fixed;right:18px;bottom:18px;z-index:120;display:none;padding:8px 14px;border-radius:10px;background:rgba(10,14,20,.78);border:1px solid rgba(255,255,255,.18);color:#ffd43b;font:800 18px Arial;pointer-events:none;';
+document.body.appendChild(ammoHudEl);
+let lastAmmoText='';
+function updateAmmoHud(){
+  const txt=(heldItem&&heldItem.type==='gun')?('\ud83d\udd2b '+Math.max(0,heldItem.ammo|0)):'';
+  if(txt===lastAmmoText)return;
+  lastAmmoText=txt;ammoHudEl.textContent=txt;ammoHudEl.style.display=txt?'block':'none';
+}
+let swingState=null,gunState=null,muzzle=null;
+const slashEffects=[];
+function playSwordFx(){
+  swingState=performance.now();
+  const y=playerDonkey.rotation.y;
+  const mesh=new THREE.Mesh(new THREE.RingGeometry(1.05,2.0,22,1,-Math.PI*0.30,Math.PI*0.60),
+    new THREE.MeshBasicMaterial({color:0xdff6ff,transparent:true,opacity:.9,side:THREE.DoubleSide,depthWrite:false}));
+  mesh.position.set(playerDonkey.position.x+Math.sin(y)*1.5,playerDonkey.position.y+1.3,playerDonkey.position.z+Math.cos(y)*1.5);
+  mesh.rotation.y=y;
+  scene.add(mesh);slashEffects.push({mesh,start:performance.now()});
+}
+function playGunFx(){
+  gunState=performance.now();
+  if(!heldItem||!heldItem.group)return;
+  if(!muzzle){
+    muzzle=new THREE.Mesh(new THREE.SphereGeometry(.17,8,8),new THREE.MeshBasicMaterial({color:0xffd166,transparent:true,opacity:.95,depthWrite:false}));
+    muzzle.visible=false;
+  }
+  if(muzzle.parent!==heldItem.group){if(muzzle.parent)muzzle.parent.remove(muzzle);heldItem.group.add(muzzle);}
+  muzzle.position.set(.92,.02,0);muzzle.visible=true;
+}
+function updateWeaponFx(){
+  const now=performance.now();
+  if(heldItem&&heldItem.group){
+    const g=heldItem.group;
+    if(heldItem.type==='sword'){
+      if(swingState!==null){
+        const p=Math.min(1,(now-swingState)/300),arc=Math.sin(p*Math.PI);
+        g.rotation.set(-arc*1.45,arc*.65,.35-arc*.85);
+        g.position.set(HELD_POS.x,HELD_POS.y+arc*.25,HELD_POS.z+arc*.4);
+        if(p>=1){swingState=null;g.rotation.set(0,0,.35);g.position.set(HELD_POS.x,HELD_POS.y,HELD_POS.z);}
+      }else{
+        g.rotation.x*=.8;g.rotation.y*=.8;g.rotation.z+= (.35-g.rotation.z)*.2;
+        g.position.x+=(HELD_POS.x-g.position.x)*.2;g.position.y+=(HELD_POS.y-g.position.y)*.2;g.position.z+=(HELD_POS.z-g.position.z)*.2;
+      }
+    }else{
+      if(gunState!==null){
+        const p=Math.min(1,(now-gunState)/170),kick=1-p;
+        g.position.set(HELD_POS.x-kick*.2,HELD_POS.y+kick*.04,HELD_POS.z);
+        g.rotation.set(0,0,kick*.28);
+        if(muzzle){muzzle.visible=p<.4;muzzle.scale.setScalar(1+kick*.7);}
+        if(p>=1){gunState=null;g.position.set(HELD_POS.x,HELD_POS.y,HELD_POS.z);g.rotation.set(0,0,0);if(muzzle)muzzle.visible=false;}
+      }else{
+        g.position.x+=(HELD_POS.x-g.position.x)*.25;g.position.y+=(HELD_POS.y-g.position.y)*.25;g.rotation.z*=.8;
+      }
+    }
+  }else if(muzzle&&muzzle.visible){muzzle.visible=false;}
+  for(let i=slashEffects.length-1;i>=0;i--){
+    const e=slashEffects[i],p=(now-e.start)/260;
+    if(p>=1){scene.remove(e.mesh);e.mesh.geometry.dispose();e.mesh.material.dispose();slashEffects.splice(i,1);continue;}
+    e.mesh.scale.setScalar(.65+p*.75);
+    e.mesh.rotation.z=p*1.1;
+    e.mesh.material.opacity=.9*(1-p);
+  }
+}
 function updateExtraWorld(){
   for(const it of worldItems){
     if(!it||!it.visible)continue;
@@ -5439,6 +5543,9 @@ function updateExtraWorld(){
   }
   const t=performance.now()*0.004;
   campfires.forEach((f,i)=>{if(f.userData.flame)f.userData.flame.scale.y=.9+.15*Math.sin(t+i*1.7);});
+  updateWeaponFx();
+  updateDamageFlash();
+  updateAmmoHud();
   if(gameStarted)updatePickupPrompt();
 }
 const oldAnimateExtra=typeof animate==='function'?animate:null;
@@ -5447,8 +5554,6 @@ if(oldAnimateExtra){
 }
 
 /* Eski final paketin bazı görsel düzeltmeleri */
-if(typeof DONKEY_BASE_SCALE!=='undefined'&&playerDonkey){const smallScale=DONKEY_BASE_SCALE*.94;playerDonkey.scale.set(smallScale,smallScale,smallScale);}
-
 })();
 </script>
 
