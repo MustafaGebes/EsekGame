@@ -367,7 +367,7 @@ const GUN_DAMAGE = 4;
 const ANIMAL_ATTACK_DAMAGE = 3;
 const ANIMAL_BITE_DAMAGE = 1;
 
-const GUN_AMMO = 12;
+const GUN_AMMO = 9999; // Sınırsız mermi için JSON ile taşınabilen sabit değer.
 const SUPPLY_STATION = { x: 165, z: 268 };
 const SUPPLY_STATION_RANGE = 12;
 const AMMO_PICKUP_COOLDOWN_MS = 20000;
@@ -995,10 +995,6 @@ function handleAmmoPick(player) {
         sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: "Mermi almak için tabancayı kuşan." });
         return;
     }
-    if (player.ammo >= GUN_AMMO) {
-        sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: "Mermilerin zaten dolu." });
-        return;
-    }
     const now = Date.now();
     if (now < player.nextAmmoPickupAt) {
         sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: `Mermi istasyonu ${Math.ceil((player.nextAmmoPickupAt - now) / 1000)} sn sonra hazır.` });
@@ -1006,7 +1002,7 @@ function handleAmmoPick(player) {
     }
     player.ammo = GUN_AMMO;
     player.nextAmmoPickupAt = now + AMMO_PICKUP_COOLDOWN_MS;
-    sendTo(player, { type: "ammo_pick_result", ok: true, ammo: player.ammo, respawnMs: AMMO_PICKUP_COOLDOWN_MS });
+    sendTo(player, { type: "ammo_pick_result", ok: true, ammo: player.ammo, respawnMs: AMMO_PICKUP_COOLDOWN_MS, message: "Sınırsız mermi yüklendi." });
 }
 function handleArmorPick(player) {
     if (!player.inGame || !player.alive) return;
@@ -1058,13 +1054,10 @@ function handleWeaponAttack(player, data) {
             return;
         }
 
-        if (player.ammo <= 0) {
-            sendTo(player, { type: "weapon_result", ok: false, message: "Mermi bitti.", ammo: 0 });
-            return;
-        }
 
-        player.ammo--;
-        sendTo(player, { type: "weapon_result", ok: true, ammo: player.ammo });
+
+        player.ammo = GUN_AMMO;
+        sendTo(player, { type: "weapon_result", ok: true, ammo: player.ammo, unlimited: true });
 
         const targetId = data.targetId ? String(data.targetId) : null;
         const targetAnimalId = data.targetAnimalId ? String(data.targetAnimalId) : null;
