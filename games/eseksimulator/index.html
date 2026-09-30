@@ -131,6 +131,11 @@
         .keybind-button { min-width: 72px; padding: 6px 9px; color: #fff; background: #303b48; border: 1px solid #687684; border-radius: 5px; font-weight: 700; cursor: pointer; }
         .keybind-button.listening { background: #705b1d; border-color: #ffd700; }
         #keybindStatus { min-height: 16px; margin: 7px 0 0; color: #ffd700; font-size: 12px; }
+        #mobWeaponBtns { position:absolute; right:22px; bottom:142px; display:flex; gap:8px; z-index:26; pointer-events:auto; }
+        .mob-weapon-btn { min-width:74px; height:46px; padding:0 10px; border:2px solid #ffffffaa; border-radius:12px; background:rgba(23,32,41,.86); color:#fff; font-weight:900; font-size:12px; box-shadow:0 3px 10px #0008; touch-action:none; }
+        .mob-weapon-btn.weapon-ready { border-color:#ffd43b; background:rgba(100,68,14,.94); color:#ffe78d; }
+        @media (max-width:600px) { #mobWeaponBtns { right:12px; bottom:146px; gap:6px; } .mob-weapon-btn { min-width:68px; height:44px; font-size:11px; } }
+        @media (orientation:landscape) and (max-width:1000px) { #mobWeaponBtns { right:12px; bottom:140px; } }
         #settingsPanel h3 { margin: 0 0 20px 0; color: #ffd700; text-align: center; font-size: 22px; }
         #settingsPanel label { display: block; margin: 15px 0 5px 0; color: #cccccc; font-size: 14px; }
         #settingsPanel input[type="range"] { width: 100%; height: 8px; background: #333; border-radius: 4px; outline: none; -webkit-appearance: none; }
@@ -285,6 +290,10 @@
             <button class="mob-btn" id="mobJumpBtn">Zıpla</button>
             <button class="mob-btn" id="mobAttackBtn">VUR</button>
         </div>
+        <div id="mobWeaponBtns" aria-label="Silah eylemleri">
+            <button class="mob-weapon-btn" id="mobSwordBtn" type="button" aria-label="Kılıçla saldır">KILIÇ</button>
+            <button class="mob-weapon-btn" id="mobGunBtn" type="button" aria-label="Silahla ateş et">ATEŞ</button>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -313,6 +322,7 @@
         scene.fog = new THREE.Fog(0x87ceeb, viewDistance * 0.7, viewDistance);
 
         const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, viewDistance);
+        scene.add(camera); // Kameraya bağlı 1. şahıs silah/kılıç/kalkan modelleri de sahneyle birlikte çizilsin.
         const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5) * 0.9);
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -2370,8 +2380,9 @@
         const FOREST_POND_CENTER = { x: 300, z: -8 };
         // Haritanın doğu ormanında, üstü tamamen açık ve gerçek zemin çukuruna oturan derin gölet.
         const DEEP_POOL = { x: 330, z: 100, rx: 31, rz: 25, waterY: 0.62, depth: 12.5 };
-        const CAVE_SPECS = [{ x: 390, z: 100, heading: -Math.PI / 2, clearRadius: 38 }];
-        const forestBees = [], caveBears = [], deepPoolRipples = [];
+        const DEEP_POOL_SWIM_RADIUS = 1.08;
+        const CAVE_SPECS = [{ x: 423, z: 45, heading: -Math.PI / 2, clearRadius: 48 }];
+        const forestBees = [], caveBears = [], deepPoolRipples = [], caveRoots = [], caveCollisionCircles = [];
         function deepPoolNormAt(x, z) {
             return Math.hypot((x - DEEP_POOL.x) / DEEP_POOL.rx, (z - DEEP_POOL.z) / DEEP_POOL.rz);
         }
@@ -2817,14 +2828,17 @@ function createDeepPoolAndCave() {
     const floor = new THREE.Mesh(new THREE.CircleGeometry(1, 64), floorMaterial);
     floor.rotation.x = -Math.PI / 2; floor.scale.set(DEEP_POOL.rx * 0.38, DEEP_POOL.rz * 0.38, 1);
     floor.position.set(DEEP_POOL.x, bottomY + 0.08, DEEP_POOL.z); floor.name = 'Derin gölet dibi'; floor.receiveShadow = true; scene.add(floor);
-    const shore = new THREE.Mesh(new THREE.RingGeometry(0.96, 1.14, 64), new THREE.MeshLambertMaterial({ color: 0x756f5c, side: THREE.DoubleSide }));
+    const shore = new THREE.Mesh(new THREE.RingGeometry(1.14, 1.22, 72), new THREE.MeshLambertMaterial({ color: 0x756f5c, side: THREE.DoubleSide }));
     shore.rotation.x = -Math.PI / 2; shore.scale.set(DEEP_POOL.rx, DEEP_POOL.rz, 1);
     shore.position.set(DEEP_POOL.x, 0.055, DEEP_POOL.z); scene.add(shore);
     const waterMaterial = new THREE.MeshPhongMaterial({ color: 0x268ca4, transparent: true, opacity: 0.78, shininess: 88, side: THREE.DoubleSide, depthWrite: false });
     const water = new THREE.Mesh(new THREE.CircleGeometry(1, 72), waterMaterial);
-    water.rotation.x = -Math.PI / 2; water.scale.set(DEEP_POOL.rx * 0.90, DEEP_POOL.rz * 0.90, 1);
+    water.rotation.x = -Math.PI / 2; water.scale.set(DEEP_POOL.rx * 1.14, DEEP_POOL.rz * 1.14, 1);
     water.position.set(DEEP_POOL.x, DEEP_POOL.waterY, DEEP_POOL.z); water.renderOrder = 4;
     water.name = 'Açık gökyüzünün altındaki derin yüzülebilir gölet'; scene.add(water);
+    const waterFoam = new THREE.Mesh(new THREE.RingGeometry(0.985, 1.012, 72), new THREE.MeshBasicMaterial({ color: 0xc7edf0, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false }));
+    waterFoam.rotation.x = -Math.PI / 2; waterFoam.scale.set(DEEP_POOL.rx * 1.14, DEEP_POOL.rz * 1.14, 1);
+    waterFoam.position.set(DEEP_POOL.x, DEEP_POOL.waterY + 0.018, DEEP_POOL.z); waterFoam.renderOrder = 5; scene.add(waterFoam);
     const rippleGeo = new THREE.RingGeometry(0.96, 1, 48);
     for (let i = 0; i < 4; i++) {
         const ring = new THREE.Mesh(rippleGeo, new THREE.MeshBasicMaterial({ color: 0xb9edf0, transparent: true, opacity: 0.24, side: THREE.DoubleSide, depthWrite: false }));
@@ -2835,56 +2849,91 @@ function createDeepPoolAndCave() {
     for (let i = 0; i < 36; i++) {
         const a = i * Math.PI * 2 / 36, s = 0.65 + (i % 4) * 0.20;
         const rock = new THREE.Mesh(rimRockGeo, rockMaterial);
-        const x = DEEP_POOL.x + Math.cos(a) * DEEP_POOL.rx * 1.12;
-        const z = DEEP_POOL.z + Math.sin(a) * DEEP_POOL.rz * 1.12;
+        const x = DEEP_POOL.x + Math.cos(a) * DEEP_POOL.rx * 1.18;
+        const z = DEEP_POOL.z + Math.sin(a) * DEEP_POOL.rz * 1.18;
         rock.position.set(x, terrainHeightAt(x, z) + 0.35, z);
         rock.scale.set(s * 1.25, s * 0.72, s); rock.rotation.set(a * 0.12, a, a * 0.08);
         rock.castShadow = true; rock.receiveShadow = true; scene.add(rock);
     }
-    // Mağara, suyun yanındaki kayalık kıyıda; su yüzeyinin üzerinde hiçbir yapı yoktur.
+    // Dağın doğu yamacına yakın, üstü kapalı ama girişi açık, geniş ve yürünebilir ayı mağarası.
     const cave = CAVE_SPECS[0];
     const caveRoot = new THREE.Group();
     caveRoot.position.set(cave.x, terrainHeightAt(cave.x, cave.z), cave.z); caveRoot.rotation.y = cave.heading;
-    const interior = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 14), new THREE.MeshLambertMaterial({ color: 0x282827, side: THREE.BackSide }));
-    interior.scale.set(7.2, 5.4, 9.4); interior.position.set(0, 3.6, -3.0); caveRoot.add(interior);
-    const darkness = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 14), new THREE.MeshBasicMaterial({ color: 0x101312 }));
-    darkness.scale.set(4.0, 3.45, 0.32); darkness.position.set(0, 3.65, 0.10); caveRoot.add(darkness);
-    const arch = new THREE.Mesh(new THREE.TorusGeometry(4.15, 1.08, 9, 20), rockMaterial); arch.position.set(0, 3.7, 0.18); caveRoot.add(arch);
+    const shellGeo = new THREE.SphereGeometry(1, 32, 22, 0.50, Math.PI * 2 - 1.00, 0, Math.PI * 0.76);
+    const shell = new THREE.Mesh(shellGeo, new THREE.MeshStandardMaterial({ color: 0x514e49, roughness: 1, side: THREE.DoubleSide }));
+    shell.scale.set(11.5, 8.4, 16.5); shell.position.set(0, 5.4, -5.8); shell.castShadow = true; shell.receiveShadow = true; caveRoot.add(shell);
+    const caveFloor = new THREE.Mesh(new THREE.BoxGeometry(19, 0.22, 27), floorMaterial);
+    caveFloor.position.set(0, 0.02, -6.2); caveFloor.receiveShadow = true; caveRoot.add(caveFloor);
+    const caveLantern = new THREE.PointLight(0xffbb70, 2.1, 27, 2);
+    caveLantern.position.set(0, 4.35, -8.2); caveRoot.add(caveLantern);
+    const lanternGlow = new THREE.Mesh(new THREE.SphereGeometry(.24,10,8),new THREE.MeshBasicMaterial({color:0xffbd70}));
+    lanternGlow.position.copy(caveLantern.position); caveRoot.add(lanternGlow);
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(6.0, 1.35, 12, 28), rockMaterial);
+    arch.position.set(0, 5.1, 0.65); caveRoot.add(arch);
+    const boulderGeometry = new THREE.DodecahedronGeometry(1, 1);
+    function addCaveCollider(localX, localZ, radius) {
+        const c = Math.cos(cave.heading), q = Math.sin(cave.heading);
+        caveCollisionCircles.push({ x: cave.x + localX*c + localZ*q, z: cave.z - localX*q + localZ*c, radius });
+    }
     const rockPositions = [
-        [-4.9,1.0,0.2,2.0,2.0,1.8], [4.9,1.0,0.2,2.0,2.1,1.9],
-        [-4.6,3.5,0.15,1.7,2.0,1.5], [4.6,3.6,0.15,1.8,2.0,1.6],
-        [-3.2,6.6,-0.1,2.0,1.7,1.8], [0,7.4,-0.2,2.8,1.8,2.0], [3.2,6.6,-0.1,2.0,1.8,1.8],
-        [-5.0,0.2,2.0,2.2,0.8,2.4], [5.0,0.2,2.0,2.2,0.8,2.4]
+        [-9.0,1.2,0.6,3.4,2.7,3.3], [9.0,1.2,0.6,3.4,2.8,3.3],
+        [-10.2,3.7,-3.0,2.8,3.4,4.0], [10.2,3.7,-3.0,2.8,3.4,4.0],
+        [-10.0,3.8,-8.4,2.9,3.7,4.1], [10.0,3.8,-8.4,2.9,3.7,4.1],
+        [-7.6,6.7,-13.0,3.8,3.2,4.0], [0,8.2,-13.5,4.4,2.9,4.2], [7.6,6.7,-13.0,3.8,3.2,4.0],
+        [-6.4,0.25,2.1,3.3,1.0,3.6], [6.4,0.25,2.1,3.3,1.0,3.6],
+        [-12.0,1.1,-5.0,2.0,1.7,2.2], [12.0,1.1,-5.0,2.0,1.7,2.2]
     ];
     for (const [x,y,z,sx,sy,sz] of rockPositions) {
-        const rock = new THREE.Mesh(rimRockGeo, rockMaterial);
-        rock.position.set(x,y,z); rock.scale.set(sx,sy,sz); rock.rotation.set(y*.07,x*.09,z*.1); rock.castShadow = true; caveRoot.add(rock);
+        const rock = new THREE.Mesh(boulderGeometry, rockMaterial);
+        rock.position.set(x,y,z); rock.scale.set(sx,sy,sz); rock.rotation.set(y*.06,x*.04,z*.05);
+        rock.castShadow = true; rock.receiveShadow = true; caveRoot.add(rock);
+        if (y <= 1.5) addCaveCollider(x,z,Math.max(sx,sz)*0.46);
     }
-    const caveFloor = new THREE.Mesh(new THREE.BoxGeometry(6.2,0.16,10), floorMaterial);
-    caveFloor.position.set(0,0.02,-2.3); caveRoot.add(caveFloor);
-    const bear = new THREE.Group();
-    const fur = new THREE.MeshStandardMaterial({ color: 0x493021, roughness: 0.98 });
-    const furLight = new THREE.MeshStandardMaterial({ color: 0x68452c, roughness: 0.95 });
-    const muzzleMat = new THREE.MeshStandardMaterial({ color: 0x9a7552, roughness: 0.9 });
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x120d0b });
-    const body = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), fur); body.scale.set(1.55,1.23,2.0); body.position.set(0,1.6,-0.15); bear.add(body);
-    const chest = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 10), furLight); chest.scale.set(1.0,1.1,.92); chest.position.set(0,1.48,1.1); bear.add(chest);
-    const head = new THREE.Group(); head.position.set(0,2.55,1.18); bear.add(head);
-    const headBall = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), fur); headBall.scale.set(.93,.79,.88); head.add(headBall);
-    for (const side of [-1,1]) {
-        const ear = new THREE.Mesh(new THREE.SphereGeometry(.27,10,8), fur); ear.position.set(side*.70,.62,-.05); head.add(ear);
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(.095,8,6), eyeMat); eye.position.set(side*.34,.12,.78); head.add(eye);
-        const paw = new THREE.Mesh(new THREE.SphereGeometry(1,10,8), fur); paw.scale.set(.48,.68,.55); paw.position.set(side*.98,.66,1.0); bear.add(paw);
-        const rear = new THREE.Mesh(new THREE.SphereGeometry(1,10,8), fur); rear.scale.set(.47,.72,.52); rear.position.set(side*.98,.66,-1.35); bear.add(rear);
-        for (let toe = -1; toe <= 1; toe++) {
-            const claw = new THREE.Mesh(new THREE.ConeGeometry(.09,.24,6), muzzleMat); claw.position.set(side*.98+toe*.17,.32,1.40); claw.rotation.x=-Math.PI/2; bear.add(claw);
+    // Solid collision along both sides and the rear; the broad entrance remains open.
+    for (const side of [-1,1]) for (const z of [0,-4,-8,-12,-15]) addCaveCollider(side*10.0,z,2.5);
+    for (const x of [-7,-3.5,0,3.5,7]) addCaveCollider(x,-17.5,2.35);
+    // Stalactites, stalagmites and cool crystal clusters make the interior readable and detailed.
+    const crystalMat = new THREE.MeshStandardMaterial({ color: 0x48aeb6, emissive: 0x10383b, roughness: 0.32, metalness: 0.18 });
+    for (let i=0;i<8;i++) {
+        const x = (i%2 ? 1 : -1) * (5.6 + (i%3)*1.1), z = -3.2 - Math.floor(i/2)*3.2;
+        const crystal = new THREE.Mesh(new THREE.ConeGeometry(.34 + (i%3)*.08, 1.15 + (i%4)*.25, 5), crystalMat);
+        crystal.position.set(x, .65 + (i%2)*.15, z); crystal.rotation.z = i%2 ? Math.PI : 0; caveRoot.add(crystal);
+    }
+    const bearFur = new THREE.MeshStandardMaterial({ color: 0x493021, roughness: 0.98 });
+    const bearFurLight = new THREE.MeshStandardMaterial({ color: 0x68452c, roughness: 0.95 });
+    const bearMuzzle = new THREE.MeshStandardMaterial({ color: 0x9a7552, roughness: 0.9 });
+    const bearEye = new THREE.MeshBasicMaterial({ color: 0x120d0b });
+    function makeCaveBear(id, homeX, homeZ, phase) {
+        const bear = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.SphereGeometry(1,18,14), bearFur);
+        body.scale.set(1.72,1.38,2.18); body.position.set(0,1.58,-.12); body.castShadow=true; bear.add(body);
+        const chest = new THREE.Mesh(new THREE.SphereGeometry(1,14,12), bearFurLight);
+        chest.scale.set(1.08,1.12,.96); chest.position.set(0,1.48,1.18); bear.add(chest);
+        const head = new THREE.Group(); head.position.set(0,2.55,1.35); bear.add(head);
+        const headBall = new THREE.Mesh(new THREE.SphereGeometry(1,16,12),bearFur); headBall.scale.set(.96,.82,.9); head.add(headBall);
+        for (const side of [-1,1]) {
+            const ear=new THREE.Mesh(new THREE.SphereGeometry(.28,10,8),bearFur); ear.position.set(side*.72,.63,-.08); head.add(ear);
+            const eye=new THREE.Mesh(new THREE.SphereGeometry(.10,8,6),bearEye); eye.position.set(side*.36,.10,.79); head.add(eye);
+            const brow=new THREE.Mesh(new THREE.SphereGeometry(.16,8,6),bearFur); brow.scale.set(1,.55,.6); brow.position.set(side*.35,.27,.76); head.add(brow);
         }
+        const snout=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),bearMuzzle); snout.scale.set(.52,.37,.52); snout.position.set(0,2.28,2.18); bear.add(snout);
+        const nose=new THREE.Mesh(new THREE.SphereGeometry(.23,10,8),new THREE.MeshStandardMaterial({color:0x171311,roughness:.5})); nose.position.set(0,2.31,2.59); bear.add(nose);
+        const tail=new THREE.Mesh(new THREE.SphereGeometry(.28,8,6),bearFur); tail.position.set(0,1.65,-2.16); bear.add(tail);
+        const legs=[];
+        for (const [side,front] of [[-1,true],[1,true],[-1,false],[1,false]]) {
+            const leg=new THREE.Group(); leg.position.set(side*(front?1.08:1.0),.88,front?.78:-1.28);
+            const limb=new THREE.Mesh(new THREE.SphereGeometry(1,12,10),bearFur); limb.scale.set(front?.49:.47,.72,front?.55:.54); limb.position.y=-.18; leg.add(limb);
+            const paw=new THREE.Mesh(new THREE.SphereGeometry(1,10,8),bearFurLight); paw.scale.set(.50,.32,.58); paw.position.set(0,-.56,.18); leg.add(paw);
+            for(let toe=-1;toe<=1;toe++){const claw=new THREE.Mesh(new THREE.ConeGeometry(.075,.20,6),bearMuzzle);claw.position.set(toe*.16,-.62,.48);claw.rotation.x=-Math.PI/2;leg.add(claw);}
+            bear.add(leg); legs.push(leg);
+        }
+        bear.position.set(homeX,0,homeZ); bear.userData={id,health:9,alive:true,body,head,legs,phase,homeX,homeZ,lastUpdate:0,nextAttackAt:0,attackUntil:0};
+        bear.castShadow=true; caveRoot.add(bear); caveBears.push(bear); return bear;
     }
-    const snout = new THREE.Mesh(new THREE.SphereGeometry(1,12,8), muzzleMat); snout.scale.set(.50,.36,.48); snout.position.set(0,2.28,2.02); bear.add(snout);
-    const nose = new THREE.Mesh(new THREE.SphereGeometry(.22,10,8), new THREE.MeshStandardMaterial({color:0x171311,roughness:.5})); nose.position.set(0,2.32,2.43); bear.add(nose);
-    bear.position.set(0,0,-4.9); bear.rotation.y = 0; bear.userData = { body, head, phase: Math.random()*Math.PI*2 };
-    caveRoot.add(bear); caveBears.push(bear);
-    caveRoot.name = 'Kayalık mağara ve içerideki ayı'; scene.add(caveRoot);
+    makeCaveBear('cave-bear-1',-4.7,-5.8,.2);
+    makeCaveBear('cave-bear-2', 0.0,-12.2,2.1);
+    makeCaveBear('cave-bear-3', 4.7,-6.1,4.0);
+    caveRoot.name = 'Dağ yamacındaki geniş, yürünebilir ayı mağarası'; scene.add(caveRoot); caveRoot.updateMatrixWorld(true); caveRoots.push(caveRoot);
 
     function addPine(x,z,seed,withHive=false) {
         const tree = new THREE.Group();
@@ -2913,10 +2962,10 @@ function createDeepPoolAndCave() {
             }
         }
     }
-    addPine(410,77,1,false);
-    addPine(414,127,2,true);
-    addPine(402,145,3,false);
-    addPine(428,100,4,false);
+    addPine(cave.x-27,cave.z-18,1,false);
+    addPine(cave.x+27,cave.z-15,2,true);
+    addPine(cave.x+24,cave.z+24,3,false);
+    addPine(cave.x-30,cave.z+22,4,false);
 }
 function updateDeepPoolAndCaveLife(now) {
     const t = now * 0.001;
@@ -2931,8 +2980,33 @@ function updateDeepPoolAndCaveLife(now) {
         bee.group.position.set(bee.home.x+Math.cos(a)*1.55,bee.home.y+Math.sin(b)*.48,bee.home.z+Math.sin(a*.83)*1.25);
         bee.group.rotation.y=-a;
     }
-    for (const bear of caveBears) {
-        const u=bear.userData; u.body.scale.y=1.23+Math.sin(t*1.7+u.phase)*.035; u.head.rotation.x=Math.sin(t*.7+u.phase)*.025;
+    const caveRoot = caveRoots[0];
+    if (caveRoot && typeof playerDonkey !== 'undefined') {
+        caveRoot.updateMatrixWorld(true);
+        const playerLocal = caveRoot.worldToLocal(new THREE.Vector3(playerDonkey.position.x, playerDonkey.position.y, playerDonkey.position.z));
+        for (const bear of caveBears) {
+            const u=bear.userData;
+            if (!u.alive) { bear.rotation.z=Math.min(1.45,bear.rotation.z+0.018); continue; }
+            const dt=u.lastUpdate ? Math.min(.05,Math.max(0,(now-u.lastUpdate)/1000)) : 0.016; u.lastUpdate=now;
+            const dx=playerLocal.x-bear.position.x, dz=playerLocal.z-bear.position.z, distance=Math.hypot(dx,dz);
+            const playerInside=gameStarted&&!playerIsDead&&Math.abs(playerLocal.x)<13&&playerLocal.z>-22&&playerLocal.z<7;
+            const chasing=playerInside&&distance<19;
+            let tx=u.homeX+Math.sin(t*.43+u.phase)*2.1, tz=u.homeZ+Math.cos(t*.37+u.phase)*1.8;
+            if(chasing){tx=playerLocal.x;tz=playerLocal.z;}
+            const mx=tx-bear.position.x,mz=tz-bear.position.z,md=Math.hypot(mx,mz),speed=chasing?2.25:.55;
+            const moving=md>.22;
+            if(moving){const step=Math.min(md,speed*dt);bear.position.x+=mx/md*step;bear.position.z+=mz/md*step;}
+            bear.position.x=THREE.MathUtils.clamp(bear.position.x,-7.2,7.2);
+            bear.position.z=THREE.MathUtils.clamp(bear.position.z,-15.0,-1.3);
+            bear.position.y=.025+(moving?Math.abs(Math.sin(t*7+u.phase))*.075:Math.sin(t*1.5+u.phase)*.018);
+            if(moving)bear.rotation.y=Math.atan2(mx,mz);
+            const attacking=chasing&&distance<3.05;
+            if(attacking&&now>=u.nextAttackAt){u.nextAttackAt=now+1750;u.attackUntil=now+420;sendSocketMessage('bear_attack',{bearId:u.id});}
+            const gait=moving?Math.sin(t*(chasing?8.5:5.0)+u.phase):0;
+            for(let i=0;i<u.legs.length;i++)u.legs[i].rotation.x=moving?gait*(i<2?1:-1)*.34:0;
+            u.body.scale.y=1.38+Math.sin(t*1.7+u.phase)*.035;
+            u.head.rotation.x=attacking&&now<u.attackUntil?-.30+Math.sin(t*18)*.12:Math.sin(t*.7+u.phase)*.025;
+        }
     }
 }
 
@@ -3691,10 +3765,8 @@ function stepCar(c,dt){
         function getActionLabel(action) { return keyLabel(keyBindings[action] || DEFAULT_KEY_BINDINGS[action] || '?'); }
         function isActionKey(action,e) { return keyToken(e) === keyBindings[action]; }
         function actionIsDown(action) {
-            const mapped=keyBindings[action];
-            if (pressedPCKeys.has(mapped)) return true;
-            const fallback={forward:'arrowup',backward:'arrowdown',left:'arrowleft',right:'arrowright'}[action];
-            return !!fallback && !Object.values(keyBindings).includes(fallback) && pressedPCKeys.has(fallback);
+            // Yalnızca Ayarlar'da atanmış tuş hareket eder; ok tuşları da buradan atanabilir.
+            return pressedPCKeys.has(keyBindings[action]);
         }
         function syncPCKeyState() {
             keys.w=actionIsDown('forward'); keys.s=actionIsDown('backward'); keys.a=actionIsDown('left'); keys.d=actionIsDown('right');
@@ -3983,6 +4055,7 @@ function stepCar(c,dt){
                 if (controlMode === 'pc') releaseFirstPersonPointerLock();
             }
             setGameplayCameraImmediate();
+            if (typeof updateArmorShieldVisual === 'function') updateArmorShieldVisual();
         }
         // ===== BİRİNCİ ŞAHIS KAMERA DÜZELTMESİ BİTİŞ =====
 
@@ -4094,7 +4167,7 @@ function stepCar(c,dt){
             pressedPCKeys.add(token); syncPCKeyState();
             if (!e.repeat && isActionKey('camera',e)) toggleCameraMode();
             if (!e.repeat && isActionKey('jump',e)) {
-                if (deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z) < 0.92) return;
+                if (deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z) < DEEP_POOL_SWIM_RADIUS) return;
                 if (isGrounded) { velocityY=0.35; isGrounded=false; }
             }
         });
@@ -4260,13 +4333,13 @@ function stepCar(c,dt){
 
         function handleJumpStart(e) {
             e.preventDefault();
-            if (gameStarted && deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z)<0.92) { mobileSwimUpUntil=performance.now()+650; }
+            if (gameStarted && deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z)<DEEP_POOL_SWIM_RADIUS) { mobileSwimUpUntil=performance.now()+650; }
             else if (gameStarted && isGrounded) { velocityY = 0.35; isGrounded = false; }
         }
         
         mobJumpBtn.addEventListener('touchstart', handleJumpStart, { passive: false });
         mobJumpBtn.addEventListener('click', () => {
-            if (gameStarted && deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z)<0.92) { mobileSwimUpUntil=performance.now()+650; }
+            if (gameStarted && deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z)<DEEP_POOL_SWIM_RADIUS) { mobileSwimUpUntil=performance.now()+650; }
             else if (gameStarted && isGrounded) { velocityY = 0.35; isGrounded = false; }
         });
 
@@ -4508,7 +4581,7 @@ function stepCar(c,dt){
 
                 const deepPoolNormBeforeMove=deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z);
                 let speed = baseSpeed;
-                if (inPond || deepPoolNormBeforeMove < 0.92) speed *= 0.55;
+                if (inPond || deepPoolNormBeforeMove < DEEP_POOL_SWIM_RADIUS) speed *= 0.55;
                 let moveX = 0, moveZ = 0, isMoving = false;
                 // Klavye ve joystick aynı ileri/yan vektörünü üretir; ikisi de aynı azami hıza sahiptir.
                 let forwardInput = 0, strafeInput = 0;
@@ -4557,7 +4630,7 @@ function stepCar(c,dt){
                 playerDonkey.scale.y += ((DONKEY_BASE_SCALE * (isCrouching ? 0.6 : 1.0)) - playerDonkey.scale.y) * 0.5;
                 const groundY = terrainHeightAt(playerDonkey.position.x, playerDonkey.position.z);
                 const swimPondDist = Math.hypot(playerDonkey.position.x - pondWX, playerDonkey.position.z - pondWZ);
-                const inDeepWater = deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z) < 0.92;
+                const inDeepWater = deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z) < DEEP_POOL_SWIM_RADIUS;
                 if (inDeepWater) {
                     const diveHeld=controlMode==='pc'?keys.c:isCouchingMobile;
                     const surfaceHeld=controlMode==='pc'?keys.jump:(performance.now()<mobileSwimUpUntil);
@@ -4684,6 +4757,25 @@ function stepCar(c,dt){
         const needPips = {};
         const needValues = {};
         const needs = { health: 9, armor: 0, hunger: 9, thirst: 9 };
+        let armorShieldVisual = null;
+        function updateArmorShieldVisual() {
+            if (!playerDonkey) return;
+            if (!armorShieldVisual) {
+                if (needs.armor <= 0) return;
+                armorShieldVisual = new THREE.Group();
+                const shape = new THREE.Shape(); shape.moveTo(-.48,.56); shape.lineTo(.48,.56); shape.lineTo(.42,-.08); shape.lineTo(0,-.62); shape.lineTo(-.42,-.08); shape.closePath();
+                const outer = new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshStandardMaterial({color:0xc18a2e,metalness:.45,roughness:.38,side:THREE.DoubleSide})); outer.position.z=.02; armorShieldVisual.add(outer);
+                const inner = new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshStandardMaterial({color:0x277b91,metalness:.3,roughness:.4,side:THREE.DoubleSide})); inner.scale.set(.76,.78,.76); inner.position.set(0,.02,.055); armorShieldVisual.add(inner);
+                const barV = new THREE.Mesh(new THREE.BoxGeometry(.12,.62,.09),new THREE.MeshStandardMaterial({color:0xffe4a0,metalness:.18,roughness:.5})); barV.position.set(0,-.02,.10); armorShieldVisual.add(barV);
+                const barH = new THREE.Mesh(new THREE.BoxGeometry(.43,.12,.09),new THREE.MeshStandardMaterial({color:0xffe4a0,metalness:.18,roughness:.5})); barH.position.set(0,.03,.10); armorShieldVisual.add(barH);
+                armorShieldVisual.name='Takılı kalıcı kalkan';
+            }
+            const first = cameraMode === 'first', parent = first ? camera : playerDonkey;
+            if (armorShieldVisual.parent !== parent) { if (armorShieldVisual.parent) armorShieldVisual.parent.remove(armorShieldVisual); parent.add(armorShieldVisual); }
+            if (first) { armorShieldVisual.position.set(-.46,-.12,-1.08); armorShieldVisual.rotation.set(0,0,0); armorShieldVisual.scale.setScalar(.42); }
+            else { armorShieldVisual.position.set(-.84,1.18,.25); armorShieldVisual.rotation.set(0,-.16,0); armorShieldVisual.scale.setScalar(.88); }
+            armorShieldVisual.visible = needs.armor > 0;
+        }
         for (const key of ['health','armor','hunger','thirst']) {
             const host = survivalHudEl.querySelector(`[data-need="${key}"]`);
             needPips[key] = [];
@@ -4749,7 +4841,7 @@ function stepCar(c,dt){
             playerDonkey.scale.set(DONKEY_BASE_SCALE,DONKEY_BASE_SCALE,DONKEY_BASE_SCALE); document.body.style.cursor = (cameraMode === 'first' && mode === 'pc' && document.pointerLockElement === renderer.domElement) ? 'none' : 'crosshair';
             for (const other of Object.values(otherPlayers)) other.visible = true;
             sendPresence(true); setGameUiVisible(true); setChatVisible(!chatIsManuallyHidden);
-            sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
+            sendSocketMessage('animal_states_request',{ids:[...wildlife.map(a=>a.userData.id),...caveBears.map(a=>a.userData.id)]});
         }
         function sendPendingJoin() {
             if (!joinPending || joinPending.sent || !ws || ws.readyState !== WebSocket.OPEN) return;
@@ -4804,6 +4896,7 @@ function stepCar(c,dt){
             if(data.hunger!==undefined)needs.hunger=Math.max(0,Math.min(9,Number(data.hunger)||0));
             if(data.thirst!==undefined)needs.thirst=Math.max(0,Math.min(9,Number(data.thirst)||0));
             renderNeeds();
+            updateArmorShieldVisual();
         }
         function showFullWarning(text) {
             let el = document.getElementById('fullWarningToast');
@@ -4835,9 +4928,9 @@ function stepCar(c,dt){
         function onExtendedMessage(event) {
             let data;try{data=JSON.parse(event.data);}catch(e){return;}
             if(data.type==='join_accepted'){
-                const pending=joinPending||{mode:controlMode,isResume:false};joinPending=null;currentPlayerName=String((data.state&&data.state.name)||'Guest-000');setNameError('');applyNeeds(data.state||{});
+                const pending=joinPending||{mode:controlMode,isResume:false};joinPending=null;currentPlayerName=String((data.state&&data.state.name)||'Guest-000');setNameError('');applyNeeds(data.state||{});sendSocketMessage('berry_state_request',{});
                 if(pending.isResume)completeResume(pending.mode);else startGameOriginal(pending.mode);
-                setGameUiVisible(true);sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
+                setGameUiVisible(true);sendSocketMessage('animal_states_request',{ids:[...wildlife.map(a=>a.userData.id),...caveBears.map(a=>a.userData.id)]});
                 sendSocketMessage('apple_state_request',{trees:orchardTrees.map(t=>({id:t.id,x:t.x,z:t.z}))});
             } else if(data.type==='join_denied'){
                 if(joinPending&&joinPending.isResume){gameStarted=false;releaseFirstPersonPointerLock();}
@@ -4858,9 +4951,15 @@ function stepCar(c,dt){
                 interactPromptEl.textContent=data.message||'Etkileşim yapılamadı.';interactPromptEl.style.display='block';setTimeout(()=>{if(!currentTargetAction)interactPromptEl.style.display='none';},1000);
             } else if(data.type==='chat_error')appendExtendedSystem(data.message||'Mesaj gönderilemedi.');
             else if(data.type==='animal_states'){
-                for(const [id,state] of Object.entries(data.states||{})){const a=wildlife.find(x=>x.userData.id===id);if(a){a.userData.health=state.health;a.userData.hunger=state.hunger??a.userData.hunger;a.userData.thirst=state.thirst??a.userData.thirst;a.userData.alive=state.alive;if(!state.alive)a.userData.deadAt=performance.now();paintAnimalStatus(a);}}
+                for(const [id,state] of Object.entries(data.states||{})){
+                    const a=wildlife.find(x=>x.userData.id===id);
+                    if(a){a.userData.health=state.health;a.userData.hunger=state.hunger??a.userData.hunger;a.userData.thirst=state.thirst??a.userData.thirst;a.userData.alive=state.alive;if(!state.alive)a.userData.deadAt=performance.now();paintAnimalStatus(a);}
+                    const bear=caveBears.find(x=>x.userData.id===id);if(bear){bear.userData.health=state.health;bear.userData.alive=state.alive;}
+                }
             } else if(data.type==='animal_state'){
-                const a=wildlife.find(x=>x.userData.id===data.id);if(a){a.userData.health=data.health;a.userData.hunger=data.hunger??a.userData.hunger;a.userData.thirst=data.thirst??a.userData.thirst;a.userData.alive=data.alive;if(data.care){a.userData.careAction=data.care;a.userData.careAnimUntil=performance.now()+1500;}if(!data.alive)a.userData.deadAt=performance.now();paintAnimalStatus(a);}
+                const a=wildlife.find(x=>x.userData.id===data.id);
+                if(a){a.userData.health=data.health;a.userData.hunger=data.hunger??a.userData.hunger;a.userData.thirst=data.thirst??a.userData.thirst;a.userData.alive=data.alive;if(data.care){a.userData.careAction=data.care;a.userData.careAnimUntil=performance.now()+1500;}if(!data.alive)a.userData.deadAt=performance.now();paintAnimalStatus(a);}
+                const bear=caveBears.find(x=>x.userData.id===data.id);if(bear){bear.userData.health=data.health;bear.userData.alive=data.alive;}
             } else if(data.type==='combat_hit'){
                 const victim=otherPlayers[data.targetId];if(victim){victim.userData.hitUntil=performance.now()+340;victim.userData.health=data.health;}
                 if(data.targetId===myId){applyNeeds({health:data.health,armor:data.armor});playerDonkey.userData.hitUntil=performance.now()+340;actionAnimationType='hurt';actionAnimationUntil=performance.now()+420;}
@@ -4888,7 +4987,7 @@ function stepCar(c,dt){
             socket.addEventListener('open',()=>{
                 if(joinPending)sendPendingJoin();
                 sendSocketMessage('apple_state_request',{trees:orchardTrees.map(t=>({id:t.id,x:t.x,z:t.z}))});
-                sendSocketMessage('animal_states_request',{ids:wildlife.map(a=>a.userData.id)});
+                sendSocketMessage('animal_states_request',{ids:[...wildlife.map(a=>a.userData.id),...caveBears.map(a=>a.userData.id)]});
             });
             socket.addEventListener('close',()=>{if(joinPending){joinPending.sent=false;setNameError('Sunucu bağlantısı kesildi. Tekrar deneyebilirsin.');}});
         }
@@ -5005,15 +5104,16 @@ function stepCar(c,dt){
         mobAttackBtnEl.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();attackNearestTarget();});
 
         function blockControlTouch(el){el.addEventListener('touchstart',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});el.addEventListener('touchmove',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});el.addEventListener('touchend',e=>{e.stopImmediatePropagation();},{capture:true,passive:false});}
-        for(const el of [mobOpenBtn,mobAttackBtnEl,mobJumpBtn,mobCrouchBtn,mobSprintBtn])blockControlTouch(el);
+        for(const el of [mobOpenBtn,mobAttackBtnEl,mobJumpBtn,mobCrouchBtn,mobSprintBtn,document.getElementById('mobSwordBtn'),document.getElementById('mobGunBtn')])blockControlTouch(el);
         function bindHoldPointer(el,down,up){let pointer=null;el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(pointer!==null)return;pointer=e.pointerId;el.setPointerCapture(e.pointerId);down();},{passive:false});const release=e=>{if(e.pointerId!==pointer)return;pointer=null;up();};el.addEventListener('pointerup',release);el.addEventListener('pointercancel',release);el.addEventListener('lostpointercapture',release);}
-        bindHoldPointer(mobJumpBtn,()=>{if(gameStarted&&deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z)<0.92){mobileSwimUpUntil=performance.now()+650;}else if(gameStarted&&isGrounded){velocityY=.35;isGrounded=false;}},()=>{});
+        bindHoldPointer(mobJumpBtn,()=>{if(gameStarted&&deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z)<DEEP_POOL_SWIM_RADIUS){mobileSwimUpUntil=performance.now()+650;}else if(gameStarted&&isGrounded){velocityY=.35;isGrounded=false;}},()=>{});
         bindHoldPointer(mobCrouchBtn,()=>{isCouchingMobile=true;},()=>{isCouchingMobile=false;});
         bindHoldPointer(mobSprintBtn,()=>{isSprintingMobile=true;},()=>{isSprintingMobile=false;});
 
         const previousCollisionCheck=checkMountainCollision;
         checkMountainCollision=function(x,z,radius){
             if(previousCollisionCheck(x,z,radius))return true;
+            for(const c of caveCollisionCircles)if(Math.hypot(x-c.x,z-c.z)<radius+c.radius)return true;
             const cx=Math.floor(x/FOREST_CELL),cz=Math.floor(z/FOREST_CELL),reach=Math.ceil((radius+2)/FOREST_CELL);
             for(let gx=cx-reach;gx<=cx+reach;gx++)for(let gz=cz-reach;gz<=cz+reach;gz++){
                 for(const tree of (forestTreeGrid.get(`${gx},${gz}`)||[]))if(tree.id && Math.hypot(x-tree.x,z-tree.z)<radius+tree.radius)return true;
@@ -5480,6 +5580,7 @@ let nearbyPickup=null;
 let pickupPromptActive=false;
 const worldItems=[];
 const carrotItems=[];
+const berryItems=[];
 const campfires=[];
 const ITEM_PICKUP_RANGE=3.4;
 const DROP_KEY='q'; // Geriye dönük varsayılan; canlı atama getActionLabel('drop') üzerinden okunur.
@@ -5490,7 +5591,7 @@ function groundY(x,z){
   try{return typeof terrainHeightAt==='function'?terrainHeightAt(x,z)+0.18:0.18;}catch(_){return 0.18;}
 }
 function makeMat(color){return new THREE.MeshStandardMaterial({color,roughness:.8,metalness:.05});}
-function itemLabel(type){return type==='sword'?'Kılıç':type==='gun'?'Silah':type==='ammo'?'Mermi':type==='armor'?'Zırh':'Havuç';}
+function itemLabel(type){return type==='sword'?'Kılıç':type==='gun'?'Silah':type==='ammo'?'Mermi':type==='armor'?'Zırh':type==='berry'?'Mor dut':'Havuç';}
 function makeSword(){
   const g=new THREE.Group();
   const blade=new THREE.Mesh(new THREE.BoxGeometry(.10,1.15,.035),makeMat(0xd9e0e8));blade.position.y=.58;g.add(blade);
@@ -5552,18 +5653,61 @@ setInterval(()=>{
   }
 },1000);
 
+/* -------------------- orman yaban mersini çalıları -------------------- */
+function berryMulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
+function makeBerryBushSpots(){
+  const rand=berryMulberry32(0xB37D5EED),spots=[];
+  for(let attempt=0;attempt<12000&&spots.length<30;attempt++){
+    const a=rand()*Math.PI*2,r=62+rand()*92,x=255+Math.cos(a)*r,z=35+Math.sin(a)*r;
+    if(x<215||x>450||z<-105||z>205)continue;
+    if(Math.hypot((x-330)/31,(z-100)/25)<1.20)continue;
+    if(Math.hypot(x-423,z-45)<48)continue;
+    if(Math.hypot(x-300,z+8)<22)continue;
+    if(spots.some(q=>Math.hypot(q.x-x,q.z-z)<9))continue;
+    spots.push({id:`berry-bush-${spots.length}`,x,z});
+  }
+  return spots;
+}
+const berryBushSpots=makeBerryBushSpots();
+function makeBerryBush(seed){
+  const rand=berryMulberry32(seed+0x51A7),g=new THREE.Group();
+  const greens=[0x315d31,0x3d7138,0x527d3d,0x426c35];
+  for(let i=0;i<7;i++){
+    const leaf=new THREE.Mesh(new THREE.DodecahedronGeometry(.34+rand()*.18,0),makeMat(greens[i%greens.length]));
+    leaf.position.set((rand()-.5)*.85,.27+rand()*.47,(rand()-.5)*.78);leaf.scale.y=.72+rand()*.35;leaf.castShadow=true;g.add(leaf);
+  }
+  const stemMat=makeMat(0x59442b);
+  for(let i=0;i<3;i++){const stem=new THREE.Mesh(new THREE.CylinderGeometry(.035,.055,.55,5),stemMat);stem.position.set((rand()-.5)*.42,.28,(rand()-.5)*.38);stem.rotation.z=(rand()-.5)*.6;g.add(stem);}
+  const berryMat=new THREE.MeshStandardMaterial({color:0x7439b5,roughness:.34,metalness:.05,emissive:0x210d38});
+  const glintMat=new THREE.MeshBasicMaterial({color:0xd9baff});
+  for(let i=0;i<9;i++){
+    const berry=new THREE.Mesh(new THREE.SphereGeometry(.105+rand()*.025,9,7),berryMat);
+    berry.position.set((rand()-.5)*.7,.44+rand()*.42,(rand()-.5)*.65);g.add(berry);
+    if(i%3===0){const glint=new THREE.Mesh(new THREE.SphereGeometry(.025,6,5),glintMat);glint.position.set(berry.position.x-.035,berry.position.y+.035,berry.position.z+.08);g.add(glint);}
+  }
+  return g;
+}
+for(const spot of berryBushSpots){
+  const bush=makeBerryBush(spot.id.split('-').pop().length+berryItems.length*37);
+  bush.position.set(spot.x,groundY(spot.x,spot.z),spot.z);bush.rotation.y=(berryItems.length*2.399963)% (Math.PI*2);
+  bush.userData={kind:'berry',id:spot.id,available:true,pending:false,respawnAt:0};scene.add(bush);berryItems.push(bush);worldItems.push(bush);
+}
 /* -------------------- silah/kılıç pickup -------------------- */
 const SUPPLY_STATION={x:165,z:268}; // Çiftlik girişinin hemen yanı.
 const STATION_WEAPON_RESPAWN_MS=45000;
-const STATION_AMMO_RESPAWN_MS=20000;
+const STATION_AMMO_RESPAWN_MS=0;
 const STATION_ARMOR_RESPAWN_MS=60000;
-const LOCAL_GUN_AMMO = 9999;
+const GUN_MAGAZINE = 12;
 function makeAmmoPickup(){
   const g=new THREE.Group();
   const box=new THREE.Mesh(new THREE.BoxGeometry(.82,.55,.68),makeMat(0x9a6929));box.position.y=.28;g.add(box);
   const lid=new THREE.Mesh(new THREE.BoxGeometry(.86,.12,.72),makeMat(0xd5a83e));lid.position.y=.61;g.add(lid);
   const stripe=new THREE.Mesh(new THREE.BoxGeometry(.16,.58,.72),makeMat(0x344d28));stripe.position.y=.31;g.add(stripe);
   const mark=new THREE.Mesh(new THREE.BoxGeometry(.34,.16,.04),new THREE.MeshBasicMaterial({color:0xffdf67}));mark.position.set(0,.33,.37);g.add(mark);
+  const canvas=document.createElement('canvas');canvas.width=256;canvas.height=128;
+  const ctx=canvas.getContext('2d');ctx.fillStyle='#24311f';ctx.fillRect(0,0,256,128);ctx.strokeStyle='#ffd75b';ctx.lineWidth=8;ctx.strokeRect(4,4,248,120);
+  ctx.fillStyle='#fff0a8';ctx.font='bold 76px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('∞',128,67);
+  const label=new THREE.Mesh(new THREE.PlaneGeometry(.58,.29),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(canvas),side:THREE.DoubleSide}));label.position.set(0,.31,.395);g.add(label);
   return g;
 }
 function makeArmorPickup(){
@@ -5611,19 +5755,38 @@ function createSupplyStation(){
 }
 createSupplyStation();
 
+function heldBasePose(type){
+  if(cameraMode==='first')return type==='gun'
+    ?{x:.30,y:-.38,z:-1.18,rx:0,ry:Math.PI/2,rz:0,scale:.66}
+    :{x:.40,y:-.30,z:-1.12,rx:.10,ry:0,rz:-.20,scale:.56};
+  return type==='gun'
+    ?{x:HELD_POS.x,y:HELD_POS.y,z:HELD_POS.z,rx:0,ry:-Math.PI/2,rz:0,scale:1.5}
+    :{x:HELD_POS.x,y:HELD_POS.y,z:HELD_POS.z,rx:0,ry:0,rz:.35,scale:1.15};
+}
+function syncHeldWeaponParent(){
+  if(!heldItem||!heldItem.group)return null;
+  const g=heldItem.group,target=cameraMode==='first'?camera:playerDonkey,pose=heldBasePose(heldItem.type);
+  if(g.parent!==target){if(g.parent)g.parent.remove(g);target.add(g);g.position.set(pose.x,pose.y,pose.z);g.rotation.set(pose.rx,pose.ry,pose.rz);}
+  g.scale.setScalar(pose.scale);return pose;
+}
+function refreshMobileWeaponButtons(){
+  const sword=document.getElementById('mobSwordBtn'),gun=document.getElementById('mobGunBtn');
+  if(sword)sword.classList.toggle('weapon-ready',!!heldItem&&heldItem.type==='sword');
+  if(gun)gun.classList.toggle('weapon-ready',!!heldItem&&heldItem.type==='gun');
+}
 function heldVisual(){
   if(!heldItem||typeof playerDonkey==='undefined'||!playerDonkey)return;
-  if(heldItem.group){if(heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);heldItem.group=null;}
-  const g=heldItem.type==='sword'?makeSword():makeGun();
-  g.scale.setScalar(heldItem.type==='gun'?1.5:1.15);
-  // Eşeğin yerel +X'i sağ tarafıdır; tabancanın +X namlusu -90° çevrilerek +Z ileriye bakar.
-  g.position.set(HELD_POS.x,HELD_POS.y,HELD_POS.z);
-  g.rotation.set(0,heldItem.type==='gun'?-Math.PI/2:0,heldItem.type==='sword'?.35:0);
-  playerDonkey.add(g); heldItem.group=g;
+  if(heldItem.group&&heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);
+  const g=heldItem.type==='sword'?makeSword():makeGun();heldItem.group=g;syncHeldWeaponParent();refreshMobileWeaponButtons();
 }
-function clearHeld(){if(heldItem&&heldItem.group&&heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);heldItem=null;}
+function clearHeld(){if(heldItem&&heldItem.group&&heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);heldItem=null;updateAmmoHud();refreshMobileWeaponButtons();}
 function pickupItem(item){
   if(!item||!item.visible||item.userData.pending)return;
+  if(item.userData.kind==='berry'){
+    if(needs.hunger>=9){showFullWarning('Karnın zaten tok; dut yiyemezsin.');return;}
+    if(!ws||ws.readyState!==WebSocket.OPEN)return;
+    item.userData.pending=true;item.userData.available=false;item.visible=false;sendSocketMessage('berry_pick',{berryId:item.userData.id});return;
+  }
   if(item.userData.kind==='carrot'){
     if(needs.hunger>=9){showFullWarning('Karnın zaten tok, havucu şimdi alamazsın.');return;}
     if(!ws||ws.readyState!==WebSocket.OPEN)return;
@@ -5632,7 +5795,8 @@ function pickupItem(item){
     return;
   }
   if(item.userData.kind==='pickup'&&item.userData.itemType==='ammo'){
-    if(!heldItem||heldItem.type!=='gun'){showFullWarning('Mermi almak için tabancayı kuşanmalısın.');return;}
+    if(!heldItem||heldItem.type!=='gun'){showFullWarning('Mermi almak için önce tabancayı kuşan.');return;}
+    if(heldItem.ammo>=GUN_MAGAZINE){showFullWarning('Şarjörün dolu; mermi kutusunda sınırsız stok var.');return;}
     if(!ws||ws.readyState!==WebSocket.OPEN)return;
     item.userData.pending=true;sendSocketMessage('ammo_pick',{});return;
   }
@@ -5643,8 +5807,8 @@ function pickupItem(item){
   }
   if(item.userData.kind==='pickup'){
     if(heldItem)dropHeld();
-    heldItem={type:item.userData.itemType,ammo:item.userData.itemType==='gun'?LOCAL_GUN_AMMO:0,group:null};
-    item.visible=false;if(item.userData.stationPickup)item.userData.respawnAt=Date.now()+item.userData.respawnMs;heldVisual();
+    heldItem={type:item.userData.itemType,ammo:item.userData.itemType==='gun'?GUN_MAGAZINE:0,group:null};
+    item.visible=false;if(item.userData.stationPickup)item.userData.respawnAt=Date.now()+item.userData.respawnMs;heldVisual();updateAmmoHud();
     try{if(typeof sendSocketMessage==='function')sendSocketMessage('weapon_equip',{weapon:heldItem.type});}catch(_){ }
   }
 }
@@ -5668,13 +5832,13 @@ function findNearby(){
   let best=null,bd=ITEM_PICKUP_RANGE;
   for(const it of worldItems){
     if(!it||!it.visible||it.userData.pending)continue;
-    if(it.userData.kind==='carrot'&&!it.userData.available)continue;
+    if((it.userData.kind==='carrot'||it.userData.kind==='berry')&&!it.userData.available)continue;
     const d=Math.hypot(it.position.x-px,it.position.z-pz);
     if(d<bd){bd=d;best=it;}
   }
   return best;
 }
-function updatePickupPrompt(){  nearbyPickup=findNearby();  if(!interactPromptEl)return;  if(nearbyPickup){    interactPromptEl.textContent=getActionLabel('interact')+' · '+(nearbyPickup.userData.kind==='carrot'?'Havuç al':'Al: '+itemLabel(nearbyPickup.userData.itemType));    interactPromptEl.style.display='block';    pickupPromptActive=true;  }else if(pickupPromptActive&&!currentTargetAction){    pickupPromptActive=false;    interactPromptEl.style.display='none';  }}
+function updatePickupPrompt(){  nearbyPickup=findNearby();  if(!interactPromptEl)return;  if(nearbyPickup){    const item=nearbyPickup;const label=item.userData.kind==='carrot'?'Havuç al':item.userData.kind==='berry'?'Mor dut topla ve ye':'Al: '+itemLabel(item.userData.itemType);interactPromptEl.textContent=getActionLabel('interact')+' · '+label;    interactPromptEl.style.display='block';    pickupPromptActive=true;  }else if(pickupPromptActive&&!currentTargetAction){    pickupPromptActive=false;    interactPromptEl.style.display='none';  }}
 
 // E: eşya al; Q: bırak. Capture ile eski E etkileşimini sadece eşya yakındaysa kesiyoruz.
 document.addEventListener('keydown',e=>{
@@ -5696,25 +5860,42 @@ function nearestWeaponTarget(range){
     const p=latestServerPlayers[id];if(!p||!p.inGame||p.alive===false||!o.visible)continue;
     const d=Math.hypot(o.position.x-px,o.position.z-pz);if(d<bd){bd=d;best={type:'player',id,d};}
   }
-  for(const a of wildlife||[]){if(!a.userData.alive)continue;const d=Math.hypot(a.position.x-px,a.position.z-pz);if(d<bd){bd=d;best={type:'animal',animal:a,d};}}
+  const considerAnimal=a=>{
+    if(!a||!a.userData.alive)return;
+    const pos=a.getWorldPosition(new THREE.Vector3()),d=Math.hypot(pos.x-px,pos.z-pz);
+    if(d<bd){bd=d;best={type:'animal',animal:a,position:pos,d};}
+  };
+  for(const a of wildlife||[])considerAnimal(a);
+  for(const a of caveBears||[])considerAnimal(a);
   return best;
 }
 function useHeldWeapon(){
   if(!heldItem||!ws||ws.readyState!==WebSocket.OPEN)return;
   if(heldItem.type==='gun'){
-    heldItem.ammo=LOCAL_GUN_AMMO;
-    playGunFx();
-    const target=nearestWeaponTarget(30);
-    sendSocketMessage('weapon_attack',{weapon:'gun',targetId:target&&target.type==='player'?target.id:null,targetAnimalId:target&&target.type==='animal'?target.animal.userData.id:null,x:target&&target.type==='animal'?target.animal.position.x:playerDonkey.position.x,z:target&&target.type==='animal'?target.animal.position.z:playerDonkey.position.z,yaw:playerDonkey.rotation.y});
+    if(heldItem.ammo<=0){updateAmmoHud();showFullWarning('Mermi bitti. Çiftlikteki kutudan 12 mermi al.');return;}
+    heldItem.ammo=Math.max(0,Number(heldItem.ammo)-1);updateAmmoHud();playGunFx();
+    const target=nearestWeaponTarget(30),p=target&&target.type==='animal'?target.animal.getWorldPosition(new THREE.Vector3()):null;
+    sendSocketMessage('weapon_attack',{weapon:'gun',targetId:target&&target.type==='player'?target.id:null,targetAnimalId:target&&target.type==='animal'?target.animal.userData.id:null,x:p?p.x:playerDonkey.position.x,z:p?p.z:playerDonkey.position.z,yaw:playerDonkey.rotation.y});
   }else if(heldItem.type==='sword'){
     playSwordFx();
     const target=nearestWeaponTarget(4.8);
-    if(!target)return;
+    if(!target){actionAnimationType='attack';actionAnimationUntil=performance.now()+440;return;}
     if(target.type==='player')sendSocketMessage('weapon_attack',{weapon:'sword',targetId:target.id});
-    else sendSocketMessage('weapon_attack',{weapon:'sword',targetAnimalId:target.animal.userData.id,x:target.animal.position.x,z:target.animal.position.z});
+    else sendSocketMessage('weapon_attack',{weapon:'sword',targetAnimalId:target.animal.userData.id,x:target.position.x,z:target.position.z});
   }
   actionAnimationType='attack';actionAnimationUntil=performance.now()+440;
 }
+function bindMobileWeaponButton(button,type){
+  if(!button)return;
+  button.addEventListener('pointerdown',e=>{
+    e.preventDefault();e.stopImmediatePropagation();
+    if(!gameStarted||controlMode!=='mobile')return;
+    if(!heldItem||heldItem.type!==type){showFullWarning(type==='gun'?'Önce silahı kuşan.':'Önce kılıcı kuşan.');return;}
+    useHeldWeapon();
+  },true);
+}
+bindMobileWeaponButton(document.getElementById('mobSwordBtn'),'sword');
+bindMobileWeaponButton(document.getElementById('mobGunBtn'),'gun');
 // Capture click: elde silah varsa eski eşek saldırısını çalıştırma.
 document.addEventListener('click',e=>{
   if(!heldItem||!gameStarted||controlMode!=='pc'||e.button!==0)return;
@@ -5731,14 +5912,21 @@ function bindItemSocket(){
   __itemSocketBound=ws;
   ws.addEventListener('message',ev=>{
     try{const data=JSON.parse(ev.data);
-      if(data.type==='carrot_states'){
+      if(data.type==='berry_states'){
+        for(const b of berryItems)if(Object.prototype.hasOwnProperty.call(data.states||{},b.userData.id)){b.userData.available=!!data.states[b.userData.id].available;b.visible=b.userData.available;b.userData.pending=false;}
+      }else if(data.type==='berry_update'){
+        const b=berryItems.find(x=>x.userData.id===data.berryId);if(b){b.userData.available=!!data.available;b.visible=b.userData.available;b.userData.pending=false;}
+      }else if(data.type==='berry_pick_result'){
+        const b=berryItems.find(x=>x.userData.id===data.berryId);if(b){b.userData.pending=false;if(data.ok){b.userData.available=false;b.visible=false;}else{b.userData.available=true;b.visible=true;}}
+        if(data.ok){applyNeeds(data);actionAnimationType='eat';actionAnimationUntil=performance.now()+850;showFullWarning('Mor dut yedin · açlığın azaldı.');}else showFullWarning(data.message||'Dut toplanamadı.');
+      }else if(data.type==='carrot_states'){
         for(const c of carrotItems)if(Object.prototype.hasOwnProperty.call(data.states||{},c.userData.id)){c.userData.available=!!data.states[c.userData.id];c.visible=c.userData.available;}
       }else if(data.type==='carrot_update'){
         const c=carrotItems.find(x=>x.userData.id===data.carrotId);if(c){c.userData.available=!!data.available;c.visible=c.userData.available;if(!c.userData.available)c.userData.respawnAt=Date.now()+CARROT_RESPAWN_MS;}
       }else if(data.type==='carrot_pick_result'){
         const c=carrotItems.find(x=>x.userData.id===data.carrotId);if(c&&!data.ok){c.userData.available=true;c.visible=true;c.userData.respawnAt=0;}
       }else if(data.type==='ammo_pick_result'){
-        const item=worldItems.find(x=>x.userData.id==='station-ammo');if(item){item.userData.pending=false;if(data.ok){item.visible=false;item.userData.respawnAt=Date.now()+Number(data.respawnMs||item.userData.respawnMs);}}
+        const item=worldItems.find(x=>x.userData.id==='station-ammo');if(item){item.userData.pending=false;item.visible=true;item.userData.respawnAt=0;}
         if(data.ok&&heldItem&&heldItem.type==='gun'&&Number.isFinite(Number(data.ammo)))heldItem.ammo=Number(data.ammo);
         updateAmmoHud();if(!data.ok)showFullWarning(data.message||'Mermi alınamadı.');
       }else if(data.type==='armor_pick_result'){
@@ -5747,7 +5935,7 @@ function bindItemSocket(){
       }else if(data.type==='weapon_result'){
         if(heldItem&&heldItem.type==='gun'&&Number.isFinite(Number(data.ammo)))heldItem.ammo=Number(data.ammo);
         updateAmmoHud();
-        if(!data.ok&&typeof appendChatMessage==='function')appendChatMessage({system:true,text:data.message||'Silah kullanılamadı.'});
+        if(!data.ok){showFullWarning(data.message||'Silah kullanılamadı.');if(typeof appendChatMessage==='function')appendChatMessage({system:true,text:data.message||'Silah kullanılamadı.'});}
       }else if(data.type==='weapon_equipped'){
         if(heldItem&&heldItem.type===data.weapon&&Number.isFinite(Number(data.ammo)))heldItem.ammo=Number(data.ammo);
         updateAmmoHud();
@@ -5782,7 +5970,8 @@ ammoHudEl.style.cssText='position:fixed;right:18px;bottom:18px;z-index:120;displ
 document.body.appendChild(ammoHudEl);
 let lastAmmoText='';
 function updateAmmoHud(){
-  const txt=(heldItem&&heldItem.type==='gun')?('\ud83d\udd2b ∞'):'';
+  const count=heldItem&&heldItem.type==='gun'?Math.max(0,Math.min(GUN_MAGAZINE,Number(heldItem.ammo)||0)):0;
+  const txt=(heldItem&&heldItem.type==='gun')?('🔫  '+count+' / '+GUN_MAGAZINE):'';
   if(txt===lastAmmoText)return;
   lastAmmoText=txt;ammoHudEl.textContent=txt;ammoHudEl.style.display=txt?'block':'none';
 }
@@ -5810,35 +5999,34 @@ function playGunFx(){
 function updateWeaponFx(){
   const now=performance.now();
   if(heldItem&&heldItem.group){
-    const g=heldItem.group;
+    const g=heldItem.group,base=syncHeldWeaponParent()||heldBasePose(heldItem.type);
     if(heldItem.type==='sword'){
       if(swingState!==null){
-        const p=Math.min(1,(now-swingState)/300),arc=Math.sin(p*Math.PI);
-        g.rotation.set(-arc*1.45,arc*.65,.35-arc*.85);
-        g.position.set(HELD_POS.x,HELD_POS.y+arc*.25,HELD_POS.z+arc*.4);
-        if(p>=1){swingState=null;g.rotation.set(0,0,.35);g.position.set(HELD_POS.x,HELD_POS.y,HELD_POS.z);}
+        const p=Math.min(1,(now-swingState)/330),arc=Math.sin(p*Math.PI);
+        g.rotation.set(base.rx-arc*1.48,base.ry+arc*.62,base.rz-arc*.90);
+        g.position.set(base.x,base.y+arc*.23,base.z+arc*.30);
+        if(p>=1){swingState=null;g.rotation.set(base.rx,base.ry,base.rz);g.position.set(base.x,base.y,base.z);}
       }else{
-        g.rotation.x*=.8;g.rotation.y*=.8;g.rotation.z+= (.35-g.rotation.z)*.2;
-        g.position.x+=(HELD_POS.x-g.position.x)*.2;g.position.y+=(HELD_POS.y-g.position.y)*.2;g.position.z+=(HELD_POS.z-g.position.z)*.2;
+        g.rotation.x+=(base.rx-g.rotation.x)*.22;g.rotation.y+=(base.ry-g.rotation.y)*.22;g.rotation.z+=(base.rz-g.rotation.z)*.22;
+        g.position.x+=(base.x-g.position.x)*.22;g.position.y+=(base.y-g.position.y)*.22;g.position.z+=(base.z-g.position.z)*.22;
       }
     }else{
       if(gunState!==null){
         const p=Math.min(1,(now-gunState)/170),kick=1-p;
-        g.position.set(HELD_POS.x-kick*.2,HELD_POS.y+kick*.04,HELD_POS.z);
-        g.rotation.set(0,-Math.PI/2,kick*.28);
+        g.position.set(base.x-kick*.16,base.y+kick*.045,base.z);
+        g.rotation.set(base.rx,base.ry,base.rz+kick*.26);
         if(muzzle){muzzle.visible=p<.4;muzzle.scale.setScalar(1+kick*.7);}
-        if(p>=1){gunState=null;g.position.set(HELD_POS.x,HELD_POS.y,HELD_POS.z);g.rotation.set(0,-Math.PI/2,0);if(muzzle)muzzle.visible=false;}
+        if(p>=1){gunState=null;g.position.set(base.x,base.y,base.z);g.rotation.set(base.rx,base.ry,base.rz);if(muzzle)muzzle.visible=false;}
       }else{
-        g.position.x+=(HELD_POS.x-g.position.x)*.25;g.position.y+=(HELD_POS.y-g.position.y)*.25;g.rotation.z*=.8;
+        g.position.x+=(base.x-g.position.x)*.25;g.position.y+=(base.y-g.position.y)*.25;g.position.z+=(base.z-g.position.z)*.25;
+        g.rotation.x+=(base.rx-g.rotation.x)*.25;g.rotation.y+=(base.ry-g.rotation.y)*.25;g.rotation.z+=(base.rz-g.rotation.z)*.25;
       }
     }
   }else if(muzzle&&muzzle.visible){muzzle.visible=false;}
   for(let i=slashEffects.length-1;i>=0;i--){
     const e=slashEffects[i],p=(now-e.start)/260;
     if(p>=1){scene.remove(e.mesh);e.mesh.geometry.dispose();e.mesh.material.dispose();slashEffects.splice(i,1);continue;}
-    e.mesh.scale.setScalar(.65+p*.75);
-    e.mesh.rotation.z=p*1.1;
-    e.mesh.material.opacity=.9*(1-p);
+    e.mesh.scale.setScalar(.65+p*.75);e.mesh.rotation.z=p*1.1;e.mesh.material.opacity=.9*(1-p);
   }
 }
 function updateExtraWorld(){
