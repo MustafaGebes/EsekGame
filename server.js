@@ -1,4 +1,4 @@
-// server.js - ESEKGAMES Full Multiplayer Server
+// server.js - ESEKGAMES Full Multiplayer Server (v3 - Fixed Clone + Same Account)
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
@@ -48,12 +48,10 @@ function findAccount(username) {
     return null;
 }
 
-// Token üretimi (login'de döner)
 function makeToken(username) {
     const payload = `${username}:${Date.now()}:${crypto.randomBytes(8).toString("hex")}`;
     return crypto.createHash("sha256").update(payload).digest("hex");
 }
-// Token -> username (memory'de tut)
 const activeTokens = new Map(); // token -> { username, createdAt }
 
 app.post("/api/register", (req, res) => {
@@ -115,18 +113,15 @@ app.post("/api/change-username", (req, res) => {
 const players = new Map();
 let nextPlayerId = 1;
 
-// Global dünya state (tüm oyuncular paylaşır)
 const worldState = {
-    chatMessages: [],       // son 100 mesaj
-    chatLastReset: Date.now(),
-    apples: {},             // treeId -> count
-    animals: {},            // animalId -> { health, hunger, thirst, alive, care }
-    carrots: {},            // carrotId -> available
-    needs: {}               // playerId -> { health, hunger, thirst }
+    chatMessages: [],
+    apples: {},
+    animals: {},
+    carrots: {}
 };
 
-// Havuç konumları (client ile aynı olmalı — basit başlangıç)
 const CARROT_IDS = Array.from({ length: 10 }, (_, i) => `carrot-${i}`);
+for (const id of CARROT_IDS) worldState.carrots[id] = true;
 
 function guestName(n) { return `Guest-${String(n).padStart(3, "0")}`; }
 function isGuestNameUsed(name) {
@@ -168,11 +163,20 @@ function broadcastGame(data, exceptId = null) {
 
 function getPublicPlayer(p) {
     return {
-        id: p.id, name: p.name, account: p.account, guest: p.guest, inGame: p.inGame,
-        x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch,
+        id: p.id,
+        name: p.name,
+        account: p.account,
+        guest: p.guest,
+        inGame: p.inGame,
+        x: p.x, y: p.y, z: p.z,
+        yaw: p.yaw, pitch: p.pitch,
         health: p.health, hunger: p.hunger, thirst: p.thirst,
-        alive: !p.dead, isCrouching: p.isCrouching, isMoving: p.isMoving, isJumping: p.isJumping,
-        platform: p.platform, pingMs: p.pingMs
+        alive: !p.dead,
+        isCrouching: p.isCrouching,
+        isMoving: p.isMoving,
+        isJumping: p.isJumping,
+        platform: p.platform,
+        pingMs: p.pingMs
     };
 }
 
@@ -182,8 +186,8 @@ function sendPlayersUpdate() {
         if (!p.inGame) continue;
         list[p.id] = getPublicPlayer(p);
     }
+    // Sadece "players" gönder — "player_list" client tarafından işlenmiyor
     broadcast({ type: "players", players: list, count: Object.keys(list).length });
-    broadcast({ type: "player_list", players: Object.values(list), count: Object.keys(list).length });
 }
 
 // ============ PLAYER ============
@@ -196,7 +200,7 @@ function createPlayer(ws) {
         inGame: false,
         x: 0, y: 0.28, z: 0,
         yaw: 0, pitch: 0,
-        health: 9, hunger: 9, thirst: 9,   // client 9 üzerinden çalışıyor
+        health: 9, hunger: 9, thirst: 9,
         isCrouching: false, isMoving: false, isJumping: false,
         platform: "pc", pingMs: null,
         dead: false,
@@ -218,7 +222,7 @@ function joinGame(player, data) {
     let requestedName = null;
     let isAccount = false;
 
-    // Önce token ile hesap kontrolü
+    // Token ile hesap kontrolü
     if (data && data.token && activeTokens.has(data.token)) {
         const acc = activeTokens.get(data.token);
         requestedName = acc.username;
@@ -231,25 +235,58 @@ function joinGame(player, data) {
             send(player.ws, { type: "join_denied", message: "Hesap bulunamadı." });
             return;
         }
-        // Aynı hesap zaten oyunda mı?
+
+        // ⚠️ AYNI HESAP ZATEN OYUNDA MI?
         for (const p of players.values()) {
-            if (p !== player && p.inGame && p.account && p.name === found.account.username) {
-                send(player.ws, { type: "join_denied", message: "Bu hesap zaten oyunda." });
+            if (p === player) continue;
+            if (!p.inGame) continue;
+            if (p.account && p.name &&
+                p.name.toLowerCase() === found.account.username.toLowerCase()) {
+                send(player.ws, {
+                    type: "join_denied",
+                    message: `"${found.account.username}" hesabı şu an başka bir cihazda oyunda. Önce oradan çıkış yap.`
+                });
                 return;
             }
         }
+
         player.name = found.account.username;
         player.account = true;
         player.guest = false;
         player.guestNumber = null;
         player.token = data.token;
     } else {
-        // Guest
-        const guest = allocateGuestName();
-        player.name = guest.name;
-        player.account = false;
-        player.guest = true;
-        player.guestNumber = guest.number;
+        // Misafir isim zorlaması varsa kontrol et
+        const desired = data && data.name ? normalizeUsername(data.name) : null;
+
+        if (desired && validUsername(desired)) {
+            // Aynı isim başka oyuncuda varsa reddet
+            let nameTaken = false;
+            for (const p of players.values()) {
+                if (p === player) continue;
+                if (p.inGame && p.name && p.name.toLowerCase() === desired.toLowerCase()) {
+                    nameTaken = true;
+                    break;
+                }
+            }
+            if (nameTaken) {
+                send(player.ws, {
+                    type: "join_denied",
+                    message: `"${desired}" adı şu an kullanılıyor. Başka bir ad dene.`
+                });
+                return;
+            }
+            player.name = desired;
+            player.account = false;
+            player.guest = true;
+            player.guestNumber = null;
+        } else {
+            const guest = allocateGuestName();
+            player.name = guest.name;
+            player.account = false;
+            player.guest = true;
+            player.guestNumber = guest.number;
+        }
     }
 
     player.inGame = true;
@@ -262,22 +299,11 @@ function joinGame(player, data) {
 
     send(player.ws, {
         type: "join_accepted",
-        state: {
-            ...getPublicPlayer(player),
-            needs: { health: 9, hunger: 9, thirst: 9 }
-        }
+        state: { ...getPublicPlayer(player), needs: { health: 9, hunger: 9, thirst: 9 } }
     });
-
-    // Chat history
     send(player.ws, { type: "chat_history", messages: worldState.chatMessages.slice(-100) });
-
-    // Apple state
     send(player.ws, { type: "apple_states", states: worldState.apples });
-
-    // Animal state
     send(player.ws, { type: "animal_states", states: worldState.animals });
-
-    // Carrot state
     send(player.ws, { type: "carrot_states", states: worldState.carrots });
 
     broadcastGame({ type: "player_joined", player: getPublicPlayer(player) }, player.id);
@@ -289,7 +315,10 @@ function leaveGame(player, reason = "leave") {
     if (!player.inGame) return;
     const oldId = player.id, oldName = player.name;
     player.inGame = false;
-    player.name = null; player.account = false; player.guest = false; player.guestNumber = null;
+    player.name = null;
+    player.account = false;
+    player.guest = false;
+    player.guestNumber = null;
     player.token = null;
     broadcastGame({ type: "player_left", id: oldId, name: oldName, reason }, oldId);
     sendPlayersUpdate();
@@ -348,10 +377,12 @@ function handleChat(player, data) {
     if (whisperMatch) {
         const targetName = whisperMatch[1];
         const messageText = whisperMatch[2].slice(0, 220);
-        // Hedefi bul
         let target = null;
         for (const p of players.values()) {
-            if (p.inGame && p.name && p.name.toLowerCase() === targetName.toLowerCase()) { target = p; break; }
+            if (p.inGame && p.name && p.name.toLowerCase() === targetName.toLowerCase()) {
+                target = p;
+                break;
+            }
         }
         if (!target) {
             send(player.ws, { type: "chat_error", message: "Kullanıcı bulunamadı: " + targetName });
@@ -365,11 +396,9 @@ function handleChat(player, data) {
         };
         send(target.ws, { type: "chat_message", message: msg });
         send(player.ws, { type: "chat_message", message: msg });
-        // Private mesajları history'ye ekleme (gizlilik)
         return;
     }
 
-    // Normal mesaj
     const msg = {
         id: crypto.randomUUID(),
         clientId,
@@ -381,7 +410,6 @@ function handleChat(player, data) {
     if (worldState.chatMessages.length > 100) worldState.chatMessages.shift();
 
     broadcastGame({ type: "chat_message", message: msg });
-    // Alternatif tip de yayınla (client iki tipten birini dinliyor olabilir)
     broadcastGame({ type: "chat", message: msg });
 }
 
@@ -420,7 +448,6 @@ function handleApplePick(player, data) {
         apples: worldState.apples[treeId],
         health: player.health, hunger: player.hunger, thirst: player.thirst
     });
-    // Ayrıca needs güncellemesi
     send(player.ws, { type: "needs", health: player.health, hunger: player.hunger, thirst: player.thirst });
     broadcastGame({ type: "apple_update", treeId, apples: worldState.apples[treeId] }, player.id);
 }
@@ -450,15 +477,14 @@ function handleCarrotPick(player, data) {
     send(player.ws, { type: "carrot_pick_result", ok: true, carrotId, inventory: player.inventory });
     broadcastGame({ type: "carrot_update", carrotId, available: false }, player.id);
 
-    // 5 dakika sonra yeniden çıkar
     setTimeout(() => {
         worldState.carrots[carrotId] = true;
         broadcastGame({ type: "carrot_update", carrotId, available: true });
     }, 5 * 60 * 1000);
 }
+
 function handleCarrotStateRequest(player, data) {
     if (!player.inGame) return;
-    // Eksik havuçları default true yap
     if (data && Array.isArray(data.carrots)) {
         for (const c of data.carrots) {
             if (!(c.id in worldState.carrots)) worldState.carrots[c.id] = true;
@@ -483,6 +509,7 @@ function handleAnimalStatesRequest(player, data) {
     }
     send(player.ws, { type: "animal_states", states: worldState.animals });
 }
+
 function handleAnimalAttack(player, data) {
     if (!player.inGame || player.dead) return;
     const animalId = String(data.animalId || "");
@@ -493,6 +520,7 @@ function handleAnimalAttack(player, data) {
     worldState.animals[animalId] = state;
     broadcastGame({ type: "animal_state", id: animalId, ...state }, player.id);
 }
+
 function handleAnimalCare(player, data) {
     if (!player.inGame) return;
     const animalId = String(data.animalId || "");
@@ -504,10 +532,9 @@ function handleAnimalCare(player, data) {
     worldState.animals[animalId] = state;
     broadcastGame({ type: "animal_state", id: animalId, ...state, care: action }, player.id);
 }
+
 function handleAnimalBiteAnimal(player, data) {
-    // Agresif hayvan başka oyuncuya saldırdı
     if (!player.inGame) return;
-    // Bu mesajı sadece görsel amaçlı broadcast et
     broadcastGame({ type: "animal_attack_broadcast", animalId: data.animalId, x: data.x, z: data.z }, player.id);
 }
 
@@ -523,6 +550,7 @@ function damagePlayer(target, amount, attackerId, reason) {
     });
     if (target.health <= 0) killPlayer(target, reason || "combat");
 }
+
 function killPlayer(player, reason) {
     if (player.dead) return;
     player.dead = true;
@@ -542,10 +570,10 @@ function killPlayer(player, reason) {
         broadcastGame({ type: "player_respawned", player: getPublicPlayer(player) });
     }, 5000);
 }
+
 function handleRespawn(player) {
     if (!player.inGame) return;
     if (!player.dead) {
-        // Zaten canlı, sadece bilgi ver
         send(player.ws, {
             type: "respawned",
             spawn: { x: player.x, y: player.y, z: player.z },
@@ -562,12 +590,12 @@ function handleRespawn(player) {
     });
     broadcastGame({ type: "player_respawned", player: getPublicPlayer(player) });
 }
+
 function handleAttackPlayer(player, data) {
     if (!player.inGame || player.dead) return;
     const targetId = Number(data.targetId);
     const target = players.get(targetId);
     if (!target || !target.inGame || target.dead) return;
-    // Mesafe kontrolü
     const d = Math.hypot(target.x - player.x, target.z - player.z);
     if (d > 6) return;
     damagePlayer(target, 1, player.id, "player_attack");
@@ -587,7 +615,6 @@ function handleWeaponAttack(player, data) {
         player.ammo--;
         send(player.ws, { type: "weapon_result", ok: true, ammo: player.ammo });
         broadcastGame({ type: "gun_shot", id: player.id, x: player.x, y: player.y, z: player.z, yaw: player.yaw, ammo: player.ammo }, player.id);
-        // Hedef varsa hasar ver
         if (data.targetId) {
             const target = players.get(Number(data.targetId));
             if (target && target.inGame && !target.dead) damagePlayer(target, 3, player.id, "gun");
@@ -614,6 +641,7 @@ function handleWeaponAttack(player, data) {
         }
     }
 }
+
 function handleWeaponEquip(player, data) {
     if (!player.inGame) return;
     const weapon = String(data.weapon || "");
@@ -630,9 +658,9 @@ wss.on("connection", (ws, req) => {
 
     send(ws, { type: "init", id: player.id });
     send(ws, { type: "connected", id: player.id });
-    send(ws, { type: "server_info", version: "2.0.0", players: activePlayerCount() });
+    send(ws, { type: "server_info", version: "3.0.0", players: activePlayerCount() });
 
-    // İlk bağlantıda players listesi gönder
+    // Yeni bağlanan oyuncuya mevcut oyuncu listesini gönder
     sendPlayersUpdate();
 
     ws.on("message", (raw) => {
@@ -647,43 +675,55 @@ wss.on("connection", (ws, req) => {
                 case "join_request": joinGame(player, data); break;
                 case "presence": handlePresence(player, data); break;
                 case "leave_game": leaveGame(player, "client_leave"); break;
+
                 case "move":
                 case "player_move":
                 case "movement": handleMove(player, data); break;
+
                 case "chat":
                 case "chat_message": handleChat(player, data); break;
+
                 case "needs":
                 case "needs_update": handleNeeds(player, data); break;
+
                 case "apple_pick": handleApplePick(player, data); break;
                 case "apple_state_request":
                     send(player.ws, { type: "apple_states", states: worldState.apples });
                     break;
+
                 case "drink": handleDrink(player); break;
+
                 case "carrot_pick": handleCarrotPick(player, data); break;
                 case "carrot_state_request": handleCarrotStateRequest(player, data); break;
+
                 case "animal_states_request": handleAnimalStatesRequest(player, data); break;
                 case "animal_attack": handleAnimalAttack(player, data); break;
                 case "animal_care": handleAnimalCare(player, data); break;
+                case "animal_attack_animal": handleAnimalBiteAnimal(player, data); break;
+
                 case "attack_player": handleAttackPlayer(player, data); break;
                 case "attack_animal": handleAnimalAttack(player, data); break;
-                case "animal_attack_animal": handleAnimalBiteAnimal(player, data); break;
+
                 case "respawn": handleRespawn(player); break;
+
                 case "weapon_attack":
                 case "attack": handleWeaponAttack(player, data); break;
+
                 case "weapon_equip":
                 case "equip":
                 case "equip_weapon": handleWeaponEquip(player, data); break;
+
                 case "ping":
                     send(ws, { type: "pong", timestamp: data.timestamp, time: Date.now() });
                     break;
+
                 case "ping_result":
                     if (typeof data.pingMs === "number") {
                         player.pingMs = data.pingMs;
                         sendPlayersUpdate();
                     }
                     break;
-                case "profile_error":
-                case "unknown_message": break;
+
                 default:
                     send(ws, { type: "unknown_message", messageType: type });
                     break;
@@ -720,9 +760,10 @@ setInterval(() => {
 server.listen(PORT, () => {
     console.log("");
     console.log("==========================================");
-    console.log("       ESEKGAMES SERVER BAŞLADI (v2)");
+    console.log("       ESEKGAMES SERVER BAŞLADI (v3)");
     console.log("==========================================");
     console.log(`Port: ${PORT}`);
     console.log(`WebSocket: aktif`);
+    console.log(`Aynı hesap koruması: AKTİF`);
     console.log("==========================================");
 });
