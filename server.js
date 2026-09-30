@@ -783,7 +783,10 @@ function handleApplePick(player, data) {
 
     const treeId = String((data && data.treeId) || "");
     if (!treeId) return;
-
+    if (player.hunger >= MAX_NEED) {
+        sendTo(player, { type: "apple_pick_result", ok: false, message: "Karnın zaten tok, daha fazla elma yiyemezsin." });
+        return;
+    }
     const count = getAppleCount(treeId);
 
     if (count <= 0) {
@@ -810,6 +813,10 @@ function handleApplePick(player, data) {
 function handleDrink(player) {
     if (!player.inGame || !player.alive) return;
 
+    if (player.thirst >= MAX_NEED) {
+        sendTo(player, { type: "action_denied", action: "drink", message: "Susuzluğun zaten dolu, daha fazla su içemezsin." });
+        return;
+    }
     player.thirst = clampNeed(player.thirst + 2);
     sendNeeds(player);
 
@@ -840,7 +847,10 @@ function handleCarrotPick(player, data) {
 
     const carrotId = String((data && data.carrotId) || "");
     if (!carrotId) return;
-
+    if (player.hunger >= MAX_NEED) {
+        sendTo(player, { type: "carrot_pick_result", carrotId, ok: false, message: "Karnın zaten tok, havucu şimdi alamazsın." });
+        return;
+    }
     const carrot = getCarrot(carrotId);
 
     if (!carrot.available) {
@@ -851,7 +861,9 @@ function handleCarrotPick(player, data) {
     carrot.available = false;
     carrot.respawnAt = Date.now() + CARROT_RESPAWN_MS;
 
-    sendTo(player, { type: "carrot_pick_result", carrotId, ok: true });
+    player.hunger = clampNeed(player.hunger + 2);
+    sendNeeds(player);
+    sendTo(player, { type: "carrot_pick_result", carrotId, ok: true, health: player.health, hunger: player.hunger, thirst: player.thirst });
     broadcast({ type: "carrot_update", carrotId, available: false });
 }
 
