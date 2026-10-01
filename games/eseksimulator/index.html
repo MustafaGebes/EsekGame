@@ -312,7 +312,10 @@
         const MAP_LIMIT = 510;
         const CAMP_SITE = { x: 245, z: -205 };
         const CAMPFIRE_INTERACT_RANGE = 8;
-        const PET_SHOP = { x: -47, z: -105 };
+        const PET_SHOP = { x: 177, z: 247 };
+        const FARM_PET_TROUGH = { x: 188, z: 247 };
+        const FARM_NOTICE_BOARD = { x: 177, z: 260 };
+        const PET_PLAY_AREA = { x: 192, z: 262 };
         const PET_CATALOG = {
             dog: { name: 'Bekçi Köpek', icon: '🐕', perk: 'Vahşi hayvanlara ve avcılara %25 daha fazla hasar verirsin.' },
             rabbit: { name: 'Çevik Tavşan', icon: '🐇', perk: '%12 daha hızlı koşarsın; enerji kapasiten +20 olur, daha az enerji harcar ve daha hızlı toparlanırsın.' },
@@ -5215,6 +5218,7 @@ function stepCar(c,dt){
                 {x:FOREST_POND_CENTER.x,z:FOREST_POND_CENTER.z,radius:12.8},
                 {x:DEEP_POOL.x,z:DEEP_POOL.z,radius:DEEP_POOL.rx*1.24},
                 {x:farmPond.x,z:farmPond.z,radius:farmPond.radius},
+                {x:FARM_PET_TROUGH.x,z:FARM_PET_TROUGH.z,radius:3.8},
                 {x:Math.max(BEACH_PARKING_CENTER.x-122,Math.min(BEACH_PARKING_CENTER.x+122,x)),z:BEACH_WATER_EDGE+1.0,radius:6.2}
             ];
             for(const target of waterTargets){
@@ -5228,17 +5232,19 @@ function stepCar(c,dt){
             if(fireDistance<=CAMPFIRE_INTERACT_RANGE&&fireDistance<bestDistance){bestDistance=fireDistance;best={type:'campfire',distance:fireDistance};}
             const shopDistance=Math.hypot(x-PET_SHOP.x,z-PET_SHOP.z);
             if(shopDistance<=8.5&&shopDistance<bestDistance)best={type:'pet_shop',distance:shopDistance};
+            const boardDistance=Math.hypot(x-FARM_NOTICE_BOARD.x,z-FARM_NOTICE_BOARD.z);
+            if(boardDistance<=4.8&&boardDistance<bestDistance)best={type:'farm_board',distance:boardDistance};
             return best;
         }
         function scanInteraction(now){
             if(now<nextActionScan)return; nextActionScan=now+120;
-            if(!gameStarted||playerIsDead){currentTargetAction=null;interactPromptEl.style.display='none';mobOpenBtn.style.display='none';return;}
+            if(!gameStarted||playerIsDead){currentTargetAction=null;interactPromptEl.style.display='none';mobOpenBtn.style.display='none';if(typeof window.esekSetFarmBoardOpen==='function')window.esekSetFarmBoardOpen(false);return;}
             currentTargetAction=getAimedPoint(playerDonkey.position.x,playerDonkey.position.y,playerDonkey.position.z);
             if(currentTargetAction){
-                const actionLabel=currentTargetAction.type==='apple'?'Elma ye':currentTargetAction.type==='water'?'Su iç':currentTargetAction.type==='pet_shop'?'Ücretsiz pet seç':(window.__campfireLit?'Ateşi söndür':'Ateşi yak');
+                const actionLabel=currentTargetAction.type==='apple'?'Elma ye':currentTargetAction.type==='water'?'Su iç':currentTargetAction.type==='pet_shop'?'Ücretsiz pet seç':currentTargetAction.type==='farm_board'?'Görev panosuna bak':(window.__campfireLit?'Ateşi söndür':'Ateşi yak');
                 interactPromptEl.textContent=getActionLabel('interact')+' · '+actionLabel;interactPromptEl.style.display='block';
                 if(controlMode==='mobile'){
-                    mobOpenBtn.textContent=currentTargetAction.type==='apple'?'🍎 YE':currentTargetAction.type==='water'?'💧 İÇ':currentTargetAction.type==='pet_shop'?'🐾 PET':(window.__campfireLit?'🔥 SÖNDÜR':'🔥 YAK');
+                    mobOpenBtn.textContent=currentTargetAction.type==='apple'?'🍎 YE':currentTargetAction.type==='water'?'💧 İÇ':currentTargetAction.type==='pet_shop'?'🐾 PET':currentTargetAction.type==='farm_board'?'📋 GÖREV':(window.__campfireLit?'🔥 SÖNDÜR':'🔥 YAK');
                     mobOpenBtn.style.display='flex';
                 }
             }else{interactPromptEl.style.display='none';mobOpenBtn.style.display='none';}
@@ -5253,10 +5259,12 @@ function stepCar(c,dt){
                 sendSocketMessage('campfire_toggle',{});actionAnimationType='warm';actionAnimationUntil=performance.now()+800;
             }else if(currentTargetAction.type==='pet_shop'){
                 if(typeof window.esekSetPetShopOpen==='function')window.esekSetPetShopOpen(true);
+            }else if(currentTargetAction.type==='farm_board'){
+                if(typeof window.esekSetFarmBoardOpen==='function')window.esekSetFarmBoardOpen(true);
             }
         }
         document.addEventListener('keydown',e=>{
-            if(isActionKey('interact',e)&&gameStarted&&!e.target.closest('input,textarea,#chatPanel,#settingsPanel,#petShopPanel')){e.preventDefault();performInteraction();}
+            if(isActionKey('interact',e)&&gameStarted&&!e.target.closest('input,textarea,#chatPanel,#settingsPanel,#petShopPanel,#farmBoardPanel')){e.preventDefault();performInteraction();}
         });
         mobOpenBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();performInteraction();});
 
@@ -6296,9 +6304,19 @@ function renderPetShop(){
 }
 window.esekRenderPetShop=renderPetShop;
 window.esekSetPetShopOpen=setPetShopOpen;
+const farmBoardPanel=document.createElement('section');
+farmBoardPanel.id='farmBoardPanel';
+farmBoardPanel.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:259;display:none;width:min(480px,calc(100vw - 24px));max-height:82vh;overflow:auto;padding:18px;border:1px solid rgba(229,190,104,.62);border-radius:16px;background:rgba(26,25,20,.97);color:#f5f1e7;font:14px Arial;box-shadow:0 18px 56px #000c;pointer-events:auto;';
+farmBoardPanel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><div><strong style="display:block;font-size:21px;color:#f4d78e">Çiftlik Görev Panosu</strong><span style="display:block;margin-top:5px;color:#c9c1ad;font-size:12px">Macera çiftlikten başlıyor.</span></div><button id="farmBoardClose" type="button" aria-label="Kapat" style="border:0;border-radius:9px;background:#ffffff1c;color:#fff;font-size:22px;width:36px;height:34px;cursor:pointer">×</button></div><ol style="padding-left:22px;line-height:1.65;color:#e5e0d2"><li><b>Pati Pet Shop</b>’tan bir arkadaş seç.</li><li><b>Su yalağında</b> susuzluğunu gider; erzak istasyonundan ekipman al.</li><li>Ormanı, sahili ve mağarayı keşfet; yeni maceralara hazırlan.</li></ol><div style="padding:10px 12px;border-radius:10px;background:rgba(197,149,61,.14);color:#e6d6ad;font-size:12px;line-height:1.5">Haydut eşekler, XP ve 100 seviyelik ilerleme sistemi macera hedefi olarak planlanıyor.</div><div style="margin-top:12px;color:#a9b1a6;font-size:11px">E ile panoyu kapatabilir, pet alanında arkadaşını değiştirebilirsin.</div>';
+document.body.appendChild(farmBoardPanel);
+farmBoardPanel.addEventListener('click',e=>e.stopPropagation());
+farmBoardPanel.querySelector('#farmBoardClose').addEventListener('click',()=>setFarmBoardOpen(false));
+function setFarmBoardOpen(open){farmBoardPanel.style.display=open&&gameStarted&&!playerIsDead?'block':'none';}
+window.esekSetFarmBoardOpen=setFarmBoardOpen;
 document.addEventListener('keydown',e=>{
   if(e.target&&e.target.closest&&e.target.closest('input,textarea,#chatPanel,#settingsPanel'))return;
-  if(e.key==='Escape'&&petShopPanel.style.display!=='none'){e.preventDefault();e.stopImmediatePropagation();setPetShopOpen(false);}
+  if(e.key==='Escape'&&farmBoardPanel.style.display!=='none'){e.preventDefault();e.stopImmediatePropagation();setFarmBoardOpen(false);}
+  else if(e.key==='Escape'&&petShopPanel.style.display!=='none'){e.preventDefault();e.stopImmediatePropagation();setPetShopOpen(false);}
 },true);
 
 function petMaterial(color,roughness=.8){return new THREE.MeshStandardMaterial({color,roughness});}
@@ -6351,6 +6369,62 @@ function addPetShopWorldProps(){
   return root;
 }
 addPetShopWorldProps();
+function addFarmPetHubWorldProps(){
+  const stone=petMaterial(0x9b927a),wood=petMaterial(0x70492d),woodLight=petMaterial(0xb9874e),grass=petMaterial(0x477b37),metal=petMaterial(0x565b59);
+  // A short stone path links the shop front to the notice board.
+  for(let i=0;i<5;i++){
+    const z=250+i*1.9,slab=new THREE.Mesh(new THREE.BoxGeometry(3.8,.10,1.45),stone);
+    slab.position.set(PET_SHOP.x,.06+terrainHeightAt(PET_SHOP.x,z),z);slab.rotation.y=(i%2?-.035:.035);slab.receiveShadow=true;scene.add(slab);
+  }
+  // The visible water trough is also included in the existing drink interaction system.
+  const trough=new THREE.Group(),troughY=terrainHeightAt(FARM_PET_TROUGH.x,FARM_PET_TROUGH.z);
+  trough.position.set(FARM_PET_TROUGH.x,troughY,FARM_PET_TROUGH.z);
+  petPart(trough,new THREE.BoxGeometry(3.2,.52,1.45),wood,[0,.37,0]);
+  petPart(trough,new THREE.BoxGeometry(2.86,.12,1.13),woodLight,[0,.67,0]);
+  petPart(trough,new THREE.BoxGeometry(2.48,.055,.78),new THREE.MeshStandardMaterial({color:0x55bad0,transparent:true,opacity:.78,roughness:.18,metalness:.12}),[0,.72,0]);
+  for(const x of [-1.42,1.42])for(const z of [-.57,.57])petPart(trough,new THREE.BoxGeometry(.12,.65,.12),woodLight,[x,.36,z]);
+  scene.add(trough);
+  if(Array.isArray(buildings))buildings.push({x:FARM_PET_TROUGH.x,z:FARM_PET_TROUGH.z,halfW:1.65,halfD:.74,kind:'petWaterTrough'});
+
+  // Interactive starter-goal board, facing the open farm yard.
+  const board=new THREE.Group(),boardY=terrainHeightAt(FARM_NOTICE_BOARD.x,FARM_NOTICE_BOARD.z);
+  board.position.set(FARM_NOTICE_BOARD.x,boardY,FARM_NOTICE_BOARD.z);
+  for(const x of [-1.45,1.45])petPart(board,new THREE.BoxGeometry(.18,2.45,.18),wood,[x,1.22,0]);
+  petPart(board,new THREE.BoxGeometry(3.25,.18,.28),woodLight,[0,2.35,0]);
+  petPart(board,new THREE.BoxGeometry(3.05,1.05,.20),wood,[0,1.78,0]);
+  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=192;const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#40331f';ctx.fillRect(0,0,512,192);ctx.strokeStyle='#e4bd69';ctx.lineWidth=10;ctx.strokeRect(6,6,500,180);
+  ctx.fillStyle='#fff1c5';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 48px Arial';ctx.fillText('GÖREV PANOSU',256,72);
+  ctx.fillStyle='#cce4b7';ctx.font='bold 28px Arial';ctx.fillText('E  ·  MACERAYA BAK',256,132);
+  const boardTexture=new THREE.CanvasTexture(canvas);boardTexture.needsUpdate=true;
+  const boardFace=new THREE.Mesh(new THREE.PlaneGeometry(2.82,.90),new THREE.MeshBasicMaterial({map:boardTexture,side:THREE.DoubleSide}));boardFace.position.set(0,1.82,.115);board.add(boardFace);scene.add(board);
+  if(Array.isArray(buildings))buildings.push({x:FARM_NOTICE_BOARD.x,z:FARM_NOTICE_BOARD.z,halfW:1.55,halfD:.18,kind:'farmNoticeBoard'});
+
+  // Small pet agility yard: a low fence, two lanterns and a jump bar make the new hub readable from afar.
+  const yard=new THREE.Group(),yardY=terrainHeightAt(PET_PLAY_AREA.x,PET_PLAY_AREA.z);yard.position.set(PET_PLAY_AREA.x,yardY,PET_PLAY_AREA.z);
+  const pad=new THREE.Mesh(new THREE.CircleGeometry(5.2,24),grass);pad.rotation.x=-Math.PI/2;pad.position.y=.025;pad.receiveShadow=true;yard.add(pad);
+  for(const x of [-5,5]){
+    for(const z of [-3.8,0,3.8])petPart(yard,new THREE.BoxGeometry(.16,.78,.16),wood,[x,.40,z]);
+    for(const y of [.27,.58])petPart(yard,new THREE.BoxGeometry(.12,.12,7.5),woodLight,[x,y,0]);
+  }
+  for(const z of [-3.8]){
+    for(const x of [-5,0,5])petPart(yard,new THREE.BoxGeometry(.16,.78,.16),wood,[x,.40,z]);
+    for(const y of [.27,.58])petPart(yard,new THREE.BoxGeometry(10,.12,.12),woodLight,[0,y,z]);
+  }
+  // Leave the front open as an entrance and add a low agility hurdle inside.
+  for(const x of [-1.15,1.15])petPart(yard,new THREE.BoxGeometry(.14,.85,.14),woodLight,[x,.43,1.2]);
+  petPart(yard,new THREE.BoxGeometry(2.55,.12,.16),woodLight,[0,.72,1.2]);
+  const yardSignCanvas=document.createElement('canvas');yardSignCanvas.width=384;yardSignCanvas.height=96;
+  const yctx=yardSignCanvas.getContext('2d');yctx.fillStyle='#294b31';yctx.fillRect(0,0,384,96);yctx.fillStyle='#fff2ce';yctx.font='bold 37px Arial';yctx.textAlign='center';yctx.textBaseline='middle';yctx.fillText('PET OYUN ALANI',192,48);
+  const yardSign=new THREE.Mesh(new THREE.PlaneGeometry(3.8,.95),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(yardSignCanvas),side:THREE.DoubleSide}));yardSign.position.set(0,1.65,4.0);yard.add(yardSign);scene.add(yard);
+
+  for(const [x,z] of [[170,246],[184,242]]){
+    const lampY=terrainHeightAt(x,z),lamp=new THREE.Group();lamp.position.set(x,lampY,z);
+    petPart(lamp,new THREE.CylinderGeometry(.07,.10,2.35,7),metal,[0,1.18,0]);
+    petPart(lamp,new THREE.BoxGeometry(.48,.36,.48),new THREE.MeshStandardMaterial({color:0xffd46e,emissive:0x80501a,emissiveIntensity:.48}),[0,2.42,0]);scene.add(lamp);
+  }
+}
+addFarmPetHubWorldProps();
 const petFollowers=new Map();let lastPetFollowerUpdate=performance.now();
 function disposePetModel(model){if(!model)return;scene.remove(model);model.traverse(node=>{if(node.geometry)node.geometry.dispose();if(node.material){for(const material of Array.isArray(node.material)?node.material:[node.material])material.dispose();}});}
 function updatePetFollowers(now){
