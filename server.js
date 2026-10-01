@@ -496,6 +496,8 @@ const CHAT_HISTORY_LIMIT = 100;
 
 const players = new Map(); // id (string) -> player
 let nextPlayerId = 1;
+const MAX_WS_BUFFERED_BYTES = 256 * 1024;
+const MOVE_MIN_INTERVAL_MS = 25;
 
 function createPlayer(ws) {
     const id = "p" + nextPlayerId++;
@@ -522,6 +524,7 @@ function createPlayer(ws) {
         isJumping: false,
         isCrouching: false,
         isSprinting: false,
+        lastMoveAcceptedAt: 0,
 
         health: MAX_NEED,
         hunger: MAX_NEED,
@@ -603,6 +606,18 @@ function send(ws, data) {
     }
 }
 
+function sendSerialized(ws, payload, dropIfBackedUp = false) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    // Snapshot packets are replaced by the next tick, so don't queue stale positions
+    // behind a slow connection. Reliable game events still use send().
+    if (dropIfBackedUp && ws.bufferedAmount > MAX_WS_BUFFERED_BYTES) return;
+    try {
+        ws.send(payload);
+    } catch (err) {
+        console.error("WS gönderme hatası:", err.message);
+    }
+}
+
 function sendTo(player, data) {
     send(player.ws, data);
 }
@@ -653,7 +668,11 @@ function broadcastPlayers() {
         obj[p.id] = getPublicPlayer(p);
         count++;
     }
-    broadcast({ type: "players", players: obj, count });
+    const payload = JSON.stringify({ type: "players", players: obj, count });
+    for (const p of players.values()) {
+        if (!p.inGame) continue;
+        sendSerialized(p.ws, payload, true);
+    }
 }
 
 function broadcastOnlineCount() {
@@ -865,6 +884,8 @@ function handleMove(player, data) {
     if (!player.inGame) return;
 
     const now = Date.now();
+    if (now - player.lastMoveAcceptedAt < MOVE_MIN_INTERVAL_MS) return;
+    player.lastMoveAcceptedAt = now;
     const elapsed = Math.max(0, Math.min(0.35, (now - (player.lastStaminaUpdateAt || now)) / 1000));
     const pet = player.progress && PET_TYPES[player.progress.petId];
     const sprintRequested = !!data.isSprinting && !!data.isMoving && !data.isCrouching;
@@ -1528,10 +1549,10 @@ wss.on("connection", (ws, req) => {
 // SUNUCU DÖNGÜLERİ
 // ============================================================
 
-// Pozisyon yayını (~150ms)
+// Pozisyon yayını (~100ms); istemcilerdeki enterpolasyon hareketi yumuşatır.
 setInterval(() => {
     if (activePlayerCount() > 0) broadcastPlayers();
-}, 150);
+}, 100);
 
 // Avcıların mermi animasyonu/hasarı ve öldükten 5 dakika sonra yeniden doğması.
 setInterval(() => {

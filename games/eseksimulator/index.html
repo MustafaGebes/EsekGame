@@ -3780,6 +3780,8 @@ function stepCar(c,dt){
         let pingInterval = null;
         let playerPingMs = null;
         let latestServerPlayers = {};
+        let lastMoveSentAt = 0;
+        const MOVE_SEND_INTERVAL_MS = 50;
         function initWebSocket() {
             if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
             ws = new WebSocket(wsUrl);
@@ -3825,9 +3827,18 @@ function stepCar(c,dt){
                             }
                             const other = otherPlayers[id];
                             other.visible = gameStarted;
-                            other.position.set(pData.x || 0, pData.y || 0, pData.z || 0);
-                            other.rotation.y = pData.yaw || 0;
-                            if (other.userData.neckHeadGroup) other.userData.neckHeadGroup.rotation.x = pData.pitch || 0;
+                            const targetX = Number(pData.x) || 0;
+                            const targetY = Number(pData.y) || 0;
+                            const targetZ = Number(pData.z) || 0;
+                            if (!other.userData.networkTarget) {
+                                other.userData.networkTarget = new THREE.Vector3(targetX, targetY, targetZ);
+                                other.position.copy(other.userData.networkTarget);
+                                other.rotation.y = Number(pData.yaw) || 0;
+                            } else {
+                                other.userData.networkTarget.set(targetX, targetY, targetZ);
+                            }
+                            other.userData.networkYaw = Number(pData.yaw) || 0;
+                            other.userData.networkPitch = Number(pData.pitch) || 0;
                             const targetScale = DONKEY_BASE_SCALE * (pData.isCrouching ? 0.6 : 1.0);
                             other.scale.y += (targetScale - other.scale.y) * 0.5;
                             other.userData.isMoving = !!pData.isMoving;
@@ -4814,10 +4825,18 @@ function stepCar(c,dt){
                 for (let id in otherPlayers) {
                     const other = otherPlayers[id];
                     const ud = other.userData;
+                    if (ud.networkTarget) {
+                        const blend = 1 - Math.exp(-14 * Math.min(deltaSec, 0.1));
+                        other.position.lerp(ud.networkTarget, blend);
+                        const yawDelta = Math.atan2(Math.sin(ud.networkYaw - other.rotation.y), Math.cos(ud.networkYaw - other.rotation.y));
+                        other.rotation.y += yawDelta * blend;
+                        if (ud.neckHeadGroup) ud.neckHeadGroup.rotation.x += (ud.networkPitch - ud.neckHeadGroup.rotation.x) * blend;
+                    }
                     updateDonkeyAnimation(other, ud.isMoving || false, ud.isJumping || false, ud.isCrouching || false, 1);
                 }
 
-                if (ws && ws.readyState === WebSocket.OPEN) {
+                if (ws && ws.readyState === WebSocket.OPEN && now - lastMoveSentAt >= MOVE_SEND_INTERVAL_MS) {
+                    lastMoveSentAt = now;
                     ws.send(JSON.stringify({
                         type: "move",
                         x: playerDonkey.position.x,
