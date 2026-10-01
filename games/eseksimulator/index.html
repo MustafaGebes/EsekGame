@@ -5071,7 +5071,7 @@ function stepCar(c,dt){
             if(p.maxStamina!==undefined)needs.maxStamina=Math.max(1,Number(p.maxStamina)||100);
             if(p.stamina!==undefined)needs.stamina=Math.max(0,Math.min(needs.maxStamina,Number(p.stamina)||0));
             renderNeeds();
-            renderJourneyPanel();
+            if(typeof window.esekRenderJourneyPanel==='function')window.esekRenderJourneyPanel();
         }
         function showFullWarning(text) {
             let el = document.getElementById('fullWarningToast');
@@ -5251,7 +5251,7 @@ function stepCar(c,dt){
             }else if(currentTargetAction.type==='campfire'){
                 sendSocketMessage('campfire_toggle',{});actionAnimationType='warm';actionAnimationUntil=performance.now()+800;
             }else if(currentTargetAction.type==='quest_board'){
-                setJourneyPanelOpen(true);
+                if(typeof window.esekSetJourneyPanelOpen==='function')window.esekSetJourneyPanelOpen(true);
             }else if(currentTargetAction.type==='parcel_pickup'){
                 sendSocketMessage('parcel_pickup',{});
             }else if(currentTargetAction.type==='parcel_deliver'){
@@ -6311,6 +6311,8 @@ function renderJourneyPanel(){
   }
   journeyPanel.querySelector('#journeyCompanion').textContent=progression.hasCompanion?'🐴 Sürü yoldaşın yanında. Çiftlikteki ağılda bir kez sahiplenilir.':(level<2?'🐴 Yoldaş eşek için önce görevlerden Seviye 2 ol. Sonra çiftlikteki küçük ağıla git ve E’ye bas.':'🐴 Seviye şartı tamam! Çiftlikteki küçük ağıla git ve E’ye basarak yoldaşını sahiplen.');
 }
+window.esekRenderJourneyPanel=renderJourneyPanel;
+window.esekSetJourneyPanelOpen=setJourneyPanelOpen;
 document.addEventListener('keydown',e=>{
   if(e.target&&e.target.closest&&e.target.closest('input,textarea,#chatPanel,#settingsPanel'))return;
   if(e.key&&e.key.toLowerCase()==='j'&&gameStarted){e.preventDefault();setJourneyPanelOpen(journeyPanel.style.display==='none');}
