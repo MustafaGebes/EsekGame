@@ -5860,16 +5860,16 @@ function groundY(x,z){
 }
 function makeMat(color){return new THREE.MeshStandardMaterial({color,roughness:.8,metalness:.05});}
 function itemLabel(type){return type==='sword'?'Kılıç':type==='gun'?'Silah':type==='ammo'?'Mermi':type==='armor'?'Zırh':type==='berry'?'Mor dut':'Havuç';}
-function makeSword(){
-  const g=new THREE.Group();
-  const blade=new THREE.Mesh(new THREE.BoxGeometry(.10,1.15,.035),makeMat(0xd9e0e8));blade.position.y=.58;g.add(blade);
+function makeSword(style){
+  const g=new THREE.Group(), tier=Math.max(0, Number(style&&style.weaponTier)||0), color=(style&&style.color)||['#c8d0d8','#dfe7ef','#e07b45','#d94d43','#9ba9b4','#6c7185','#59a4c0','#58c7c7','#bd75d1','#f0c45b','#ffe08a'][tier];
+  const blade=new THREE.Mesh(new THREE.BoxGeometry(.10+Math.min(.08,tier*.006),1.15+Math.min(.42,tier*.035),.035),makeMat(color));blade.position.y=.58;g.add(blade);
   const guard=new THREE.Mesh(new THREE.BoxGeometry(.42,.06,.06),makeMat(0xb07a32));guard.position.y=.05;g.add(guard);
   const grip=new THREE.Mesh(new THREE.BoxGeometry(.08,.34,.08),makeMat(0x4b2d1b));grip.position.y=-.16;g.add(grip);
   g.rotation.z=-.18; return g;
 }
-function makeGun(){
-  const g=new THREE.Group();
-  const body=new THREE.Mesh(new THREE.BoxGeometry(.55,.16,.16),makeMat(0x65727a));body.position.x=.18;g.add(body);
+function makeGun(style){
+  const g=new THREE.Group(), tier=Math.max(0, Number(style&&style.weaponTier)||0), color=(style&&style.color)||['#65727a','#9aa5ad','#c78238','#d94d43','#9ba9b4','#6c7185','#59a4c0','#58c7c7','#bd75d1','#f0c45b','#ffe08a'][tier];
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.55+Math.min(.22,tier*.02),.16+Math.min(.08,tier*.007),.16),makeMat(color));body.position.x=.18;g.add(body);
   const barrel=new THREE.Mesh(new THREE.BoxGeometry(.45,.07,.07),makeMat(0x414a50));barrel.position.x=.62;g.add(barrel);
   const rail=new THREE.Mesh(new THREE.BoxGeometry(.34,.055,.19),makeMat(0xd29a35));rail.position.set(.20,.09,0);g.add(rail);
   const grip=new THREE.Mesh(new THREE.BoxGeometry(.12,.34,.12),makeMat(0x704a2b));grip.position.set(.02,-.20,0);grip.rotation.z=-.18;g.add(grip);
@@ -6038,7 +6038,6 @@ function createSupplyStation(){
   const sign=new THREE.Mesh(new THREE.PlaneGeometry(10.2,1.12),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(canvas),side:THREE.DoubleSide}));sign.position.set(x,baseY+3.3,z-3.46);sign.rotation.y=Math.PI;scene.add(sign);
   addWorldWeapon('sword',x-5,z+5.4,true);
   addWorldWeapon('gun',x+5,z+5.4,true);
-  addStationPickup('ammo',x-5.4,z-5.2,STATION_AMMO_RESPAWN_MS);
   addStationPickup('armor',x,z+5.4,STATION_ARMOR_RESPAWN_MS);
 }
 function heldBasePose(type){
@@ -6063,7 +6062,7 @@ function refreshMobileWeaponButtons(){
 function heldVisual(){
   if(!heldItem||typeof playerDonkey==='undefined'||!playerDonkey)return;
   if(heldItem.group&&heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);
-  const g=heldItem.type==='sword'?makeSword():makeGun();heldItem.group=g;syncHeldWeaponParent();refreshMobileWeaponButtons();
+  const g=heldItem.type==='sword'?makeSword(heldItem.style):makeGun(heldItem.style);heldItem.group=g;syncHeldWeaponParent();refreshMobileWeaponButtons();
 }
 function clearHeld(){if(heldItem&&heldItem.group&&heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);heldItem=null;updateAmmoHud();refreshMobileWeaponButtons();}
 function pickupItem(item){
@@ -6079,12 +6078,6 @@ function pickupItem(item){
     sendSocketMessage('carrot_pick',{carrotId:item.userData.id});
     item.visible=false;item.userData.available=false;item.userData.respawnAt=Date.now()+CARROT_RESPAWN_MS;
     return;
-  }
-  if(item.userData.kind==='pickup'&&item.userData.itemType==='ammo'){
-    if(!heldItem||heldItem.type!=='gun'){showFullWarning('Mermi almak için önce tabancayı kuşan.');return;}
-    if(heldItem.ammo>=GUN_MAGAZINE){showFullWarning('Şarjörün dolu; mermi kutusunda sınırsız stok var.');return;}
-    if(!ws||ws.readyState!==WebSocket.OPEN)return;
-    item.userData.pending=true;sendSocketMessage('ammo_pick',{});return;
   }
   if(item.userData.kind==='pickup'&&item.userData.itemType==='armor'){
     if(needs.armor>=9){showFullWarning('Zırhın zaten dolu.');return;}
@@ -6104,7 +6097,7 @@ function dropHeld(){
   const yaw=typeof playerDonkey.rotation!=='undefined'?playerDonkey.rotation.y:0;
   const x=playerDonkey.position.x+Math.sin(yaw)*1.0;
   const z=playerDonkey.position.z+Math.cos(yaw)*1.0;
-  const g=type==='sword'?makeSword():makeGun();
+  const g=type==='sword'?makeSword(heldItem.style):makeGun(heldItem.style);
   g.position.set(x,playerDonkey.position.y+1.2,z);g.userData={kind:'pickup',itemType:type,id:'dropped-'+type+'-'+Date.now()};scene.add(g);worldItems.push(g);
   // Yere düşür, zeminin içine girme.
   const targetY=groundY(x,z)+(type==='gun'?.43:.24);
@@ -6161,8 +6154,10 @@ function nearestWeaponTarget(range){
 function useHeldWeapon(){
   if(!heldItem||!ws||ws.readyState!==WebSocket.OPEN)return;
   if(heldItem.type==='gun'){
-    if(heldItem.ammo<=0){updateAmmoHud();showFullWarning('Mermi bitti. Çiftlikteki kutudan 12 mermi al.');return;}
-    heldItem.ammo=Math.max(0,Number(heldItem.ammo)-1);updateAmmoHud();playGunFx();
+    if(heldItem.ammo<=0){updateAmmoHud();showFullWarning('Mermi bitti. Tüccardan şarjör satın alıp çantandan tak.');return;}
+    // The server is authoritative: only weapon_result changes the loaded bullet count.
+    if(heldItem.lastShotAt&&performance.now()-heldItem.lastShotAt<320)return;
+    heldItem.lastShotAt=performance.now();playGunFx();
     const target=nearestWeaponTarget(30),p=target&&target.type==='animal'?target.animal.getWorldPosition(new THREE.Vector3()):null;
     sendSocketMessage('weapon_attack',{weapon:'gun',targetId:target&&target.type==='player'?target.id:null,targetAnimalId:target&&target.type==='animal'?target.animal.userData.id:null,targetHunterId:target&&target.type==='hunter'?target.hunter.userData.id:null,targetHostileDonkeyId:target&&target.type==='hostileDonkey'?target.hostileId:null,x:p?p.x:target&&target.position?target.position.x:playerDonkey.position.x,z:p?p.z:target&&target.position?target.position.z:playerDonkey.position.z,yaw:playerDonkey.rotation.y});
   }else if(heldItem.type==='sword'){
@@ -6524,7 +6519,7 @@ const rpgClient=window.createEsekRpgClient({
   getPlayerId:()=>myId,getPlayerPosition:()=>playerDonkey&&playerDonkey.position,
   getPlayerModel:()=>playerDonkey,getOtherPlayerModel:id=>otherPlayers[id],
   applyNeeds,applyPetState,showWarning:showFullWarning,
-  setHeldWeapon:(type,ammo)=>{if(heldItem&&heldItem.group&&heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);if(type!=='sword'&&type!=='gun'){clearHeld();return;}heldItem={type,ammo:Number(ammo)||0,group:null};heldVisual();updateAmmoHud();}
+  setHeldWeapon:(type,ammo,itemId,style)=>{if(heldItem&&heldItem.group&&heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);if(type!=='sword'&&type!=='gun'){clearHeld();return;}heldItem={type,ammo:Number(ammo)||0,style:style||((window.EsekRpgData&&window.EsekRpgData.items||[]).find(item=>item.id===itemId)||null),group:null};heldVisual();updateAmmoHud();}
 });
 window.__esekRpg=rpgClient;
 window.esekSetPetShopOpen=open=>rpgClient.openTrader(open);

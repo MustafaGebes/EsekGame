@@ -22,13 +22,13 @@
   const swords = swordNames.map(([id, name], index) => ({
     id, category: 'weapons', kind: 'weapon', weaponType: 'sword', name,
     icon: index < 2 ? '🗡️' : '⚔️', price: weaponPrices[index], requiredLevel: levels[index],
-    damageMultiplier: 1 + index * 0.48,
+    damageMultiplier: 1 + index * 0.48, weaponTier: index, color: ['#c8d0d8','#dfe7ef','#e07b45','#d94d43','#9ba9b4','#6c7185','#59a4c0','#58c7c7','#bd75d1','#f0c45b','#ffe08a'][index],
     description: `Seviye ${levels[index]} kademesi. Yakın dövüş hasarı ×${(1 + index * 0.48).toFixed(2)}.`
   }));
   const guns = gunNames.map(([id, name], index) => ({
     id, category: 'weapons', kind: 'weapon', weaponType: 'gun', name,
     icon: index < 2 ? '🔫' : '🎯', price: weaponPrices[index] + 80, requiredLevel: levels[index],
-    damageMultiplier: 1 + index * 0.43, ammo: 12,
+    damageMultiplier: 1 + index * 0.43, weaponTier: index, color: ['#65727a','#9aa5ad','#c78238','#d94d43','#9ba9b4','#6c7185','#59a4c0','#58c7c7','#bd75d1','#f0c45b','#ffe08a'][index], ammo: 12,
     description: `Seviye ${levels[index]} kademesi. Menzilli hasar ×${(1 + index * 0.43).toFixed(2)}; şarjör 12 mermi.`
   }));
   const armorNames = [
@@ -63,6 +63,7 @@
     trader: { x: 177, z: 247, range: 9 },
     categories: [
       { id: 'weapons', name: 'Silahlar', icon: '⚔️' },
+      { id: 'ammo', name: 'Şarjörler', icon: '🧰' },
       { id: 'armor', name: 'Zırhlar', icon: '🛡️' },
       { id: 'bags', name: 'Çantalar', icon: '🎒' },
       { id: 'pets', name: 'Petler', icon: '🐾' },
@@ -81,6 +82,7 @@
       { id: 'hearty_stew', category: 'food', kind: 'food', name: 'Doyurucu Güveç', icon: '🍲', price: 55, requiredLevel: 1, hunger: 2.4, thirst: 1.1, description: '+2,4 açlık ve +1,1 susuzluk.' },
       { id: 'swift_berry', category: 'food', kind: 'food', name: 'Çeviklik Dutlu İçecek', icon: '🫐', price: 90, requiredLevel: 5, hunger: 1, thirst: 0.5, durationMs: 60000, buffs: { speed: 1.14, staminaRegen: 1.3 }, description: '60 sn boyunca %14 hız ve %30 enerji yenilenmesi.' },
       { id: 'war_oats', category: 'food', kind: 'food', name: 'Savaş Yulafı', icon: '🌾', price: 100, requiredLevel: 5, hunger: 2, thirst: 0.2, durationMs: 60000, buffs: { damage: 1.25 }, description: '60 sn boyunca %25 saldırı gücü.' },
+      { id: 'ammo_magazine', category: 'ammo', kind: 'ammo', name: '12’li Şarjör', icon: '🧰', price: 55, requiredLevel: 1, quantity: 1, description: 'Çantanda taşınır. Silahın boşaldığında kullanarak 12 mermi doldurur.' },
       { id: 'spring_tea', category: 'food', kind: 'food', name: 'Enerji Çayı', icon: '🍵', price: 75, requiredLevel: 1, thirst: 2, stamina: 40, durationMs: 60000, buffs: { staminaRegen: 1.5 }, description: '+40 enerji ve 60 sn boyunca %50 enerji yenilenmesi.' }
     ],
     enemyZones: [

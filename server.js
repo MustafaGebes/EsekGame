@@ -390,6 +390,7 @@ const ANIMAL_ATTACK_DAMAGE = 3;
 const ANIMAL_BITE_DAMAGE = 1;
 
 const GUN_MAGAZINE = 12;
+const AMMO_ITEM_ID = 'ammo_magazine';
 const SUPPLY_STATION = { x: 165, z: 268 };
 const SUPPLY_STATION_RANGE = 12;
 const ARMOR_PICKUP_COOLDOWN_MS = 60000;
@@ -443,8 +444,8 @@ function normalizeProgress(raw) {
     for (const entry of Array.isArray(raw.inventory) ? raw.inventory : []) {
         const item = getCatalogItem(entry && entry.id);
         if (!item || item.kind === "bag") continue;
-        const quantity = item.kind === "food" ? Math.max(1, Math.min(999, Math.floor(Number(entry.quantity) || 1))) : 1;
-        merged.set(item.id, Math.min(item.kind === "food" ? 999 : 1, (merged.get(item.id) || 0) + quantity));
+        const quantity = ['food', 'ammo'].includes(item.kind) ? Math.max(1, Math.min(999, Math.floor(Number(entry.quantity) || 1))) : 1;
+        merged.set(item.id, Math.min(['food', 'ammo'].includes(item.kind) ? 999 : 1, (merged.get(item.id) || 0) + quantity));
     }
     p.inventory = Array.from(merged, ([id, quantity]) => ({ id, quantity })).slice(0, getBagCapacity(p));
     const legacyPetId = Object.prototype.hasOwnProperty.call(PET_TYPES, String(raw.petId || "")) ? String(raw.petId) : null;
@@ -520,7 +521,7 @@ function handleRpgBuy(player, data) {
     if (!item) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Bu ürün tüccarda yok." }); return; }
     if (getPlayerLevel(p.xp) < item.requiredLevel) { sendTo(player, { type: "rpg_action_result", ok: false, message: `Bu ürün için seviye ${item.requiredLevel} olmalısın.` }); return; }
     const exactItem = p.inventory.find(entry => entry.id === item.id);
-    if (item.kind !== "food" && item.kind !== "bag" && exactItem) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Bu ürüne zaten sahipsin." }); return; }
+    if (!['food', 'ammo'].includes(item.kind) && item.kind !== 'bag' && exactItem) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Bu ürüne zaten sahipsin." }); return; }
     const replacements = item.kind === "weapon"
         ? p.inventory.filter(entry => { const old = getCatalogItem(entry.id); return old && old.kind === "weapon" && old.weaponType === item.weaponType; })
         : item.kind === "armor" ? p.inventory.filter(entry => getCatalogItem(entry.id)?.kind === "armor") : [];
@@ -536,7 +537,7 @@ function handleRpgBuy(player, data) {
         const oldArmor = replacements.some(entry => entry.id === p.equippedArmor);
         const oldMaxHealth = getMaxHealth(player), oldMaxStamina = getMaxStamina(player);
         if (replacements.length) p.inventory = p.inventory.filter(entry => !replacements.some(old => old.id === entry.id));
-        if (item.kind === "food" && existing) existing.quantity = Math.min(999, existing.quantity + 1);
+        if (['food', 'ammo'].includes(item.kind) && existing) existing.quantity = Math.min(999, existing.quantity + 1);
         else p.inventory.push({ id: item.id, quantity: 1 });
         if (item.kind === "weapon" && (oldWeapon || !p.equippedWeapon)) {
             p.equippedWeapon = item.id; player.weapon = item.weaponType; p.ammo = item.weaponType === "gun" ? (item.ammo || GUN_MAGAZINE) : 0;
@@ -557,7 +558,6 @@ function handleRpgEquip(player, data) {
     if (slot === "weapon") {
         if (item && (item.kind !== "weapon" || !inventoryHas(p, item.id))) return;
         p.equippedWeapon = item ? item.id : null; player.weapon = item ? item.weaponType : "none";
-        if (item && item.weaponType === "gun") p.ammo = Math.max(p.ammo, item.ammo || GUN_MAGAZINE);
         sendTo(player, { type: "weapon_equipped", weapon: player.weapon, ammo: p.ammo, magazine: GUN_MAGAZINE });
     } else if (slot === "armor") {
         if (item && (item.kind !== "armor" || !inventoryHas(p, item.id))) return;
@@ -574,8 +574,20 @@ function handleRpgEquip(player, data) {
 function handleRpgUse(player, data) {
     if (!player.inGame || !player.alive || !player.progress) return;
     const p = player.progress, itemId = String(data && data.itemId || ""), item = getCatalogItem(itemId);
-    if (!item || item.kind !== "food" || !inventoryHas(p, itemId)) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Bu yiyecek çantanda yok." }); return; }
-    const entry = p.inventory.find(value => value.id === itemId); entry.quantity--;
+    if (!item || !['food', 'ammo'].includes(item.kind) || !inventoryHas(p, itemId)) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Bu eşya çantanda yok." }); return; }
+    const entry = p.inventory.find(value => value.id === itemId);
+    if (item.kind === 'ammo') {
+        if (player.weapon !== 'gun') { sendTo(player, { type: 'rpg_action_result', ok: false, message: 'Şarjör doldurmak için silahı kuşan.' }); return; }
+        if (player.ammo >= GUN_MAGAZINE) { sendTo(player, { type: 'rpg_action_result', ok: false, message: 'Mevcut şarjörün zaten dolu.' }); return; }
+        entry.quantity--;
+        if (entry.quantity <= 0) p.inventory = p.inventory.filter(value => value.id !== itemId);
+        player.ammo = GUN_MAGAZINE; p.ammo = player.ammo;
+        savePlayerProgress(player);
+        sendTo(player, { type: 'rpg_action_result', ok: true, message: 'Şarjör takıldı: 12 mermi hazır.' });
+        sendTo(player, { type: 'weapon_result', ok: true, ammo: player.ammo, magazine: GUN_MAGAZINE });
+        sendRpgState(player); return;
+    }
+    entry.quantity--;
     if (entry.quantity <= 0) p.inventory = p.inventory.filter(value => value.id !== itemId);
     player.hunger = clampNeed(player.hunger + (Number(item.hunger) || 0)); player.thirst = clampNeed(player.thirst + (Number(item.thirst) || 0));
     if (Number(item.stamina) > 0) p.stamina = Math.min(getMaxStamina(player), p.stamina + Number(item.stamina));
@@ -693,6 +705,15 @@ function clampHostilePosition(x, z) {
     const scale = HOSTILE_SAFE_RADIUS / distance;
     return { x: x * scale, z: z * scale };
 }
+function clampEnemyToZone(enemy, x, z) {
+    const zone = RPG_DATA.enemyZones.find(value => value.id === enemy.zoneId);
+    if (!zone) return clampHostilePosition(x, z);
+    const leash = Math.max(4, Number(zone.radius) || 44) * 0.92;
+    const dx = x - zone.x, dz = z - zone.z, distance = Math.hypot(dx, dz);
+    if (distance <= leash) return clampHostilePosition(x, z);
+    const scale = leash / distance;
+    return clampHostilePosition(zone.x + dx * scale, zone.z + dz * scale);
+}
 function createHostileDonkeys() {
     const enemies = new Map();
     for (const zone of RPG_DATA.enemyZones) {
@@ -700,14 +721,14 @@ function createHostileDonkeys() {
             const angle = i * 2.399963229728653;
             const maxOffset = Math.min(22, (Number(zone.radius) || 36) * 0.52);
             const distance = 8 + (maxOffset - 8) * Math.sqrt((i + 1) / (zone.count + 1));
-            const spawn = clampHostilePosition(zone.x + Math.cos(angle) * distance, zone.z + Math.sin(angle) * distance);
+            const spawn = clampEnemyToZone({ zoneId: zone.id }, zone.x + Math.cos(angle) * distance, zone.z + Math.sin(angle) * distance);
             const id = `${zone.id}-donkey-${i + 1}`;
             const x = spawn.x, z = spawn.z;
             const maxHealth = Math.round(12 + zone.level * 0.72);
             enemies.set(id, { id, zoneId: zone.id, level: zone.level, name: zone.name, color: zone.color, armorColor: zone.armorColor, boss: false, spawnX: x, spawnZ: z, x, z, health: maxHealth, maxHealth, alive: true, respawnAt: 0, nextAttackAt: 0 });
         }
         if (zone.boss) {
-            const spawn = clampHostilePosition(zone.x, zone.z);
+            const spawn = clampEnemyToZone({ zoneId: zone.id }, zone.x, zone.z);
             const id = `${zone.id}-boss`, x = spawn.x, z = spawn.z;
             const maxHealth = Math.round(12 + zone.level * 0.72 + 90);
             enemies.set(id, { id, zoneId: zone.id, level: zone.level, name: zone.bossName || zone.name, color: zone.bossColor || zone.color, armorColor: zone.bossArmorColor || zone.armorColor, boss: true, spawnX: x, spawnZ: z, x, z, health: maxHealth, maxHealth, alive: true, respawnAt: 0, nextAttackAt: 0 });
@@ -954,7 +975,7 @@ function joinGame(player, data) {
     const savedWeapon = getCatalogItem(player.progress.equippedWeapon);
     player.weapon = savedWeapon ? savedWeapon.weaponType : "none";
     player.ammo = player.progress.ammo;
-    if (player.weapon === "gun" && !player.ammo) player.ammo = savedWeapon.ammo || GUN_MAGAZINE;
+    // Do not silently refill a spent magazine on reconnect; spare magazines live in inventory.
     player.nextRpgAttackAt = 0;
     player.nextBearBiteAt = 0;
     sendTo(player, {
@@ -1421,20 +1442,7 @@ function isNearSupplyStation(player) {
 }
 function handleAmmoPick(player) {
     if (!player.inGame || !player.alive) return;
-    if (!isNearSupplyStation(player)) {
-        sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: "Mermi almak için çiftlikteki istasyona yaklaş." });
-        return;
-    }
-    if (player.weapon !== "gun") {
-        sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: "Mermi almak için tabancayı kuşan." });
-        return;
-    }
-    if (player.ammo >= GUN_MAGAZINE) {
-        sendTo(player, { type: "ammo_pick_result", ok: false, ammo: player.ammo, message: "Şarjörün zaten dolu. Mermi kutusunun stoğu sınırsız." });
-        return;
-    }
-    player.ammo = GUN_MAGAZINE;
-    sendTo(player, { type: "ammo_pick_result", ok: true, ammo: player.ammo, magazine: GUN_MAGAZINE, message: "12 mermi yüklendi; kutunun stoğu sınırsız." });
+    sendTo(player, { type: 'ammo_pick_result', ok: false, ammo: player.ammo, message: 'Mermi kutusu artık ücretsiz değil. Tüccardan şarjör satın alıp çantandan kullan.' });
 }
 function handleArmorPick(player) {
     if (!player.inGame || !player.alive) return;
@@ -1516,7 +1524,7 @@ function handleWeaponEquip(player, data) {
             return;
         }
         player.weapon = owned.weaponType;
-        if (weapon === "gun") player.ammo = Math.max(0, Math.min(GUN_MAGAZINE, Number(player.progress.ammo) || owned.ammo || GUN_MAGAZINE));
+        if (weapon === "gun") player.ammo = Math.max(0, Math.min(GUN_MAGAZINE, Number(player.progress.ammo) || 0));
     }
     if (weapon === "none") {
         player.weapon = "none";
@@ -1857,13 +1865,15 @@ setInterval(() => {
         for (const player of players.values()) {
             if (!player.inGame || !player.alive) continue;
             const distance = Math.hypot(player.x - enemy.x, player.z - enemy.z);
-            if (distance < bestDistance) { bestDistance = distance; target = player; }
+            const zone = RPG_DATA.enemyZones.find(value => value.id === enemy.zoneId);
+            const insideZone = zone && Math.hypot(player.x - zone.x, player.z - zone.z) <= (Number(zone.radius) || 44);
+            if (insideZone && distance < bestDistance) { bestDistance = distance; target = player; }
         }
         let moved = false;
         if (target && bestDistance > 3.2) {
             const pursuitSpeed = (5.8 + enemy.level * 0.022) * (enemy.boss ? 1.18 : 1);
             const scaledStep = Math.min(bestDistance - 2.8, pursuitSpeed * elapsed);
-            const next = clampHostilePosition(enemy.x + (target.x - enemy.x) / bestDistance * scaledStep, enemy.z + (target.z - enemy.z) / bestDistance * scaledStep);
+            const next = clampEnemyToZone(enemy, enemy.x + (target.x - enemy.x) / bestDistance * scaledStep, enemy.z + (target.z - enemy.z) / bestDistance * scaledStep);
             moved = Math.hypot(next.x - enemy.x, next.z - enemy.z) > 0.01;
             enemy.x = next.x; enemy.z = next.z;
         } else if (target && now >= enemy.nextAttackAt) {
@@ -1873,7 +1883,7 @@ setInterval(() => {
             const homeDistance = Math.hypot(enemy.spawnX - enemy.x, enemy.spawnZ - enemy.z);
             if (homeDistance > 1) {
                 const step = Math.min(homeDistance, 1.35 * elapsed);
-                const next = clampHostilePosition(enemy.x + (enemy.spawnX - enemy.x) / homeDistance * step, enemy.z + (enemy.spawnZ - enemy.z) / homeDistance * step);
+                const next = clampEnemyToZone(enemy, enemy.x + (enemy.spawnX - enemy.x) / homeDistance * step, enemy.z + (enemy.spawnZ - enemy.z) / homeDistance * step);
                 moved = Math.hypot(next.x - enemy.x, next.z - enemy.z) > 0.01;
                 enemy.x = next.x; enemy.z = next.z;
             }

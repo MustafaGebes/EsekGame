@@ -70,6 +70,7 @@
       const categories = panelMode === 'shop' ? shopCategories : [
         { id: 'bag', name: 'Çanta', icon: '🎒' },
         { id: 'weapons', name: 'Silahlar', icon: '⚔️' },
+        { id: 'ammo', name: 'Şarjörler', icon: '🧰' },
         { id: 'armor', name: 'Zırh', icon: '🛡️' },
         { id: 'pets', name: 'Petler', icon: '🐾' },
         { id: 'food', name: 'Yiyecek', icon: '🍲' }
@@ -78,6 +79,7 @@
       nav.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { currentCategory = button.dataset.category; render(); }));
     }
     function buttonLabel(item) {
+      if (item.kind === 'ammo' && owned(item.id)) return `➕ Şarjör al · 🪙 ${item.price.toLocaleString('tr-TR')}`;
       if (item.kind === 'bag') return item.bagLevel <= rpgState.bagLevel ? '✓ Satın alındı' : item.bagLevel !== rpgState.bagLevel + 1 ? 'Önceki çanta gerekir' : `🎒 ${item.capacity} yuvaya yükselt`;
       if (owned(item.id)) return '✓ Çantanda';
       return `Satın al · 🪙 ${item.price.toLocaleString('tr-TR')}`;
@@ -103,7 +105,7 @@
       if (!items.length) { content.innerHTML += '<div class="rpg-empty">Bu bölümde ürün yok.</div>'; return; }
       content.innerHTML += `<div class="rpg-cards">${items.map(item => {
         const levelLocked = (Number(rpgState.level) || 1) < item.requiredLevel;
-        const already = item.kind === 'bag' ? item.bagLevel <= rpgState.bagLevel : item.kind !== 'food' && owned(item.id);
+        const already = item.kind === 'bag' ? item.bagLevel <= rpgState.bagLevel : !['food', 'ammo'].includes(item.kind) && owned(item.id);
         const tradeIn = tradeInValue(item), afford = Number(rpgState.coins || 0) + tradeIn >= item.price;
         const detail = item.kind === 'weapon' ? `Seviye ${item.requiredLevel} · ${item.weaponType === 'gun' ? 'Menzilli' : 'Yakın dövüş'} ×${item.damageMultiplier}` : item.kind === 'armor' ? `Seviye ${item.requiredLevel} · +${item.healthBonus} can · %${Math.round(item.damageReduction * 100)} koruma` : item.kind === 'bag' ? `Seviye ${item.requiredLevel} · ${item.capacity} yuva` : item.kind === 'pet' ? item.description : `Seviye ${item.requiredLevel} · ${item.description}`;
         const disabled = already || levelLocked || !canBuy(item);
@@ -125,14 +127,14 @@
       if (!items.length) return `<section class="rpg-section"><h3>${title}</h3><div class="rpg-empty">Henüz yok. Tüccardan satın alabilirsin.</div></section>`;
       return `<section class="rpg-section"><h3>${title}</h3><div class="rpg-inv-grid">${items.map(entry => {
         const item = itemById(entry.id), equipped = slot === 'weapon' ? rpgState.equippedWeapon === item.id : slot === 'armor' ? rpgState.equippedArmor === item.id : slot === 'pet' ? rpgState.petId === item.id : false;
-        const action = kind === 'food' ? `<button class="rpg-mini-btn" data-use="${item.id}">Kullan</button>` : `<button class="rpg-mini-btn" data-equip="${slot}" data-item="${item.id}" ${equipped ? 'disabled' : ''}>${equipped ? 'Takılı' : slot === 'pet' ? 'Pet yap' : 'Kuşan'}</button>`;
+        const action = ['food', 'ammo'].includes(kind) ? `<button class="rpg-mini-btn" data-use="${item.id}">${kind === 'ammo' ? 'Şarjör tak' : 'Kullan'}</button>` : `<button class="rpg-mini-btn" data-equip="${slot}" data-item="${item.id}" ${equipped ? 'disabled' : ''}>${equipped ? 'Takılı' : slot === 'pet' ? 'Pet yap' : 'Kuşan'}</button>`;
         const count = entry.quantity > 1 ? ` · ×${entry.quantity}` : '';
-        const extra = kind === 'weapon' ? ` · ${item.weaponType === 'gun' ? `Mermi ${rpgState.ammo || 0}` : `×${item.damageMultiplier} hasar`}` : kind === 'armor' ? ` · +${item.healthBonus} can · %${Math.round(item.damageReduction * 100)} koruma` : '';
+        const extra = kind === 'ammo' ? ` · ${entry.quantity || 0} şarjör` : kind === 'weapon' ? ` · ${item.weaponType === 'gun' ? `Mermi ${rpgState.ammo || 0}` : `×${item.damageMultiplier} hasar`}` : kind === 'armor' ? ` · +${item.healthBonus} can · %${Math.round(item.damageReduction * 100)} koruma` : '';
         return `<div class="rpg-inv-item"><span class="rpg-icon">${item.icon}</span><div class="rpg-inv-copy"><strong>${esc(item.name)}</strong><span>${esc(item.description)}${count}${extra}</span></div>${action}</div>`;
       }).join('')}</div></section>`;
     }
     function renderInventory() {
-      content.innerHTML = `<div id="rpgSummary">${inventorySummary()}</div>${renderBagSlots()}${renderOwnedKind('weapon', '⚔️ Silahlar', 'weapon')}${renderOwnedKind('armor', '🛡️ Eşeğe giydirilen zırh', 'armor')}${renderOwnedKind('pet', '🐾 Petler', 'pet')}${renderOwnedKind('food', '🍲 Yiyecekler', 'food')}`;
+      content.innerHTML = `<div id="rpgSummary">${inventorySummary()}</div>${renderBagSlots()}${renderOwnedKind('weapon', '⚔️ Silahlar', 'weapon')}${renderOwnedKind('armor', '🛡️ Eşeğe giydirilen zırh', 'armor')}${renderOwnedKind('pet', '🐾 Petler', 'pet')}${renderOwnedKind('ammo', '🧰 Şarjörler', 'ammo')}${renderOwnedKind('food', '🍲 Yiyecekler', 'food')}`;
       content.querySelectorAll('[data-equip]').forEach(button => button.addEventListener('click', () => ctx.send('rpg_equip', { slot: button.dataset.equip, itemId: button.dataset.item })));
       content.querySelectorAll('[data-use]').forEach(button => button.addEventListener('click', () => ctx.send('rpg_use', { itemId: button.dataset.use })));
     }
@@ -144,7 +146,11 @@
       content.innerHTML = `<div id="rpgSummary">${inventorySummary()}</div>`;
       if (panelMode === 'shop') renderShop();
       else if (currentCategory === 'bag') renderInventory();
-      else content.innerHTML += renderOwnedKind(currentCategory === 'weapons' ? 'weapon' : currentCategory === 'armor' ? 'armor' : currentCategory === 'pets' ? 'pet' : 'food', currentCategory === 'weapons' ? '⚔️ Silahlar' : currentCategory === 'armor' ? '🛡️ Eşeğe giydirilen zırh' : currentCategory === 'pets' ? '🐾 Petler' : '🍲 Yiyecekler', currentCategory === 'weapons' ? 'weapon' : currentCategory === 'armor' ? 'armor' : currentCategory === 'pets' ? 'pet' : 'food');
+      else {
+        const categoryMap = { weapons: ['weapon', '⚔️ Silahlar', 'weapon'], armor: ['armor', '🛡️ Eşeğe giydirilen zırh', 'armor'], pets: ['pet', '🐾 Petler', 'pet'], ammo: ['ammo', '🧰 Şarjörler', 'ammo'], food: ['food', '🍲 Yiyecekler', 'food'] };
+        const [kind, title, slot] = categoryMap[currentCategory] || categoryMap.food;
+        content.innerHTML += renderOwnedKind(kind, title, slot);
+      }
       if (panelMode === 'inventory' && currentCategory !== 'bag') {
         content.querySelectorAll('[data-equip]').forEach(button => button.addEventListener('click', () => ctx.send('rpg_equip', { slot: button.dataset.equip, itemId: button.dataset.item })));
         content.querySelectorAll('[data-use]').forEach(button => button.addEventListener('click', () => ctx.send('rpg_use', { itemId: button.dataset.use })));
@@ -168,7 +174,7 @@
         const staminaBuff = rpgState.buffs && rpgState.buffs.staminaRegen && rpgState.buffs.staminaRegen.expiresAt > Date.now() ? rpgState.buffs.staminaRegen.multiplier : 1;
         ctx.applyNeeds({ maxHealth: rpgState.stats.maxHealth, maxStamina: rpgState.stats.maxStamina, speedMultiplier: rpgState.stats.speedMultiplier, staminaRegenBuffMultiplier: staminaBuff, xp: rpgState.xp, level: rpgState.level, xpInLevel: rpgState.xpInLevel, xpToNext: rpgState.xpToNext, coins: rpgState.coins, buffs: rpgState.buffs });
       }
-      if (typeof ctx.setHeldWeapon === 'function') ctx.setHeldWeapon(rpgState.equippedWeaponType || 'none', rpgState.ammo || 0);
+      if (typeof ctx.setHeldWeapon === 'function') ctx.setHeldWeapon(rpgState.equippedWeaponType || 'none', rpgState.ammo || 0, rpgState.equippedWeapon, itemById(rpgState.equippedWeapon));
       applyPlayerArmor(ctx.getPlayerModel(), rpgState.equippedArmor);
       setHud();
       if (panelMode) render();
