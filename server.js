@@ -411,7 +411,7 @@ const HUNTER_SPAWNS = [
 ];
 let campfireLit = false;
 
-const PET_SHOP = { x: -47, z: -105 };
+const PET_SHOP = { x: 177, z: 247 };
 const PET_SHOP_RANGE = 9;
 const PET_TYPES = Object.freeze({
     dog: { name: "Bekçi Köpek", damageMultiplier: 1.25, damageTakenMultiplier: 1, maxStaminaBonus: 0, sprintCostMultiplier: 1, staminaRegenMultiplier: 1 },
@@ -450,7 +450,7 @@ function getPetDamageTakenMultiplier(player) {
 function handlePetSelect(player, data) {
     if (!player.inGame || !player.alive || !player.progress) return;
     if (Math.hypot(player.x - PET_SHOP.x, player.z - PET_SHOP.z) > PET_SHOP_RANGE) {
-        sendTo(player, { type: "pet_shop_result", ok: false, petId: player.progress.petId, message: "Ücretsiz bir pet seçmek için şehirdeki pet dükkânına gel." });
+        sendTo(player, { type: "pet_shop_result", ok: false, petId: player.progress.petId, message: "Ücretsiz bir pet seçmek için çiftlik girişindeki pet dükkânına gel." });
         return;
     }
     const petId = String(data && data.petId || "");
