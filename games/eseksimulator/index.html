@@ -207,7 +207,7 @@
         </div>
     </div>
 
-    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık: Saldır / Sürükle: Bak | E: Al / Etkileşim | J: Görevler | Q: Bırak | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
+    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık: Saldır / Sürükle: Bak | E: Etkileşim / Pet Dükkânı | Q: Bırak | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
 
     <div id="hud">
         <div><span class="label">Saat:</span> <span id="hudTime">00:00</span></div>
@@ -312,10 +312,12 @@
         const MAP_LIMIT = 510;
         const CAMP_SITE = { x: 245, z: -205 };
         const CAMPFIRE_INTERACT_RANGE = 8;
-        const QUEST_BOARD = { x: 153, z: 268 };
-        const DELIVERY_DEPOT = { x: 140, z: 271 };
-        const DELIVERY_POST = { x: -47, z: -105 };
-        const COMPANION_STABLE = { x: 185, z: 268 };
+        const PET_SHOP = { x: -47, z: -105 };
+        const PET_CATALOG = {
+            dog: { name: 'Bekçi Köpek', icon: '🐕', perk: 'Vahşi hayvanlara ve avcılara %25 daha fazla hasar verirsin.' },
+            rabbit: { name: 'Çevik Tavşan', icon: '🐇', perk: '%12 daha hızlı koşarsın; enerji kapasiten +20 olur, daha az enerji harcar ve daha hızlı toparlanırsın.' },
+            turtle: { name: 'Sağlam Kaplumbağa', icon: '🐢', perk: 'Gelen hasar %20 azalır; zırh yine önce hasarı karşılar.' }
+        };
         const HUNTER_SPAWNS = [
             { id: 'camp-hunter-1', x: 235, z: -205 },
             { id: 'camp-hunter-2', x: 255, z: -205 },
@@ -4698,7 +4700,8 @@ function stepCar(c,dt){
                 const canSprintNow = isSprinting && !isCrouching && needs.stamina > 0.25;
                 // PC ve mobil aynı hız tablosunu kullanır; kullanıcı isteğiyle belirgin biçimde yavaşlatıldı.
                 let baseSpeed = isCrouching ? 0.06 : 0.12;
-                if (canSprintNow) baseSpeed = 0.21 * (1 + Math.max(0,Math.min(5,Number(progression.upgrades.speed)||0)) * 0.045);
+                if (canSprintNow) baseSpeed = 0.21;
+                if (activePetId === 'rabbit') baseSpeed *= 1.12;
                 // ===== GÖLET HAREKET/FİZİK DÜZENLEMESİ BAŞLANGIÇ =====
                 // farmRoot 180 derece döndüğü için local (16,-11), dünya (FARM_CX-19.2,FARM_CZ+13.2) olur.
                 const pondWX = FARM_CX - 16 * 1.20;
@@ -4733,9 +4736,10 @@ function stepCar(c,dt){
                     moveZ = (Math.cos(yaw) * forwardInput - Math.sin(yaw) * strafeInput) * speed;
                     isMoving = true;
                 }
-                const staminaLevel = Math.max(0,Math.min(5,Number(progression.upgrades.stamina)||0));
-                if (isMoving && canSprintNow) needs.stamina = Math.max(0,needs.stamina - Math.max(10,22-staminaLevel*1.5)*deltaSec);
-                else needs.stamina = Math.min(needs.maxStamina,needs.stamina + (12+staminaLevel*2)*deltaSec);
+                const sprintCost = activePetId === 'rabbit' ? 17.6 : 22;
+                const staminaRecovery = activePetId === 'rabbit' ? 16.8 : 12;
+                if (isMoving && canSprintNow) needs.stamina = Math.max(0,needs.stamina - sprintCost*deltaSec);
+                else needs.stamina = Math.min(needs.maxStamina,needs.stamina + staminaRecovery*deltaSec);
                 if (now - (window.__lastStaminaHudRender||0) > 120) { renderNeeds(); window.__lastStaminaHudRender=now; }
 
                 const newX = playerDonkey.position.x + moveX;
@@ -4892,7 +4896,7 @@ function stepCar(c,dt){
         const needPips = {};
         const needValues = {};
         const needs = { health: 9, armor: 0, hunger: 9, thirst: 9, stamina: 100, maxStamina: 100 };
-        let progression = { level: 1, xp: 0, xpToNext: 100, skillPoints: 0, upgrades: { speed: 0, stamina: 0, capacity: 0 }, stamina: 100, maxStamina: 100, cargo: 0, maxCargo: 1, hasCompanion: false, quests: [] };
+        let activePetId = null;
         let armorShieldVisual = null;
         function updateArmorShieldVisual() {
             if (!playerDonkey) return;
@@ -5056,22 +5060,10 @@ function stepCar(c,dt){
             renderNeeds();
             updateArmorShieldVisual();
         }
-        function applyProgression(data) {
-            if(!data||typeof data!=='object')return;
-            const p=data.progression&&typeof data.progression==='object'?data.progression:data;
-            const upgrades=p.upgrades&&typeof p.upgrades==='object'?p.upgrades:{};
-            progression={
-                ...progression,
-                level:Math.max(1,Number(p.level)||1),xp:Math.max(0,Number(p.xp)||0),xpToNext:Math.max(1,Number(p.xpToNext)||100),
-                skillPoints:Math.max(0,Number(p.skillPoints)||0),
-                upgrades:{speed:Math.max(0,Number(upgrades.speed)||0),stamina:Math.max(0,Number(upgrades.stamina)||0),capacity:Math.max(0,Number(upgrades.capacity)||0)},
-                cargo:Math.max(0,Number(p.cargo)||0),maxCargo:Math.max(1,Number(p.maxCargo)||1),hasCompanion:!!p.hasCompanion,
-                quests:Array.isArray(p.quests)?p.quests.map(q=>({...q})):progression.quests
-            };
-            if(p.maxStamina!==undefined)needs.maxStamina=Math.max(1,Number(p.maxStamina)||100);
-            if(p.stamina!==undefined)needs.stamina=Math.max(0,Math.min(needs.maxStamina,Number(p.stamina)||0));
-            renderNeeds();
-            if(typeof window.esekRenderJourneyPanel==='function')window.esekRenderJourneyPanel();
+        function applyPetState(petId) {
+            const nextId = typeof petId === 'string' ? petId : '';
+            activePetId = Object.prototype.hasOwnProperty.call(PET_CATALOG, nextId) ? nextId : null;
+            if (typeof window.esekRenderPetShop === 'function') window.esekRenderPetShop();
         }
         function showFullWarning(text) {
             let el = document.getElementById('fullWarningToast');
@@ -5103,18 +5095,13 @@ function stepCar(c,dt){
         function onExtendedMessage(event) {
             let data;try{data=JSON.parse(event.data);}catch(e){return;}
             if(data.type==='join_accepted'){
-                const pending=joinPending||{mode:controlMode,isResume:false};joinPending=null;currentPlayerName=String((data.state&&data.state.name)||'Guest-000');setNameError('');applyNeeds(data.state||{});applyProgression(data.state&&data.state.progression);sendSocketMessage('berry_state_request',{});
+                const pending=joinPending||{mode:controlMode,isResume:false};joinPending=null;currentPlayerName=String((data.state&&data.state.name)||'Guest-000');setNameError('');applyNeeds(data.state||{});applyPetState(data.state&&data.state.petId);sendSocketMessage('berry_state_request',{});
                 if(pending.isResume)completeResume(pending.mode);else startGameOriginal(pending.mode);
                 setGameUiVisible(true);sendSocketMessage('animal_states_request',{ids:[...wildlife.map(a=>a.userData.id),...caveBears.map(a=>a.userData.id)]});
                 sendSocketMessage('hunter_state_request',{});sendSocketMessage('campfire_state_request',{});
                 sendSocketMessage('apple_state_request',{trees:orchardTrees.map(t=>({id:t.id,x:t.x,z:t.z}))});
-            } else if(data.type==='progression_state'){
-                applyProgression(data.progression||{});
-                if(data.message)showFullWarning(data.message);
-            } else if(data.type==='delivery_result'){
-                if(data.message)showFullWarning(data.message);
-                if(data.ok)actionAnimationType='eat',actionAnimationUntil=performance.now()+650;
-            } else if(data.type==='companion_result'){
+            } else if(data.type==='pet_shop_result'){
+                if(data.petId!==undefined)applyPetState(data.petId);
                 if(data.message)showFullWarning(data.message);
             } else if(data.type==='join_denied'){
                 if(joinPending&&joinPending.isResume){gameStarted=false;releaseFirstPersonPointerLock();}
@@ -5165,13 +5152,14 @@ function stepCar(c,dt){
                 const p=data.spawn||{x:180,y:0,z:210};playerDonkey.position.set(p.x,p.y,p.z);playerDonkey.rotation.set(0,yaw,0);playerDonkey.scale.set(DONKEY_BASE_SCALE,DONKEY_BASE_SCALE,DONKEY_BASE_SCALE);playerDonkey.visible=cameraMode!=='first';
                 playerIsDead=false;deathScreenShowing=false;gameStarted=true;deathOverlayEl.style.display='none';respawnBtnEl.disabled=false;respawnBtnEl.textContent='↻ Yeniden Doğ';
                 menuEl.style.display='none';infoEl.style.display='block';mobileControlsEl.style.display=controlMode==='mobile'?'block':'none';hudEl.style.display='block';crosshairEl.style.display=cameraMode==='first'?'block':'none';
-                applyNeeds(data.state||{health:9,hunger:9,thirst:9});setGameUiVisible(true);setChatVisible(!chatIsManuallyHidden);document.body.style.cursor='crosshair';
+                applyNeeds(data.state||{health:9,hunger:9,thirst:9});if(data.state&&data.state.petId!==undefined)applyPetState(data.state.petId);setGameUiVisible(true);setChatVisible(!chatIsManuallyHidden);document.body.style.cursor='crosshair';
             } else if(data.type==='players'){
                 for(const [id,p] of Object.entries(data.players||{})){
                     const other=otherPlayers[id];if(other){if(p.alive===false){other.rotation.z=Math.PI/2;}else{other.rotation.z=0;other.userData.health=p.health;}}
                 }
                 const self=data.players&&data.players[myId];
                 if(self&&Number.isFinite(Number(self.stamina)))applyNeeds({stamina:self.stamina,maxStamina:self.maxStamina});
+                if(self&&self.petId!==undefined&&self.petId!==activePetId)applyPetState(self.petId);
             }
         }
         function attachExtendedSocket() {
@@ -5218,15 +5206,9 @@ function stepCar(c,dt){
                 }
             }
             const fireDistance=Math.hypot(x-CAMP_SITE.x,z-CAMP_SITE.z);
-            if(fireDistance<=CAMPFIRE_INTERACT_RANGE&&fireDistance<bestDistance)best={type:'campfire',distance:fireDistance};
-            const boardDistance=Math.hypot(x-QUEST_BOARD.x,z-QUEST_BOARD.z);
-            if(boardDistance<=6.5&&boardDistance<bestDistance)best={type:'quest_board',distance:boardDistance};
-            const depotDistance=Math.hypot(x-DELIVERY_DEPOT.x,z-DELIVERY_DEPOT.z);
-            if(depotDistance<=7.5&&depotDistance<bestDistance)best={type:'parcel_pickup',distance:depotDistance};
-            const postDistance=Math.hypot(x-DELIVERY_POST.x,z-DELIVERY_POST.z);
-            if(postDistance<=8.5&&postDistance<bestDistance)best={type:'parcel_deliver',distance:postDistance};
-            const stableDistance=Math.hypot(x-COMPANION_STABLE.x,z-COMPANION_STABLE.z);
-            if(stableDistance<=7.5&&stableDistance<bestDistance)best={type:'companion',distance:stableDistance};
+            if(fireDistance<=CAMPFIRE_INTERACT_RANGE&&fireDistance<bestDistance){bestDistance=fireDistance;best={type:'campfire',distance:fireDistance};}
+            const shopDistance=Math.hypot(x-PET_SHOP.x,z-PET_SHOP.z);
+            if(shopDistance<=8.5&&shopDistance<bestDistance)best={type:'pet_shop',distance:shopDistance};
             return best;
         }
         function scanInteraction(now){
@@ -5234,10 +5216,10 @@ function stepCar(c,dt){
             if(!gameStarted||playerIsDead){currentTargetAction=null;interactPromptEl.style.display='none';mobOpenBtn.style.display='none';return;}
             currentTargetAction=getAimedPoint(playerDonkey.position.x,playerDonkey.position.y,playerDonkey.position.z);
             if(currentTargetAction){
-                const actionLabel=currentTargetAction.type==='apple'?'Elma ye':currentTargetAction.type==='water'?'Su iç':currentTargetAction.type==='quest_board'?'Görev panosunu aç':currentTargetAction.type==='parcel_pickup'?'Paket al':currentTargetAction.type==='parcel_deliver'?'Paket teslim et':currentTargetAction.type==='companion'?(progression.hasCompanion?'Yoldaşını çağır':'Eşeği sahiplen'):(window.__campfireLit?'Ateşi söndür':'Ateşi yak');
+                const actionLabel=currentTargetAction.type==='apple'?'Elma ye':currentTargetAction.type==='water'?'Su iç':currentTargetAction.type==='pet_shop'?'Ücretsiz pet seç':(window.__campfireLit?'Ateşi söndür':'Ateşi yak');
                 interactPromptEl.textContent=getActionLabel('interact')+' · '+actionLabel;interactPromptEl.style.display='block';
                 if(controlMode==='mobile'){
-                    mobOpenBtn.textContent=currentTargetAction.type==='apple'?'🍎 YE':currentTargetAction.type==='water'?'💧 İÇ':currentTargetAction.type==='quest_board'?'📜 GÖREV':currentTargetAction.type==='parcel_pickup'?'📦 AL':currentTargetAction.type==='parcel_deliver'?'📨 TESLİM':currentTargetAction.type==='companion'?'🐴 YOLDAŞ':(window.__campfireLit?'🔥 SÖNDÜR':'🔥 YAK');
+                    mobOpenBtn.textContent=currentTargetAction.type==='apple'?'🍎 YE':currentTargetAction.type==='water'?'💧 İÇ':currentTargetAction.type==='pet_shop'?'🐾 PET':(window.__campfireLit?'🔥 SÖNDÜR':'🔥 YAK');
                     mobOpenBtn.style.display='flex';
                 }
             }else{interactPromptEl.style.display='none';mobOpenBtn.style.display='none';}
@@ -5250,19 +5232,12 @@ function stepCar(c,dt){
                 if(needs.thirst>=9){showFullWarning('Susuzluğun zaten dolu, daha fazla su içemezsin.');return;}sendSocketMessage('drink',{});actionAnimationType='drink';actionAnimationUntil=performance.now()+1100;
             }else if(currentTargetAction.type==='campfire'){
                 sendSocketMessage('campfire_toggle',{});actionAnimationType='warm';actionAnimationUntil=performance.now()+800;
-            }else if(currentTargetAction.type==='quest_board'){
-                if(typeof window.esekSetJourneyPanelOpen==='function')window.esekSetJourneyPanelOpen(true);
-            }else if(currentTargetAction.type==='parcel_pickup'){
-                sendSocketMessage('parcel_pickup',{});
-            }else if(currentTargetAction.type==='parcel_deliver'){
-                sendSocketMessage('parcel_deliver',{});
-            }else if(currentTargetAction.type==='companion'){
-                if(progression.hasCompanion)showFullWarning('Yoldaşın zaten seni takip ediyor.');
-                else sendSocketMessage('companion_adopt',{});
+            }else if(currentTargetAction.type==='pet_shop'){
+                if(typeof window.esekSetPetShopOpen==='function')window.esekSetPetShopOpen(true);
             }
         }
         document.addEventListener('keydown',e=>{
-            if(isActionKey('interact',e)&&gameStarted&&!e.target.closest('input,textarea,#chatPanel,#settingsPanel,#journeyPanel')){e.preventDefault();performInteraction();}
+            if(isActionKey('interact',e)&&gameStarted&&!e.target.closest('input,textarea,#chatPanel,#settingsPanel,#petShopPanel')){e.preventDefault();performInteraction();}
         });
         mobOpenBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();performInteraction();});
 
@@ -6273,105 +6248,112 @@ function updateWeaponFx(){
   }
 }
 
-/* -------------------- görevler, eşek gelişimi ve sürü yoldaşı -------------------- */
-const journeyToggle=document.createElement('button');
-journeyToggle.id='journeyToggle';journeyToggle.type='button';journeyToggle.textContent='📜 GÖREVLER · J';
-journeyToggle.style.cssText='position:fixed;right:18px;top:145px;z-index:115;display:none;padding:10px 13px;border:1px solid #ffd45e;border-radius:12px;background:rgba(24,31,36,.92);color:#ffe28a;font:800 13px Arial;box-shadow:0 4px 14px #0008;cursor:pointer;pointer-events:auto;touch-action:manipulation;';
-document.body.appendChild(journeyToggle);
-const journeyPanel=document.createElement('section');
-journeyPanel.id='journeyPanel';
-journeyPanel.style.cssText='position:fixed;right:18px;top:190px;z-index:116;display:none;width:min(420px,calc(100vw - 28px));max-height:70vh;overflow:auto;padding:14px;border:1px solid #ffffff38;border-radius:15px;background:rgba(15,21,26,.96);color:#f2f5f7;font:14px Arial;box-shadow:0 12px 40px #000b;pointer-events:auto;touch-action:pan-y;';
-journeyPanel.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><strong style="font-size:17px;color:#ffe28a">Eşek gelişimi ve günlük işler</strong><button id="journeyClose" type="button" style="border:0;border-radius:7px;background:#ffffff20;color:#fff;font-size:20px;width:32px;height:30px">×</button></div><div id="journeySummary" style="margin:11px 0 5px;font-weight:700"></div><div style="height:9px;background:#080d10;border:1px solid #ffffff28;border-radius:8px;overflow:hidden"><div id="journeyXpBar" style="height:100%;width:0;background:linear-gradient(90deg,#47b76d,#f6d65b)"></div></div><div id="journeyCargo" style="margin:8px 0;color:#d6e2e8"></div><div style="margin-top:12px;color:#ffe28a;font-weight:800">Bugünün görevleri</div><div id="journeyQuests"></div><div style="margin-top:13px;color:#ffe28a;font-weight:800">Gelişim puanları</div><div id="journeyUpgrades"></div><div id="journeyCompanion" style="margin-top:10px;padding:9px;border-radius:9px;background:#ffffff0c;color:#cbd9df;line-height:1.4"></div><div style="margin-top:9px;color:#8d9ba2;font-size:11px">Görevler her gün yenilenir. XP ve yükseltmeler bu tarayıcıda saklanır; hesapla giriş yaparsan hesabına bağlı kalır.</div>';
-document.body.appendChild(journeyPanel);
-journeyToggle.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();setJourneyPanelOpen(journeyPanel.style.display==='none');});
-journeyPanel.addEventListener('click',e=>e.stopPropagation());
-journeyPanel.querySelector('#journeyClose').addEventListener('click',()=>setJourneyPanelOpen(false));
-function setJourneyPanelOpen(open){journeyPanel.style.display=open&&gameStarted&&!playerIsDead?'block':'none';if(open)renderJourneyPanel();}
-function renderJourneyPanel(){
-  const summary=journeyPanel.querySelector('#journeySummary');if(!summary)return;
-  const level=Math.max(1,Number(progression.level)||1),toNext=Math.max(1,Number(progression.xpToNext)||100),xp=Math.max(0,Number(progression.xp)||0);
-  summary.textContent=`Seviye ${level} · ${xp}/${toNext} XP · ${progression.skillPoints||0} gelişim puanı`;
-  journeyPanel.querySelector('#journeyXpBar').style.width=`${Math.min(100,xp/toNext*100)}%`;
-  journeyPanel.querySelector('#journeyCargo').textContent=`📦 Heybe: ${progression.cargo||0}/${progression.maxCargo||1} paket · Teslimat çiftlikten şehre yapılır.`;
-  const quests=journeyPanel.querySelector('#journeyQuests');quests.replaceChildren();
-  for(const q of (progression.quests||[])){
-    const row=document.createElement('div');row.style.cssText='margin-top:8px;padding:9px;border:1px solid #ffffff18;border-radius:9px;background:#ffffff08';
-    const title=document.createElement('div');title.textContent=String(q.title||'Görev');title.style.cssText='font-weight:700;margin-bottom:5px';
-    const count=document.createElement('div');count.textContent=`${Math.min(Number(q.progress)||0,Number(q.target)||1)}/${Number(q.target)||1}  ·  ${q.progress>=q.target?'Tamamlandı':`Ödül: ${Number(q.reward)||0} XP`}`;count.style.cssText='font-size:12px;color:#bac7ce';
-    const track=document.createElement('div');track.style.cssText='height:6px;margin-top:6px;border-radius:6px;background:#080d10;overflow:hidden';
-    const fill=document.createElement('div');fill.style.cssText=`height:100%;width:${Math.max(0,Math.min(100,(Number(q.progress)||0)/(Number(q.target)||1)*100))}%;background:${q.progress>=q.target?'#58ca82':'#e2b84c'}`;track.appendChild(fill);row.append(title,count,track);quests.appendChild(row);
+/* -------------------- Ücretsiz pet dükkânı -------------------- */
+const petShopPanel=document.createElement('section');
+petShopPanel.id='petShopPanel';
+petShopPanel.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:260;display:none;width:min(590px,calc(100vw - 24px));max-height:82vh;overflow:auto;padding:16px;border:1px solid rgba(177,223,191,.55);border-radius:18px;background:rgba(16,24,22,.97);color:#f4f7f3;font:14px Arial;box-shadow:0 18px 56px #000c;pointer-events:auto;touch-action:pan-y;';
+petShopPanel.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div><strong style="display:block;font-size:21px;color:#c9f0c8">Pati Pet Shop</strong><span style="display:block;margin-top:4px;color:#bdc9c1;font-size:12px">Şimdilik tüm petler ücretsiz. İstediğin zaman dükkânda değiştirebilirsin.</span></div><button id="petShopClose" type="button" aria-label="Kapat" style="flex:0 0 auto;border:0;border-radius:9px;background:#ffffff1c;color:#fff;font-size:22px;width:36px;height:34px;cursor:pointer">×</button></div><div id="petShopCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin-top:15px"></div><div id="petShopStatus" style="min-height:18px;margin-top:11px;color:#9eaaa2;font-size:12px">Bir pet seç ve özelliğini yanında taşı.</div>';
+document.body.appendChild(petShopPanel);
+const petShopCards=petShopPanel.querySelector('#petShopCards');
+petShopPanel.addEventListener('click',e=>e.stopPropagation());
+petShopPanel.querySelector('#petShopClose').addEventListener('click',()=>setPetShopOpen(false));
+function setPetShopOpen(open){petShopPanel.style.display=open&&gameStarted&&!playerIsDead?'block':'none';if(open)renderPetShop();}
+function renderPetShop(){
+  if(!petShopCards)return;
+  petShopCards.replaceChildren();
+  for(const [id,pet] of Object.entries(PET_CATALOG)){
+    const selected=activePetId===id,card=document.createElement('article');
+    card.style.cssText=`display:flex;flex-direction:column;gap:8px;min-height:178px;padding:12px;border:1px solid ${selected?'#a6dfad':'#ffffff26'};border-radius:13px;background:${selected?'rgba(57,103,65,.30)':'rgba(255,255,255,.055)'}`;
+    const title=document.createElement('strong');title.textContent=`${pet.icon} ${pet.name}`;title.style.cssText='font-size:15px;color:#e7f6e7';
+    const perk=document.createElement('div');perk.textContent=pet.perk;perk.style.cssText='flex:1;line-height:1.45;color:#c5d0c8;font-size:12px';
+    const button=document.createElement('button');button.type='button';button.disabled=selected;
+    button.textContent=selected?'✓ AKTİF PET':'ÜCRETSİZ SEÇ';
+    button.style.cssText=`width:100%;padding:9px 8px;border:1px solid ${selected?'#80bb88':'#d1ab5c'};border-radius:9px;background:${selected?'#36553c':'#66501f'};color:#fff;font:800 12px Arial;cursor:${selected?'default':'pointer'}`;
+    button.addEventListener('click',()=>{if(!ws||ws.readyState!==WebSocket.OPEN){showFullWarning('Pet seçmek için oyuna bağlı olmalısın.');return;}sendSocketMessage('pet_select',{petId:id});});
+    card.append(title,perk,button);petShopCards.appendChild(card);
   }
-  const upgrades=journeyPanel.querySelector('#journeyUpgrades');upgrades.replaceChildren();
-  const upgradeInfo=[['speed','Koşu hızı','Koşarken hız +%4,5/seviye',5],['stamina','Dayanıklılık','Enerji kapasitesi +20/seviye',5],['capacity','Heybe','Aynı anda +1 paket taşı',2]];
-  for(const [id,label,desc,max] of upgradeInfo){
-    const levelNow=Number(progression.upgrades&&progression.upgrades[id])||0,button=document.createElement('button');button.type='button';
-    button.textContent=`${label} ${levelNow}/${max} · ${desc}`;button.disabled=progression.skillPoints<1||levelNow>=max;
-    button.style.cssText=`display:block;width:100%;margin-top:6px;padding:8px 9px;text-align:left;border:1px solid ${button.disabled?'#ffffff18':'#6c9a66'};border-radius:8px;background:${button.disabled?'#ffffff08':'#27452d'};color:${button.disabled?'#9ba4a9':'#e5ffe7'};font:700 12px Arial;cursor:${button.disabled?'default':'pointer'}`;
-    button.addEventListener('click',()=>sendSocketMessage('upgrade_stat',{stat:id}));upgrades.appendChild(button);
-  }
-  journeyPanel.querySelector('#journeyCompanion').textContent=progression.hasCompanion?'🐴 Sürü yoldaşın yanında. Çiftlikteki ağılda bir kez sahiplenilir.':(level<2?'🐴 Yoldaş eşek için önce görevlerden Seviye 2 ol. Sonra çiftlikteki küçük ağıla git ve E’ye bas.':'🐴 Seviye şartı tamam! Çiftlikteki küçük ağıla git ve E’ye basarak yoldaşını sahiplen.');
+  const status=petShopPanel.querySelector('#petShopStatus');
+  status.textContent=activePetId?`${PET_CATALOG[activePetId].name} yanında. Petini değiştirmek de ücretsiz.`:'Henüz petin yok. İlk petini ücretsiz seçebilirsin.';
 }
-window.esekRenderJourneyPanel=renderJourneyPanel;
-window.esekSetJourneyPanelOpen=setJourneyPanelOpen;
+window.esekRenderPetShop=renderPetShop;
+window.esekSetPetShopOpen=setPetShopOpen;
 document.addEventListener('keydown',e=>{
   if(e.target&&e.target.closest&&e.target.closest('input,textarea,#chatPanel,#settingsPanel'))return;
-  if(e.key&&e.key.toLowerCase()==='j'&&gameStarted){e.preventDefault();setJourneyPanelOpen(journeyPanel.style.display==='none');}
-  else if(e.key==='Escape'&&journeyPanel.style.display!=='none'){e.preventDefault();e.stopImmediatePropagation();setJourneyPanelOpen(false);}
+  if(e.key==='Escape'&&petShopPanel.style.display!=='none'){e.preventDefault();e.stopImmediatePropagation();setPetShopOpen(false);}
 },true);
 
-function createJourneySign(text,color=0xffd45e){
+function petMaterial(color,roughness=.8){return new THREE.MeshStandardMaterial({color,roughness});}
+function petPart(group,geometry,material,position,scale){const mesh=new THREE.Mesh(geometry,material);mesh.position.set(...position);if(scale)mesh.scale.set(...scale);mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);return mesh;}
+function createPetModel(type){
+  const root=new THREE.Group(),legs=[],bodyMat=petMaterial(type==='dog'?0x9b6b3c:type==='rabbit'?0xe7e0d4:0x69834a),darkMat=petMaterial(type==='dog'?0x633f29:type==='rabbit'?0xb9b2aa:0x405c34),lightMat=petMaterial(type==='rabbit'?0xf1a0a3:0xe5c78e),eyeMat=petMaterial(0x181b18,.25);
+  const sphere=(material,pos,scale)=>petPart(root,new THREE.SphereGeometry(1,12,9),material,pos,scale);
+  if(type==='dog'){
+    sphere(bodyMat,[0,.43,0],[.40,.34,.62]);sphere(bodyMat,[0,.59,.52],[.29,.29,.30]);
+    for(const side of [-1,1]){sphere(darkMat,[side*.23,.59,.49],[.13,.23,.13]);sphere(eyeMat,[side*.105,.64,.77],[.035,.04,.025]);}
+    sphere(darkMat,[0,.49,.80],[.15,.09,.12]);const tail=sphere(bodyMat,[0,.58,-.63],[.10,.30,.10]);tail.rotation.x=-.7;
+    for(const x of [-.24,.24])for(const z of [-.39,.39]){const leg=petPart(root,new THREE.CylinderGeometry(.08,.11,.35,7),darkMat,[x,.18,z]);legs.push(leg);}
+  }else if(type==='rabbit'){
+    sphere(bodyMat,[0,.34,0],[.34,.30,.52]);sphere(bodyMat,[0,.47,.43],[.25,.25,.25]);
+    for(const side of [-1,1]){const ear=sphere(bodyMat,[side*.12,.88,.45],[.09,.34,.085]);ear.rotation.z=side*.12;const inner=sphere(lightMat,[side*.12,.88,.525],[.045,.25,.022]);inner.rotation.z=side*.12;sphere(eyeMat,[side*.10,.52,.65],[.028,.033,.02]);}
+    sphere(bodyMat,[0,.31,-.53],[.13,.13,.13]);
+    for(const x of [-.19,.19])for(const z of [-.31,.31]){const leg=petPart(root,new THREE.CylinderGeometry(.075,.10,.26,7),darkMat,[x,.13,z]);legs.push(leg);}
+  }else{
+    sphere(bodyMat,[0,.23,0],[.43,.19,.50]);sphere(darkMat,[0,.55,0],[.47,.32,.52]);sphere(bodyMat,[0,.44,.53],[.21,.18,.25]);
+    for(const x of [-.25,.25])for(const z of [-.32,.32]){const leg=petPart(root,new THREE.CylinderGeometry(.12,.14,.22,7),bodyMat,[x,.13,z]);legs.push(leg);}
+    sphere(bodyMat,[0,.30,-.52],[.08,.10,.13]);
+  }
+  root.userData={petId:type,legs,phase:Math.random()*Math.PI*2};return root;
+}
+function createPetShopSign(){
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;const ctx=canvas.getContext('2d');
-  ctx.fillStyle='rgba(17,24,25,.91)';ctx.beginPath();ctx.roundRect(8,8,496,112,18);ctx.fill();ctx.strokeStyle='#'+color.toString(16).padStart(6,'0');ctx.lineWidth=5;ctx.stroke();
-  ctx.fillStyle='#ffffff';ctx.font='bold 34px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,256,66,460);
-  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(canvas),transparent:true,depthTest:false}));sprite.position.y=2.35;sprite.scale.set(6.4,1.6,1);return sprite;
+  ctx.fillStyle='#173b37';ctx.fillRect(0,0,512,128);ctx.strokeStyle='#d6bd70';ctx.lineWidth=8;ctx.strokeRect(5,5,502,118);
+  ctx.fillStyle='#fff3cf';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 48px Arial';ctx.fillText('PATI PET SHOP',256,52);
+  ctx.font='bold 22px Arial';ctx.fillStyle='#b9e3c0';ctx.fillText('ŞİMDİLİK ÜCRETSİZ',256,91);
+  const texture=new THREE.CanvasTexture(canvas);texture.needsUpdate=true;
+  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false}));sprite.position.set(0,3.25,.9);sprite.scale.set(6.2,1.55,1);return sprite;
 }
-function addProgressWorldProps(){
-  const wood=new THREE.MeshStandardMaterial({color:0x76502c,roughness:.82}),boardMat=new THREE.MeshStandardMaterial({color:0x355440,roughness:.7});
-  const board=new THREE.Group(),by=terrainHeightAt(QUEST_BOARD.x,QUEST_BOARD.z);board.position.set(QUEST_BOARD.x,by,QUEST_BOARD.z);
-  for(const x of [-.8,.8]){const post=new THREE.Mesh(new THREE.BoxGeometry(.14,1.8,.14),wood);post.position.set(x,.9,0);board.add(post);}
-  const panel=new THREE.Mesh(new THREE.BoxGeometry(1.9,1.05,.16),boardMat);panel.position.set(0,1.25,0);board.add(panel);board.add(createJourneySign('GÖREV PANOSU'));scene.add(board);
+function addPetShopWorldProps(){
+  const root=new THREE.Group(),ground=terrainHeightAt(PET_SHOP.x,PET_SHOP.z);root.position.set(PET_SHOP.x,ground,PET_SHOP.z);
+  const wood=petMaterial(0x795034),teal=petMaterial(0x3e8277),cream=petMaterial(0xf0d9a3),roof=petMaterial(0x375e75),pad=petMaterial(0x5b6153);
+  petPart(root,new THREE.BoxGeometry(5.3,.16,4.0),pad,[0,.08,0]);
+  petPart(root,new THREE.BoxGeometry(3.8,1.18,1.05),teal,[0,.78,-.45]);
+  petPart(root,new THREE.BoxGeometry(4.2,.18,2.7),roof,[0,2.55,-.35]);
+  for(const x of [-1.9,1.9]){petPart(root,new THREE.BoxGeometry(.16,2.35,.16),wood,[x,1.31,-.35]);}
+  petPart(root,new THREE.BoxGeometry(3.8,.14,.18),cream,[0,2.43,.97]);
+  petPart(root,new THREE.BoxGeometry(1.9,.08,1.25),wood,[0,1.48,.28]);
+  root.add(createPetShopSign());
   for(let i=0;i<3;i++){
-    const crate=new THREE.Mesh(new THREE.BoxGeometry(.82,.72,.72),new THREE.MeshStandardMaterial({color:i===1?0x9a6b3b:0xb0834d,roughness:.84}));
-    crate.position.set(DELIVERY_DEPOT.x-1.1+i*1.05,terrainHeightAt(DELIVERY_DEPOT.x,DELIVERY_DEPOT.z)+.36,DELIVERY_DEPOT.z+2.1);crate.rotation.y=(i-1)*.12;scene.add(crate);
+    const x=-2.05+i*2.05;
+    petPart(root,new THREE.CylinderGeometry(.58,.66,.16,12),petMaterial(i===1?0x9d8854:0x756b54),[x,.18,1.65]);
+    const showcase=createPetModel(['dog','rabbit','turtle'][i]);showcase.scale.setScalar(.58);showcase.position.set(x,.28,1.65);root.add(showcase);
   }
-  const post=new THREE.Group(),py=terrainHeightAt(DELIVERY_POST.x,DELIVERY_POST.z);post.position.set(DELIVERY_POST.x,py,DELIVERY_POST.z);
-  const legs=new THREE.Mesh(new THREE.BoxGeometry(.16,1.55,.16),wood);legs.position.y=.77;post.add(legs);
-  const box=new THREE.Mesh(new THREE.BoxGeometry(1.2,.72,.72),new THREE.MeshStandardMaterial({color:0x4b78a0,roughness:.65}));box.position.set(0,1.65,0);post.add(box);post.add(createJourneySign('KÖY TESLİMATI',0x78bdf2));scene.add(post);
-  const stable=new THREE.Group(),sy=terrainHeightAt(COMPANION_STABLE.x,COMPANION_STABLE.z);stable.position.set(COMPANION_STABLE.x,sy,COMPANION_STABLE.z);
-  for(const x of [-2,2])for(const z of [-1.7,1.7]){const rail=new THREE.Mesh(new THREE.BoxGeometry(.13,1.25,.13),wood);rail.position.set(x,.62,z);stable.add(rail);}
-  for(const y of [.42,.92]){for(const z of [-1.7,1.7]){const rail=new THREE.Mesh(new THREE.BoxGeometry(4,.12,.12),wood);rail.position.set(0,y,z);stable.add(rail);}}
-  stable.add(createJourneySign('SÜRÜ YOLDAŞI'));scene.add(stable);
-  const waitingDonkey=createDonkeyModel();waitingDonkey.scale.setScalar(.62);waitingDonkey.position.set(COMPANION_STABLE.x,sy,COMPANION_STABLE.z);waitingDonkey.rotation.y=Math.PI;setDonkeyNameTag(waitingDonkey,'Yoldaş');scene.add(waitingDonkey);
-  return {waitingDonkey};
+  scene.add(root);
+  if(Array.isArray(buildings))buildings.push({x:PET_SHOP.x,z:PET_SHOP.z,halfW:2.05,halfD:.85,kind:'petShop'});
+  return root;
 }
-const progressWorldProps=addProgressWorldProps();
-const companionModels=new Map();let lastCompanionUpdate=performance.now();
-function updateCompanionModels(now){
-  const dt=Math.max(0,Math.min(.09,(now-lastCompanionUpdate)/1000));lastCompanionUpdate=now;
-  const owners=new Map();
-  if(gameStarted&&!playerIsDead&&myId&&progression.hasCompanion)owners.set(myId,{model:playerDonkey,name:'Yoldaş'});
-  for(const [id,p] of Object.entries(latestServerPlayers||{}))if(id!==myId&&p.inGame&&p.alive!==false&&p.hasCompanion&&otherPlayers[id])owners.set(id,{model:otherPlayers[id],name:'Yoldaş'});
+addPetShopWorldProps();
+const petFollowers=new Map();let lastPetFollowerUpdate=performance.now();
+function disposePetModel(model){if(!model)return;scene.remove(model);model.traverse(node=>{if(node.geometry)node.geometry.dispose();if(node.material){for(const material of Array.isArray(node.material)?node.material:[node.material])material.dispose();}});}
+function updatePetFollowers(now){
+  const dt=Math.max(0,Math.min(.09,(now-lastPetFollowerUpdate)/1000));lastPetFollowerUpdate=now;const owners=new Map();
+  if(gameStarted&&!playerIsDead&&myId&&activePetId)owners.set(myId,{model:playerDonkey,petId:activePetId});
+  for(const [id,p] of Object.entries(latestServerPlayers||{}))if(id!==myId&&p.inGame&&p.alive!==false&&PET_CATALOG[p.petId]&&otherPlayers[id])owners.set(id,{model:otherPlayers[id],petId:p.petId});
   for(const [id,owner] of owners){
-    let follower=companionModels.get(id);
-    if(!follower){follower=createDonkeyModel();follower.scale.setScalar(.62);setDonkeyNameTag(follower,owner.name);scene.add(follower);companionModels.set(id,follower);}
-    const yaw=owner.model.rotation.y,targetX=owner.model.position.x-Math.sin(yaw)*3.2+Math.cos(yaw)*.9,targetZ=owner.model.position.z-Math.cos(yaw)*3.2-Math.sin(yaw)*.9;
+    let follower=petFollowers.get(id);
+    if(!follower||follower.userData.petId!==owner.petId){if(follower)disposePetModel(follower);follower=createPetModel(owner.petId);follower.scale.setScalar(.72);scene.add(follower);petFollowers.set(id,follower);}
+    const yaw=owner.model.rotation.y,targetX=owner.model.position.x-Math.sin(yaw)*2.3+Math.cos(yaw)*.85,targetZ=owner.model.position.z-Math.cos(yaw)*2.3-Math.sin(yaw)*.85;
     const dx=targetX-follower.position.x,dz=targetZ-follower.position.z,distance=Math.hypot(dx,dz);
-    if(distance>24){follower.position.x=targetX;follower.position.z=targetZ;}
-    else if(distance>.42){const step=Math.min(distance,5.2*dt),nx=follower.position.x+dx/distance*step,nz=follower.position.z+dz/distance*step;
-      if(!checkMountainCollision(nx,nz,.62)){follower.position.x=nx;follower.position.z=nz;}
-      else{const sx=follower.position.x+Math.cos(yaw)*step,sz=follower.position.z-Math.sin(yaw)*step;if(!checkMountainCollision(sx,sz,.62)){follower.position.x=sx;follower.position.z=sz;}}
+    if(distance>26){follower.position.x=targetX;follower.position.z=targetZ;}
+    else if(distance>.38){const step=Math.min(distance,5.3*dt),nx=follower.position.x+dx/distance*step,nz=follower.position.z+dz/distance*step;
+      if(!checkMountainCollision(nx,nz,.45)){follower.position.x=nx;follower.position.z=nz;}
+      else{const sx=follower.position.x+Math.cos(yaw)*step,sz=follower.position.z-Math.sin(yaw)*step;if(!checkMountainCollision(sx,sz,.45)){follower.position.x=sx;follower.position.z=sz;}}
     }
-    follower.position.y=terrainHeightAt(follower.position.x,follower.position.z);follower.rotation.y=distance>.45?Math.atan2(dx,dz):yaw;follower.visible=gameStarted;
-    updateDonkeyAnimation(follower,distance>.6,false,false,1.05);
+    follower.position.y=terrainHeightAt(follower.position.x,follower.position.z)+.03;follower.rotation.y=distance>.45?Math.atan2(dx,dz):yaw;
+    const gait=Math.sin(now*.012+follower.userData.phase)*.28;for(let i=0;i<follower.userData.legs.length;i++)follower.userData.legs[i].rotation.x=distance>.55?gait*(i%2?-1:1):0;
   }
-  for(const [id,follower] of companionModels)if(!owners.has(id)){scene.remove(follower);companionModels.delete(id);}
-  progressWorldProps.waitingDonkey.visible=gameStarted&&!progression.hasCompanion;
+  for(const [id,follower] of petFollowers)if(!owners.has(id)){disposePetModel(follower);petFollowers.delete(id);}
 }
-function updateProgressWorld(now){
-  journeyToggle.style.display=gameStarted&&!playerIsDead?'block':'none';
-  if(!gameStarted||playerIsDead)journeyPanel.style.display='none';
-  updateCompanionModels(now);
-}
+function updatePetShopWorld(now){if((!gameStarted||playerIsDead)&&petShopPanel.style.display!=='none')setPetShopOpen(false);updatePetFollowers(now);}
 
 function updateExtraWorld(){
   const wallNow=Date.now();
@@ -6389,7 +6371,7 @@ function updateExtraWorld(){
   updateWeaponFx();
   updateDamageFlash();
   updateAmmoHud();
-  updateProgressWorld(performance.now());
+  updatePetShopWorld(performance.now());
   if(gameStarted)updatePickupPrompt();
 }
 const oldAnimateExtra=typeof animate==='function'?animate:null;
