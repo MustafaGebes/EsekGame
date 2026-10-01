@@ -26,6 +26,7 @@ const SERVER_VERSION = "1.0.0";
 // ============================================================
 
 const ROOT = __dirname;
+const RPG_DATA = require(path.join(ROOT, "games", "eseksimulator", "rpg-data.js"));
 
 const DATA_DIR = path.join(ROOT, "data");
 const ACCOUNTS_FILE = path.join(DATA_DIR, "accounts.json");
@@ -411,20 +412,55 @@ const HUNTER_SPAWNS = [
 ];
 let campfireLit = false;
 
-const PET_SHOP = { x: 177, z: 247 };
-const PET_SHOP_RANGE = 9;
+const PET_SHOP = RPG_DATA.trader;
+const PET_SHOP_RANGE = RPG_DATA.trader.range;
 const PET_TYPES = Object.freeze({
     dog: { name: "Bekçi Köpek", damageMultiplier: 1.25, damageTakenMultiplier: 1, maxStaminaBonus: 0, sprintCostMultiplier: 1, staminaRegenMultiplier: 1 },
     rabbit: { name: "Çevik Tavşan", damageMultiplier: 1, damageTakenMultiplier: 1, maxStaminaBonus: 20, sprintCostMultiplier: 0.8, staminaRegenMultiplier: 1.4 },
     turtle: { name: "Sağlam Kaplumbağa", damageMultiplier: 1, damageTakenMultiplier: 0.8, maxStaminaBonus: 0, sprintCostMultiplier: 1, staminaRegenMultiplier: 1 }
 });
 
-function createDefaultProgress() { return { petId: null, stamina: 100 }; }
+function getCatalogItem(id) { return RPG_DATA.items.find(item => item.id === String(id || "")) || null; }
+function inventoryHas(progress, id) { return !!progress && Array.isArray(progress.inventory) && progress.inventory.some(entry => entry.id === id && entry.quantity > 0); }
+function getBagCapacity(progress) { return RPG_DATA.bagSlotsBase + Math.max(0, Math.min(3, Number(progress && progress.bagLevel) || 0)) * RPG_DATA.bagSlotsPerUpgrade; }
+function xpForLevel(level) { return level >= RPG_DATA.maxLevel ? 0 : RPG_DATA.xpBase + Math.max(0, level - 1) * RPG_DATA.xpPerLevel; }
+function totalXpForLevel(level) { let total = 0; for (let current = 1; current < Math.min(level, RPG_DATA.maxLevel); current++) total += xpForLevel(current); return total; }
+function getPlayerLevel(xp) { let level = 1, remaining = Math.max(0, Number(xp) || 0); while (level < RPG_DATA.maxLevel && remaining >= xpForLevel(level)) { remaining -= xpForLevel(level); level++; } return level; }
+function getXpWithinLevel(xp) { let remaining = Math.max(0, Number(xp) || 0), level = 1; while (level < RPG_DATA.maxLevel && remaining >= xpForLevel(level)) { remaining -= xpForLevel(level); level++; } return { level, current: level >= RPG_DATA.maxLevel ? 0 : remaining, next: xpForLevel(level) }; }
+function getArmorItem(progress) { const item = getCatalogItem(progress && progress.equippedArmor); return item && item.kind === "armor" ? item : null; }
+function getBuffMultiplier(progress, key, now = Date.now()) { const buff = progress && progress.buffs && progress.buffs[key]; return buff && buff.expiresAt > now ? Math.max(0.5, Math.min(3, Number(buff.multiplier) || 1)) : 1; }
+function getMaxHealth(player) { const armor = getArmorItem(player && player.progress); return MAX_NEED + (armor ? Number(armor.healthBonus) || 0 : 0); }
+function createDefaultProgress() {
+    return { petId: null, stamina: 100, xp: 0, coins: RPG_DATA.startingCoins, bagLevel: 0, inventory: [], equippedWeapon: null, equippedArmor: null, ammo: 0, buffs: {} };
+}
 function normalizeProgress(raw) {
     const p = createDefaultProgress();
     if (!raw || typeof raw !== "object") return p;
-    p.petId = Object.prototype.hasOwnProperty.call(PET_TYPES, String(raw.petId || "")) ? String(raw.petId) : null;
-    const maxStamina = 100 + (p.petId ? PET_TYPES[p.petId].maxStaminaBonus : 0);
+    p.xp = Math.max(0, Math.min(totalXpForLevel(RPG_DATA.maxLevel), Math.floor(Number(raw.xp) || 0)));
+    p.coins = Math.max(0, Math.min(999999999, Math.floor(Number.isFinite(Number(raw.coins)) ? Number(raw.coins) : RPG_DATA.startingCoins)));
+    p.bagLevel = Math.max(0, Math.min(3, Math.floor(Number(raw.bagLevel) || 0)));
+    const merged = new Map();
+    for (const entry of Array.isArray(raw.inventory) ? raw.inventory : []) {
+        const item = getCatalogItem(entry && entry.id);
+        if (!item || item.kind === "bag") continue;
+        const quantity = item.kind === "food" ? Math.max(1, Math.min(999, Math.floor(Number(entry.quantity) || 1))) : 1;
+        merged.set(item.id, Math.min(item.kind === "food" ? 999 : 1, (merged.get(item.id) || 0) + quantity));
+    }
+    p.inventory = Array.from(merged, ([id, quantity]) => ({ id, quantity })).slice(0, getBagCapacity(p));
+    const legacyPetId = Object.prototype.hasOwnProperty.call(PET_TYPES, String(raw.petId || "")) ? String(raw.petId) : null;
+    if (legacyPetId && !inventoryHas(p, legacyPetId) && p.inventory.length < getBagCapacity(p)) p.inventory.push({ id: legacyPetId, quantity: 1 });
+    const hasKind = (id, kind) => !!id && inventoryHas(p, id) && getCatalogItem(id)?.kind === kind;
+    p.petId = hasKind(raw.petId, "pet") ? String(raw.petId) : (legacyPetId && hasKind(legacyPetId, "pet") ? legacyPetId : null);
+    p.equippedWeapon = hasKind(raw.equippedWeapon, "weapon") ? String(raw.equippedWeapon) : null;
+    p.equippedArmor = hasKind(raw.equippedArmor, "armor") ? String(raw.equippedArmor) : null;
+    p.ammo = Math.max(0, Math.min(GUN_MAGAZINE, Math.floor(Number(raw.ammo) || 0)));
+    p.buffs = {};
+    for (const key of ["damage", "speed", "staminaRegen"]) {
+        const buff = raw.buffs && raw.buffs[key], expiresAt = Number(buff && buff.expiresAt), multiplier = Number(buff && buff.multiplier);
+        if (Number.isFinite(expiresAt) && expiresAt > Date.now() && Number.isFinite(multiplier)) p.buffs[key] = { expiresAt, multiplier: Math.max(0.5, Math.min(3, multiplier)), label: String(buff.label || key).slice(0, 32) };
+    }
+    const armor = getArmorItem(p);
+    const maxStamina = 100 + (p.petId ? PET_TYPES[p.petId].maxStaminaBonus : 0) + (armor ? Number(armor.staminaBonus) || 0 : 0);
     const storedStamina = Number(raw.stamina);
     p.stamina = Number.isFinite(storedStamina) ? Math.max(0, Math.min(maxStamina, storedStamina)) : maxStamina;
     return p;
@@ -436,39 +472,124 @@ function savePlayerProgress(player) {
     persistPlayerPetsStore();
 }
 function getMaxStamina(player) {
-    const pet = player && player.progress && PET_TYPES[player.progress.petId];
-    return 100 + (pet ? pet.maxStaminaBonus : 0);
+    const pet = player && player.progress && PET_TYPES[player.progress.petId], armor = getArmorItem(player && player.progress);
+    return 100 + (pet ? pet.maxStaminaBonus : 0) + (armor ? Number(armor.staminaBonus) || 0 : 0);
 }
 function getPetDamageMultiplier(player) {
     const pet = player && player.progress && PET_TYPES[player.progress.petId];
-    return pet ? pet.damageMultiplier : 1;
+    return (pet ? pet.damageMultiplier : 1) * getBuffMultiplier(player && player.progress, "damage");
 }
 function getPetDamageTakenMultiplier(player) {
-    const pet = player && player.progress && PET_TYPES[player.progress.petId];
-    return pet ? pet.damageTakenMultiplier : 1;
+    const pet = player && player.progress && PET_TYPES[player.progress.petId], armor = getArmorItem(player && player.progress);
+    return (pet ? pet.damageTakenMultiplier : 1) * (armor ? 1 - Math.max(0, Math.min(0.75, Number(armor.damageReduction) || 0)) : 1);
 }
-function handlePetSelect(player, data) {
+function getStaminaCostMultiplier(player) {
+    const pet = player && player.progress && PET_TYPES[player.progress.petId], armor = getArmorItem(player && player.progress);
+    return (pet ? pet.sprintCostMultiplier : 1) * (armor ? Number(armor.staminaCostMultiplier) || 1 : 1);
+}
+function getStaminaRegenMultiplier(player) {
+    const pet = player && player.progress && PET_TYPES[player.progress.petId], armor = getArmorItem(player && player.progress);
+    return (pet ? pet.staminaRegenMultiplier : 1) * (armor ? Number(armor.staminaRegenMultiplier) || 1 : 1) * getBuffMultiplier(player && player.progress, "staminaRegen");
+}
+function getSpeedMultiplier(player) {
+    const armor = getArmorItem(player && player.progress);
+    return (armor ? Number(armor.speedMultiplier) || 1 : 1) * getBuffMultiplier(player && player.progress, "speed");
+}
+function getRpgSnapshot(player) {
+    const p = player && player.progress || createDefaultProgress(), levelData = getXpWithinLevel(p.xp), weapon = getCatalogItem(p.equippedWeapon), armor = getArmorItem(p);
+    return {
+        xp: p.xp, level: levelData.level, xpInLevel: levelData.current, xpToNext: levelData.next, coins: p.coins,
+        bagLevel: p.bagLevel, bagCapacity: getBagCapacity(p), inventory: p.inventory.map(entry => ({ ...entry })),
+        equippedWeapon: p.equippedWeapon, equippedWeaponType: weapon ? weapon.weaponType : "none", ammo: p.ammo,
+        equippedArmor: p.equippedArmor, petId: p.petId, buffs: { ...p.buffs },
+        stats: { maxHealth: getMaxHealth(player), maxStamina: getMaxStamina(player), speedMultiplier: getSpeedMultiplier(player), staminaRegenBuffMultiplier: getBuffMultiplier(p, "staminaRegen") }
+    };
+}
+function sendRpgState(player) { if (player && player.inGame) sendTo(player, { type: "rpg_state", state: getRpgSnapshot(player) }); }
+function inventorySlotCount(progress) { return (progress.inventory || []).length; }
+function nearTrader(player) { return Math.hypot(player.x - PET_SHOP.x, player.z - PET_SHOP.z) <= PET_SHOP_RANGE; }
+function handleRpgShopRequest(player) {
+    if (!player.inGame || !player.alive) return;
+    if (!nearTrader(player)) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Tüccar menüsünü açmak için çiftlikteki tezgâha yaklaş." }); return; }
+    sendTo(player, { type: "rpg_shop_open", categories: RPG_DATA.categories, items: RPG_DATA.items, state: getRpgSnapshot(player) });
+}
+function handleRpgBuy(player, data) {
     if (!player.inGame || !player.alive || !player.progress) return;
-    if (Math.hypot(player.x - PET_SHOP.x, player.z - PET_SHOP.z) > PET_SHOP_RANGE) {
-        sendTo(player, { type: "pet_shop_result", ok: false, petId: player.progress.petId, message: "Ücretsiz bir pet seçmek için çiftlik girişindeki pet dükkânına gel." });
-        return;
+    if (!nearTrader(player)) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Alışveriş için tüccarın yanında olmalısın." }); return; }
+    const item = getCatalogItem(data && data.itemId), p = player.progress;
+    if (!item) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Bu ürün tüccarda yok." }); return; }
+    if (getPlayerLevel(p.xp) < item.requiredLevel) { sendTo(player, { type: "rpg_action_result", ok: false, message: `Bu ürün için seviye ${item.requiredLevel} olmalısın.` }); return; }
+    const exactItem = p.inventory.find(entry => entry.id === item.id);
+    if (item.kind !== "food" && item.kind !== "bag" && exactItem) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Bu ürüne zaten sahipsin." }); return; }
+    const replacements = item.kind === "weapon"
+        ? p.inventory.filter(entry => { const old = getCatalogItem(entry.id); return old && old.kind === "weapon" && old.weaponType === item.weaponType; })
+        : item.kind === "armor" ? p.inventory.filter(entry => getCatalogItem(entry.id)?.kind === "armor") : [];
+    const tradeInCoins = replacements.reduce((total, entry) => total + Math.floor((getCatalogItem(entry.id)?.price || 0) * 0.25), 0);
+    if (p.coins + tradeInCoins < item.price) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Yeterli coin'in yok." }); return; }
+    if (item.kind === "bag") {
+        if (item.bagLevel !== p.bagLevel + 1) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Çantaları sırayla yükseltmelisin." }); return; }
+        p.bagLevel = item.bagLevel;
+    } else {
+        const existing = p.inventory.find(entry => entry.id === item.id);
+        if (!existing && inventorySlotCount(p) - replacements.length >= getBagCapacity(p)) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Çantan dolu. Bir çanta yükseltmesi al veya yiyeceklerini kullan." }); return; }
+        const oldWeapon = replacements.some(entry => entry.id === p.equippedWeapon);
+        const oldArmor = replacements.some(entry => entry.id === p.equippedArmor);
+        const oldMaxHealth = getMaxHealth(player), oldMaxStamina = getMaxStamina(player);
+        if (replacements.length) p.inventory = p.inventory.filter(entry => !replacements.some(old => old.id === entry.id));
+        if (item.kind === "food" && existing) existing.quantity = Math.min(999, existing.quantity + 1);
+        else p.inventory.push({ id: item.id, quantity: 1 });
+        if (item.kind === "weapon" && (oldWeapon || !p.equippedWeapon)) {
+            p.equippedWeapon = item.id; player.weapon = item.weaponType; p.ammo = item.weaponType === "gun" ? (item.ammo || GUN_MAGAZINE) : 0;
+        }
+        if (item.kind === "armor" && (oldArmor || !p.equippedArmor)) p.equippedArmor = item.id;
+        if (item.kind === "pet" && !p.petId) p.petId = item.id;
+        player.health = Math.min(getMaxHealth(player), player.health + Math.max(0, getMaxHealth(player) - oldMaxHealth));
+        p.stamina = Math.min(getMaxStamina(player), p.stamina + Math.max(0, getMaxStamina(player) - oldMaxStamina));
     }
-    const petId = String(data && data.petId || "");
-    if (!Object.prototype.hasOwnProperty.call(PET_TYPES, petId)) {
-        sendTo(player, { type: "pet_shop_result", ok: false, petId: player.progress.petId, message: "Bu pet dükkânda bulunmuyor." });
-        return;
-    }
-    if (player.progress.petId === petId) {
-        sendTo(player, { type: "pet_shop_result", ok: true, petId, message: `${PET_TYPES[petId].name} zaten yanında.` });
-        return;
-    }
-    player.progress.petId = petId;
-    player.progress.stamina = Math.min(getMaxStamina(player), player.progress.stamina + PET_TYPES[petId].maxStaminaBonus);
+    p.coins = Math.max(0, p.coins + tradeInCoins - item.price);
     savePlayerProgress(player);
-    sendTo(player, { type: "pet_shop_result", ok: true, petId, message: `${PET_TYPES[petId].name} artık seninle! Pet seçimi şimdilik ücretsiz.` });
-    sendNeeds(player);
-    broadcastPlayers();
+    sendTo(player, { type: "rpg_action_result", ok: true, message: `${item.name} alındı.${tradeInCoins ? ` Eski ekipman takası: +${tradeInCoins} coin.` : ""}` });
+    sendRpgState(player); sendNeeds(player); broadcastPlayers();
 }
+function handleRpgEquip(player, data) {
+    if (!player.inGame || !player.alive || !player.progress) return;
+    const p = player.progress, slot = String(data && data.slot || ""), itemId = String(data && data.itemId || ""), item = itemId ? getCatalogItem(itemId) : null;
+    if (slot === "weapon") {
+        if (item && (item.kind !== "weapon" || !inventoryHas(p, item.id))) return;
+        p.equippedWeapon = item ? item.id : null; player.weapon = item ? item.weaponType : "none";
+        if (item && item.weaponType === "gun") p.ammo = Math.max(p.ammo, item.ammo || GUN_MAGAZINE);
+        sendTo(player, { type: "weapon_equipped", weapon: player.weapon, ammo: p.ammo, magazine: GUN_MAGAZINE });
+    } else if (slot === "armor") {
+        if (item && (item.kind !== "armor" || !inventoryHas(p, item.id))) return;
+        const oldMaxHealth = getMaxHealth(player), oldMaxStamina = getMaxStamina(player); p.equippedArmor = item ? item.id : null;
+        player.health = Math.min(getMaxHealth(player), player.health + Math.max(0, getMaxHealth(player) - oldMaxHealth));
+        p.stamina = Math.min(getMaxStamina(player), p.stamina + Math.max(0, getMaxStamina(player) - oldMaxStamina));
+    } else if (slot === "pet") {
+        if (item && (item.kind !== "pet" || !inventoryHas(p, item.id))) return;
+        const oldMax = getMaxStamina(player); p.petId = item ? item.id : null;
+        p.stamina = Math.min(getMaxStamina(player), p.stamina + Math.max(0, getMaxStamina(player) - oldMax));
+    } else return;
+    savePlayerProgress(player); sendRpgState(player); sendNeeds(player); broadcastPlayers();
+}
+function handleRpgUse(player, data) {
+    if (!player.inGame || !player.alive || !player.progress) return;
+    const p = player.progress, itemId = String(data && data.itemId || ""), item = getCatalogItem(itemId);
+    if (!item || item.kind !== "food" || !inventoryHas(p, itemId)) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Bu yiyecek çantanda yok." }); return; }
+    const entry = p.inventory.find(value => value.id === itemId); entry.quantity--;
+    if (entry.quantity <= 0) p.inventory = p.inventory.filter(value => value.id !== itemId);
+    player.hunger = clampNeed(player.hunger + (Number(item.hunger) || 0)); player.thirst = clampNeed(player.thirst + (Number(item.thirst) || 0));
+    if (Number(item.stamina) > 0) p.stamina = Math.min(getMaxStamina(player), p.stamina + Number(item.stamina));
+    if (item.buffs && Number(item.durationMs) > 0) {
+        const expiresAt = Date.now() + Number(item.durationMs);
+        for (const [key, multiplier] of Object.entries(item.buffs)) {
+            const previous = p.buffs[key];
+            p.buffs[key] = { expiresAt, multiplier: Math.max(Number(multiplier) || 1, previous && previous.expiresAt > Date.now() ? previous.multiplier : 1), label: item.name };
+        }
+    }
+    savePlayerProgress(player); sendTo(player, { type: "rpg_action_result", ok: true, message: `${item.name} kullanıldı.` }); sendNeeds(player); sendRpgState(player);
+}
+function handleRpgStateRequest(player) { if (player.inGame) sendRpgState(player); }
+function handlePetSelect(player, data) { handleRpgEquip(player, { slot: "pet", itemId: data && data.petId }); }
 
 function berryMulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
 function makeBerryBushSpots(){
@@ -537,6 +658,7 @@ function createPlayer(ws) {
 
         weapon: "none",
         ammo: GUN_MAGAZINE,
+        nextRpgAttackAt: 0,
         nextArmorPickupAt: 0,
         nextBearBiteAt: 0,
         lastDamageAt: Date.now(),
@@ -564,6 +686,28 @@ const animals = new Map();  // animalId -> { health, hunger, thirst, alive }
 const hunters = new Map(HUNTER_SPAWNS.map(h => [h.id, {
     health: HUNTER_MAX_HEALTH, alive: true, respawnAt: 0, nextShotAt: 0
 }]));
+function createHostileDonkeys() {
+    const offsets = [[-12, 0], [12, 0], [0, 12]];
+    const enemies = new Map();
+    for (const zone of RPG_DATA.enemyZones) {
+        for (let i = 0; i < zone.count; i++) {
+            const offset = offsets[i % offsets.length], id = `${zone.id}-donkey-${i + 1}`;
+            const maxHealth = Math.round(12 + zone.level * 0.72 + (zone.boss ? 42 : 0));
+            const x = zone.x + offset[0], z = zone.z + offset[1];
+            enemies.set(id, { id, zoneId: zone.id, level: zone.level, name: zone.name, color: zone.color, armorColor: zone.armorColor, boss: !!zone.boss, spawnX: x, spawnZ: z, x, z, health: maxHealth, maxHealth, alive: true, respawnAt: 0, nextAttackAt: 0 });
+        }
+    }
+    return enemies;
+}
+const hostileDonkeys = createHostileDonkeys();
+function hostileDonkeyPublicState(enemy) {
+    return { id: enemy.id, zoneId: enemy.zoneId, level: enemy.level, name: enemy.name, color: enemy.color, armorColor: enemy.armorColor, boss: enemy.boss, x: enemy.x, z: enemy.z, health: enemy.health, maxHealth: enemy.maxHealth, alive: enemy.alive, respawnAt: enemy.respawnAt };
+}
+function sendHostileDonkeyStates(player) {
+    if (!player || !player.inGame) return;
+    sendTo(player, { type: "hostile_donkeys", zones: RPG_DATA.enemyZones, enemies: Array.from(hostileDonkeys.values(), hostileDonkeyPublicState) });
+}
+function broadcastHostileDonkey(enemy) { broadcast({ type: "hostile_donkey_state", enemy: hostileDonkeyPublicState(enemy) }); }
 
 function getAppleCount(treeId) {
     if (!apples.has(treeId)) apples.set(treeId, APPLE_MAX);
@@ -656,6 +800,8 @@ function getPublicPlayer(p) {
         stamina: p.progress ? p.progress.stamina : 100,
         maxStamina: getMaxStamina(p),
         petId: p.progress ? p.progress.petId : null,
+        level: p.progress ? getPlayerLevel(p.progress.xp) : 1,
+        equippedArmor: p.progress ? p.progress.equippedArmor : null,
         alive: p.alive
     };
 }
@@ -681,15 +827,25 @@ function broadcastOnlineCount() {
 }
 
 function sendNeeds(player) {
+    const rpg = getRpgSnapshot(player);
     sendTo(player, {
         type: "needs",
         health: player.health,
+        maxHealth: getMaxHealth(player),
         armor: player.armor,
         hunger: player.hunger,
         thirst: player.thirst,
         stamina: player.progress ? player.progress.stamina : 100,
         maxStamina: getMaxStamina(player),
         petId: player.progress ? player.progress.petId : null,
+        xp: rpg.xp,
+        level: rpg.level,
+        xpInLevel: rpg.xpInLevel,
+        xpToNext: rpg.xpToNext,
+        coins: rpg.coins,
+        buffs: rpg.buffs,
+        speedMultiplier: rpg.stats.speedMultiplier,
+        staminaRegenBuffMultiplier: rpg.stats.staminaRegenBuffMultiplier,
         alive: player.alive
     });
 }
@@ -767,7 +923,7 @@ function joinGame(player, data) {
     player.progress.stamina = getMaxStamina(player);
     player.lastStaminaUpdateAt = Date.now();
 
-    player.health = MAX_NEED;
+    player.health = getMaxHealth(player);
     player.hunger = MAX_NEED;
     player.thirst = MAX_NEED;
     player.armor = 0;
@@ -779,8 +935,11 @@ function joinGame(player, data) {
     player.yaw = 0;
     player.pitch = 0;
 
-    player.weapon = "none";
-    player.ammo = GUN_MAGAZINE;
+    const savedWeapon = getCatalogItem(player.progress.equippedWeapon);
+    player.weapon = savedWeapon ? savedWeapon.weaponType : "none";
+    player.ammo = player.progress.ammo;
+    if (player.weapon === "gun" && !player.ammo) player.ammo = savedWeapon.ammo || GUN_MAGAZINE;
+    player.nextRpgAttackAt = 0;
     player.nextBearBiteAt = 0;
     sendTo(player, {
         type: "join_accepted",
@@ -790,11 +949,15 @@ function joinGame(player, data) {
             hunger: player.hunger,
             thirst: player.thirst,
             armor: player.armor,
+            maxHealth: getMaxHealth(player),
             stamina: player.progress.stamina,
             maxStamina: getMaxStamina(player),
             petId: player.progress.petId
         }
     });
+
+    sendRpgState(player);
+    sendHostileDonkeyStates(player);
 
     sendTo(player, { type: "chat_history", messages: chatHistory.slice(-CHAT_HISTORY_LIMIT) });
 
@@ -825,9 +988,9 @@ function applyPlayerDamage(target, amount) {
         const absorbed = Math.min(armor, damage);
         const overflow = damage - absorbed;
         target.armor = clampNeed(armor - absorbed);
-        target.health = clampNeed(target.health - overflow * 0.5);
+        target.health = Math.max(0, Math.min(getMaxHealth(target), target.health - overflow * 0.5));
     } else {
-        target.health = clampNeed(target.health - damage);
+        target.health = Math.max(0, Math.min(getMaxHealth(target), target.health - damage));
     }
 }
 function damagePlayer(target, amount, attackerId, killerName, reason) {
@@ -887,13 +1050,12 @@ function handleMove(player, data) {
     if (now - player.lastMoveAcceptedAt < MOVE_MIN_INTERVAL_MS) return;
     player.lastMoveAcceptedAt = now;
     const elapsed = Math.max(0, Math.min(0.35, (now - (player.lastStaminaUpdateAt || now)) / 1000));
-    const pet = player.progress && PET_TYPES[player.progress.petId];
     const sprintRequested = !!data.isSprinting && !!data.isMoving && !data.isCrouching;
     if (player.progress) {
         if (sprintRequested && player.progress.stamina > 0) {
-            player.progress.stamina = Math.max(0, player.progress.stamina - 22 * (pet ? pet.sprintCostMultiplier : 1) * elapsed);
+            player.progress.stamina = Math.max(0, player.progress.stamina - 22 * getStaminaCostMultiplier(player) * elapsed);
         } else {
-            player.progress.stamina = Math.min(getMaxStamina(player), player.progress.stamina + 12 * (pet ? pet.staminaRegenMultiplier : 1) * elapsed);
+            player.progress.stamina = Math.min(getMaxStamina(player), player.progress.stamina + 12 * getStaminaRegenMultiplier(player) * elapsed);
         }
     }
     player.lastStaminaUpdateAt = now;
@@ -1144,8 +1306,46 @@ function handleAnimalCare(player, data) {
     });
 }
 
+function damageHostileDonkey(player, enemyId, baseDamage, weaponType) {
+    if (!player.inGame || !player.alive || !player.progress) return false;
+    const enemy = hostileDonkeys.get(String(enemyId || ""));
+    if (!enemy || !enemy.alive) return false;
+    const range = weaponType === "gun" ? 42 : weaponType === "sword" ? 7 : 5.5;
+    if (Math.hypot(player.x - enemy.x, player.z - enemy.z) > range) return false;
+    const now = Date.now(), cooldown = weaponType === "gun" ? 350 : weaponType === "sword" ? 480 : 650;
+    if (now < player.nextRpgAttackAt) return false;
+    player.nextRpgAttackAt = now + cooldown;
+    const weapon = getCatalogItem(player.progress.equippedWeapon);
+    const weaponMultiplier = weapon && weapon.weaponType === weaponType ? Number(weapon.damageMultiplier) || 1 : 1;
+    enemy.health = Math.max(0, enemy.health - Math.max(0.5, Number(baseDamage) || 0) * getPetDamageMultiplier(player) * weaponMultiplier);
+    if (enemy.health <= 0) {
+        enemy.alive = false;
+        enemy.respawnAt = now + RPG_DATA.respawnMs;
+        const oldLevel = getPlayerLevel(player.progress.xp), levelGap = oldLevel - enemy.level;
+        const xpScale = levelGap <= 0 ? 1.1 : Math.max(0.08, 1 - levelGap * 0.035);
+        const coinScale = levelGap <= 0 ? 1 : Math.max(0.12, 1 - levelGap * 0.025);
+        const earnedXp = Math.round(enemy.level * 5 * xpScale), oldXp = player.progress.xp;
+        const earnedCoins = Math.max(2, Math.round((4 + enemy.level * 2) * coinScale));
+        player.progress.xp = Math.min(totalXpForLevel(RPG_DATA.maxLevel), player.progress.xp + earnedXp);
+        const xpGranted = player.progress.xp - oldXp;
+        player.progress.coins = Math.min(999999999, player.progress.coins + earnedCoins);
+        const newLevel = getPlayerLevel(player.progress.xp);
+        savePlayerProgress(player);
+        sendTo(player, { type: "rpg_reward", xp: xpGranted, coins: earnedCoins, enemyLevel: enemy.level, level: newLevel, levelUp: newLevel > oldLevel, message: `Lv ${enemy.level} ${enemy.name} yenildi · +${xpGranted} XP · +${earnedCoins} coin` });
+        if (newLevel > oldLevel) sendTo(player, { type: "rpg_level_up", level: newLevel, message: `Seviye atladın! Yeni seviyen ${newLevel}.` });
+        sendNeeds(player); sendRpgState(player); broadcastPlayers();
+    }
+    broadcastHostileDonkey(enemy);
+    return true;
+}
+
 function handleAttackAnimal(player, data) {
     if (!player.inGame || !player.alive) return;
+
+    if (data && data.hostileDonkeyId) {
+        damageHostileDonkey(player, data.hostileDonkeyId, FIST_DAMAGE, "fist");
+        return;
+    }
 
     const animalId = String((data && data.animalId) || "");
     if (!animalId) return;
@@ -1288,17 +1488,27 @@ function handleCampfireToggle(player) {
 }
 
 function handleWeaponEquip(player, data) {
-    if (!player.inGame) return;
+    if (!player.inGame || !player.alive || !player.progress) return;
     const weapon = String((data && data.weapon) || "none");
-    if (weapon === "gun") {
-        player.weapon = "gun";
-        player.ammo = Math.max(0, Math.min(GUN_MAGAZINE, Number(player.ammo) || 0));
-    } else if (weapon === "sword") {
-        player.weapon = "sword";
+    if (weapon === "none") {
+        player.weapon = "none";
+        player.progress.equippedWeapon = null;
     } else {
+        const owned = getCatalogItem(player.progress.equippedWeapon);
+        if (!owned || owned.kind !== "weapon" || owned.weaponType !== weapon || !inventoryHas(player.progress, owned.id)) {
+            sendTo(player, { type: "weapon_result", ok: false, message: "Önce tüccardan bu silahı almalısın." });
+            return;
+        }
+        player.weapon = owned.weaponType;
+        if (weapon === "gun") player.ammo = Math.max(0, Math.min(GUN_MAGAZINE, Number(player.progress.ammo) || owned.ammo || GUN_MAGAZINE));
+    }
+    if (weapon === "none") {
         player.weapon = "none";
     }
+    player.progress.ammo = player.ammo;
+    savePlayerProgress(player);
     sendTo(player, { type: "weapon_equipped", weapon: player.weapon, ammo: player.ammo, magazine: GUN_MAGAZINE });
+    sendRpgState(player);
 }
 
 function handleWeaponAttack(player, data) {
@@ -1316,13 +1526,18 @@ function handleWeaponAttack(player, data) {
             return;
         }
         player.ammo = Math.max(0, player.ammo - 1);
+        player.progress.ammo = player.ammo;
+        savePlayerProgress(player);
         sendTo(player, { type: "weapon_result", ok: true, ammo: player.ammo, magazine: GUN_MAGAZINE });
         const targetId = data.targetId ? String(data.targetId) : null;
         const targetAnimalId = data.targetAnimalId ? String(data.targetAnimalId) : null;
         const targetHunterId = data.targetHunterId ? String(data.targetHunterId) : null;
+        const targetHostileDonkeyId = data.targetHostileDonkeyId ? String(data.targetHostileDonkeyId) : null;
         if (targetId) {
             const target = players.get(targetId);
             if (target && target.inGame && target.alive) damagePlayer(target, GUN_DAMAGE, player.id, player.name);
+        } else if (targetHostileDonkeyId) {
+            damageHostileDonkey(player, targetHostileDonkeyId, GUN_DAMAGE, "gun");
         } else if (targetAnimalId) {
             damageAnimal(targetAnimalId, GUN_DAMAGE * getPetDamageMultiplier(player));
         } else if (targetHunterId) {
@@ -1340,12 +1555,15 @@ function handleWeaponAttack(player, data) {
         const targetId = data.targetId ? String(data.targetId) : null;
         const targetAnimalId = data.targetAnimalId ? String(data.targetAnimalId) : null;
         const targetHunterId = data.targetHunterId ? String(data.targetHunterId) : null;
+        const targetHostileDonkeyId = data.targetHostileDonkeyId ? String(data.targetHostileDonkeyId) : null;
 
         if (targetId) {
             const target = players.get(targetId);
             if (target && target.inGame && target.alive) {
                 damagePlayer(target, SWORD_DAMAGE, player.id, player.name);
             }
+        } else if (targetHostileDonkeyId) {
+            damageHostileDonkey(player, targetHostileDonkeyId, SWORD_DAMAGE, "sword");
         } else if (targetAnimalId) {
             damageAnimal(targetAnimalId, SWORD_DAMAGE * getPetDamageMultiplier(player));
         } else if (targetHunterId) {
@@ -1361,7 +1579,7 @@ function handleRespawn(player) {
     if (!player.inGame) return;
 
     player.alive = true;
-    player.health = MAX_NEED;
+    player.health = getMaxHealth(player);
     player.hunger = MAX_NEED;
     player.thirst = MAX_NEED;
     player.armor = 0;
@@ -1378,7 +1596,7 @@ function handleRespawn(player) {
         type: "respawned",
         spawn: { x: SPAWN.x, y: SPAWN.y, z: SPAWN.z },
         state: {
-            health: player.health, armor: player.armor, hunger: player.hunger, thirst: player.thirst,
+            health: player.health, maxHealth: getMaxHealth(player), armor: player.armor, hunger: player.hunger, thirst: player.thirst,
             stamina: player.progress ? player.progress.stamina : 100,
             maxStamina: getMaxStamina(player), petId: player.progress ? player.progress.petId : null
         }
@@ -1467,6 +1685,30 @@ wss.on("connection", (ws, req) => {
 
             case "animal_states_request":
                 handleAnimalStatesRequest(player, data);
+                break;
+
+            case "hostile_donkeys_request":
+                sendHostileDonkeyStates(player);
+                break;
+
+            case "rpg_state_request":
+                handleRpgStateRequest(player);
+                break;
+
+            case "rpg_shop_request":
+                handleRpgShopRequest(player);
+                break;
+
+            case "rpg_buy":
+                handleRpgBuy(player, data);
+                break;
+
+            case "rpg_equip":
+                handleRpgEquip(player, data);
+                break;
+
+            case "rpg_use":
+                handleRpgUse(player, data);
                 break;
 
             case "animal_care":
@@ -1582,18 +1824,61 @@ setInterval(() => {
     }
 }, 400);
 
+// Düşman eşekler sunucu tarafından hareket ettirilir; ölümden 10 saniye sonra aynı bölgede canlanırlar.
+setInterval(() => {
+    const now = Date.now();
+    for (const enemy of hostileDonkeys.values()) {
+        if (!enemy.alive) {
+            if (enemy.respawnAt && now >= enemy.respawnAt) {
+                enemy.alive = true; enemy.health = enemy.maxHealth; enemy.respawnAt = 0; enemy.nextAttackAt = now + 900;
+                enemy.x = enemy.spawnX; enemy.z = enemy.spawnZ; broadcastHostileDonkey(enemy);
+            }
+            continue;
+        }
+        const elapsed = Math.max(0.05, Math.min(0.5, (now - (enemy.lastAiAt || now - 250)) / 1000));
+        enemy.lastAiAt = now;
+        let target = null, bestDistance = 12 + Math.min(100, enemy.level) * 0.13;
+        for (const player of players.values()) {
+            if (!player.inGame || !player.alive) continue;
+            const distance = Math.hypot(player.x - enemy.x, player.z - enemy.z);
+            if (distance < bestDistance) { bestDistance = distance; target = player; }
+        }
+        let moved = false;
+        if (target && bestDistance > 3.2) {
+            const pursuitSpeed = 5.8 + enemy.level * 0.022;
+            const scaledStep = Math.min(bestDistance - 2.8, pursuitSpeed * elapsed);
+            enemy.x += (target.x - enemy.x) / bestDistance * scaledStep;
+            enemy.z += (target.z - enemy.z) / bestDistance * scaledStep;
+            moved = scaledStep > 0;
+        } else if (target && now >= enemy.nextAttackAt) {
+            enemy.nextAttackAt = now + 1800;
+            damagePlayer(target, 1.4 + enemy.level * 0.025, null, enemy.name, `${enemy.name} saldırdı.`);
+        } else if (!target) {
+            const homeDistance = Math.hypot(enemy.spawnX - enemy.x, enemy.spawnZ - enemy.z);
+            if (homeDistance > 1) {
+                const step = Math.min(homeDistance, 1.35 * elapsed);
+                enemy.x += (enemy.spawnX - enemy.x) / homeDistance * step;
+                enemy.z += (enemy.spawnZ - enemy.z) / homeDistance * step;
+                moved = step > 0;
+            }
+        }
+        if (moved) broadcastHostileDonkey(enemy);
+    }
+}, 250);
+
 // İhtiyaç azalması ve hasar kesildikten sonra sağlık yenilenmesi (2 sn'de bir).
 setInterval(() => {
     const now = Date.now();
     for (const p of players.values()) {
         if (!p.inGame || !p.alive) continue;
-        const regenerating = p.health < MAX_NEED && now - (p.lastDamageAt || 0) >= 5000 && p.hunger > 0 && p.thirst > 0;
+        const armor = getArmorItem(p.progress);
+        const regenerating = p.health < getMaxHealth(p) && now - (p.lastDamageAt || 0) >= 5000 && p.hunger > 0 && p.thirst > 0;
         const needDrain = regenerating ? 0.06 : 0.03;
-        p.hunger = clampNeed(p.hunger - needDrain);
-        p.thirst = clampNeed(p.thirst - (regenerating ? 0.08 : 0.04));
-        if (regenerating) p.health = clampNeed(p.health + 0.5);
+        p.hunger = clampNeed(p.hunger - needDrain * (armor ? Number(armor.hungerDrainMultiplier) || 1 : 1));
+        p.thirst = clampNeed(p.thirst - (regenerating ? 0.08 : 0.04) * (armor ? Number(armor.thirstDrainMultiplier) || 1 : 1));
+        if (regenerating) p.health = Math.min(getMaxHealth(p), p.health + 0.5);
         if (p.hunger <= 0 || p.thirst <= 0) {
-            p.health = clampNeed(p.health - 0.1);
+            p.health = Math.max(0, p.health - 0.1);
             p.lastDamageAt = now;
             if (p.health <= 0) {
                 p.alive = false;
