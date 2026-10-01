@@ -6093,9 +6093,9 @@ function pickupItem(item){
     if(!ws||ws.readyState!==WebSocket.OPEN)return;
     item.userData.pending=true;sendSocketMessage('armor_pick',{});return;
   }
-  if(item.userData.kind==='pickup'){
+  if(item.userData.kind==='pickup'&&['sword','gun'].includes(item.userData.itemType)){
     if(heldItem)dropHeld();
-    heldItem={type:item.userData.itemType,ammo:item.userData.itemType==='gun'?GUN_MAGAZINE:0,group:null};
+    heldItem={type:item.userData.itemType,ammo:0,group:null};
     item.visible=false;if(item.userData.stationPickup)item.userData.respawnAt=Date.now()+item.userData.respawnMs;heldVisual();updateAmmoHud();
     try{if(typeof sendSocketMessage==='function')sendSocketMessage('weapon_equip',{weapon:heldItem.type});}catch(_){ }
   }

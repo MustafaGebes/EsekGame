@@ -557,13 +557,13 @@ function handleRpgBuy(player, data) {
         if (replacements.length) p.inventory = p.inventory.filter(entry => !replacements.some(old => old.id === entry.id));
         if (['food', 'ammo'].includes(item.kind) && existing) existing.quantity = Math.min(999, existing.quantity + 1);
         else p.inventory.push({ id: item.id, quantity: 1 });
+        if (item.kind === "weapon" && item.weaponType === 'gun') {
+            const gift = p.inventory.find(entry => entry.id === AMMO_ITEM_ID);
+            if (gift) gift.quantity = Math.min(999, gift.quantity + STARTER_MAGAZINES);
+            else p.inventory.push({ id: AMMO_ITEM_ID, quantity: STARTER_MAGAZINES });
+        }
         if (item.kind === "weapon" && (oldWeapon || !p.equippedWeapon)) {
             p.equippedWeapon = item.id; player.weapon = item.weaponType; p.ammo = item.weaponType === "gun" ? (item.ammo || GUN_MAGAZINE) : 0;
-            if (item.weaponType === 'gun') {
-                const gift = p.inventory.find(entry => entry.id === AMMO_ITEM_ID);
-                if (gift) gift.quantity = Math.min(999, gift.quantity + STARTER_MAGAZINES);
-                else p.inventory.push({ id: AMMO_ITEM_ID, quantity: STARTER_MAGAZINES });
-            }
         }
         if (item.kind === "armor" && (oldArmor || !p.equippedArmor)) p.equippedArmor = item.id;
         if (item.kind === "pet" && !p.petId) p.petId = item.id;
@@ -694,6 +694,7 @@ function createPlayer(ws) {
         weapon: "none",
         ammo: GUN_MAGAZINE,
         nextRpgAttackAt: 0,
+        nextWeaponShotAt: 0,
         nextArmorPickupAt: 0,
         nextBearBiteAt: 0,
         lastDamageAt: Date.now(),
@@ -1000,6 +1001,7 @@ function joinGame(player, data) {
     player.ammo = player.progress.ammo;
     // Do not silently refill a spent magazine on reconnect; spare magazines live in inventory.
     player.nextRpgAttackAt = 0;
+    player.nextWeaponShotAt = 0;
     player.nextBearBiteAt = 0;
     sendTo(player, {
         type: "join_accepted",
@@ -1565,11 +1567,11 @@ function handleWeaponAttack(player, data) {
 
     if (weapon === "gun") {
         const now = Date.now();
-        if (now < player.nextRpgAttackAt) {
+        if (now < player.nextWeaponShotAt) {
             sendTo(player, { type: 'weapon_result', ok: false, cooldown: true, ammo: player.ammo, magazines: (player.progress.inventory.find(entry => entry.id === AMMO_ITEM_ID)?.quantity || 0), magazine: GUN_MAGAZINE });
             return;
         }
-        player.nextRpgAttackAt = now + 350;
+        player.nextWeaponShotAt = now + 350;
         if (player.weapon !== "gun") {
             sendTo(player, { type: "weapon_result", ok: false, message: "Elinde silah yok.", ammo: player.ammo, magazine: GUN_MAGAZINE });
             return;
