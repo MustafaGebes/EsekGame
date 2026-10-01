@@ -83,7 +83,11 @@
         #nameError { display:none; margin-top:7px; color:#ff8585; font-size:13px; line-height:1.35; }
         .chat-private { color:#d9c6ff; }
         @media (max-width:600px) {
-            #mobOpenBtn { right:146px; bottom:64px; width:58px; height:58px; }
+            #mobMenuBtn { top:8px; left:10px; width:46px; height:46px; }
+            #mobViewBtn { top:8px; left:62px; width:46px; height:46px; }
+            #mobPlayersBtn { top:62px; left:10px; width:46px; height:46px; }
+            #mobChatBtn { top:62px; left:62px; width:46px; height:46px; font-size:18px; }
+            #mobOpenBtn { left:50%; right:auto; bottom:64px; width:58px; height:58px; transform:translateX(-50%); }
             #joystickZone { bottom:22px; left:14px; width:112px; height:112px; }
             #joystickKnob { top:31px; left:31px; }
             .mob-btn-group { bottom:22px; right:12px; grid-template-columns:repeat(2,52px); gap:7px; }
@@ -112,9 +116,10 @@
             #mobMenuBtn, #mobViewBtn, #mobChatBtn, #mobPlayersBtn { top: 8px; }
         }
         /* ===== MOBİL YATAY EKRAN DÜZENİ BİTİŞ ===== */
-        #hud { position: absolute; top: 20px; right: 20px; color: #ffffff; font-size: 14px; font-family: monospace; background: rgba(0, 0, 0, 0.5); padding: 8px 12px; border-radius: 8px; pointer-events: none; z-index: 15; text-shadow: 1px 1px 2px #000; display: none; }
+        #hud { position: absolute; top: 20px; left: 20px; right: auto; color: #ffffff; font-size: 14px; font-family: monospace; background: rgba(0, 0, 0, 0.5); padding: 8px 12px; border-radius: 8px; pointer-events: none; z-index: 15; text-shadow: 1px 1px 2px #000; display: none; }
         #hud div { margin: 2px 0; }
         #hud .label { color: #ffd700; font-weight: bold; }
+        @media (max-width: 1000px) { #hud { display: none !important; } }
         #interactPrompt { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%); color: #ffffff; font-size: 20px; font-weight: bold; background: rgba(0, 0, 0, 0.75); padding: 12px 24px; border-radius: 10px; border: 2px solid #ffd700; pointer-events: none; z-index: 19; display: none; text-shadow: 1px 1px 3px #000; }
         #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 30px; height: 30px; pointer-events: none; z-index: 18; display: none; }
         #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 3px rgba(0,0,0,0.8); }
@@ -145,7 +150,7 @@
         #settingsPanel .value-display { float: right; color: #ffd700; font-weight: bold; }
         #settingsPanel .close-btn { width: 100%; margin-top: 20px; padding: 12px; background: #4CAF50; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
         #settingsPanel .close-btn:hover { background: #45a049; }
-        #onlineBadge { position: fixed; top: 18px; right: 18px; z-index: 35; padding: 10px 14px; border: 1px solid rgba(255,255,255,.25); border-radius: 22px; background: rgba(15,20,27,.9); color: #fff; font-weight: 700; box-shadow: 0 4px 16px #0008; }
+        #onlineBadge { position: fixed; top: 18px; left: 50%; right: auto; transform: translateX(-50%); z-index: 35; padding: 10px 14px; border: 1px solid rgba(255,255,255,.25); border-radius: 22px; background: rgba(15,20,27,.9); color: #fff; font-weight: 700; box-shadow: 0 4px 16px #0008; white-space: nowrap; }
         #onlineBadge .online-dot { display: inline-block; width: 9px; height: 9px; margin-right: 7px; border-radius: 50%; background: #36d478; box-shadow: 0 0 8px #36d478; }
         #nameCard { display:none !important; margin: 8px 0 10px; padding: 12px 16px; width: 300px; max-width: 82vw; border: 1px solid #ffffff30; border-radius: 10px; background: rgba(15,20,27,.8); color: #eee; }
         #nameCard label { display: block; font-size: 14px; color: #ddd; text-align: left; }
@@ -175,14 +180,40 @@
         .player-row .ping-good { color: #61dc91; } .player-row .ping-mid { color: #ffcf67; } .player-row .ping-high { color: #ff7777; }
         #mobPlayersBtn { position: absolute; top: 80px; left: 20px; width: 50px; height: 50px; border: 2px solid #fff; border-radius: 50%; background: rgba(0,0,0,.65); color: white; font-size: 21px; pointer-events: auto; cursor: pointer; z-index: 25; }
         @media (max-width: 600px) {
-            #chatPanel { top: 142px; left: 12px; width: min(88vw, 350px); height: 220px; max-height: 32vh; min-height: 180px; }
-            #chatReopenBtn { top: 142px; left: 12px; }
-            #onlineBadge { top: 12px; right: 12px; padding: 8px 10px; font-size: 12px; }
+            #chatPanel { top: 158px; left: 12px; width: min(88vw, 350px); height: 220px; max-height: 32vh; min-height: 180px; }
+            #chatReopenBtn { top: 158px; left: 12px; }
+            #onlineBadge { top: 138px; left: auto; right: 8px; transform: none; box-sizing: border-box; width: 112px; padding: 6px 7px; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            #onlineBadge .online-dot { width: 8px; height: 8px; margin-right: 4px; }
             #playerListPanel { width: 94vw; }
             .player-list-columns, .player-row { grid-template-columns: minmax(100px,1fr) 64px 64px; padding-left: 10px; padding-right: 10px; }
-            #mobPlayersBtn { top: 80px; left: 20px; }
-            #chatPanel { top:142px; left:10px; width:min(88vw,350px); height:210px; max-height:29vh; }
+            #mobPlayersBtn { top: 62px; left: 10px; width:46px; height:46px; }
+            #mobChatBtn { top:62px; left:62px; width:46px; height:46px; font-size:18px; }
+            #chatPanel { top:158px; left:10px; width:calc(100vw - 132px); max-width:calc(100vw - 132px); height:210px; max-height:29vh; }
             #chatReopenBtn { display:none !important; }
+        }
+        @media (orientation: landscape) and (max-width: 650px) {
+            #mobMenuBtn { top:8px; left:10px; width:46px; height:46px; }
+            #mobViewBtn { top:8px; left:62px; width:46px; height:46px; }
+            #mobPlayersBtn { top:62px; left:10px; width:46px; height:46px; }
+            #mobChatBtn { top:62px; left:62px; width:46px; height:46px; font-size:18px; }
+            .mob-btn-group { right:12px; bottom:14px; grid-template-columns:repeat(2,52px); gap:7px; }
+            .mob-btn { width:52px; height:52px; font-size:11px; }
+            #mobOpenBtn { left:calc(50% - 30px); right:auto; bottom:14px; width:58px; height:58px; transform:none; }
+            #chatPanel { top:158px; left:10px; width:calc(100vw - 138px); max-width:calc(100vw - 138px); height:150px; max-height:calc(100vh - 170px); min-height:120px; }
+            #onlineBadge { display:none !important; }
+        }
+        @media (max-width: 650px) {
+            #onlineBadge { top:234px; left:auto; right:8px; transform:none; box-sizing:border-box; width:112px; padding:6px 7px; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        }
+        @media (orientation: landscape) and (min-width: 651px) and (max-width: 1000px) {
+            #mobPlayersBtn { top:10px; left:166px; width:46px; height:46px; }
+            #chatPanel { top:64px; left:10px; width:min(360px,46vw); height:230px; }
+        }
+        @media (orientation: landscape) and (min-width: 820px) and (max-width: 1000px) {
+            #onlineBadge { top:14px; left:calc(50% + 30px); right:auto; transform:translateX(-50%); box-sizing:border-box; width:120px; padding:6px 8px; font-size:10px; overflow:hidden; text-overflow:ellipsis; }
+        }
+        @media (orientation: landscape) and (min-width: 651px) and (max-width: 819px) {
+            #onlineBadge { display:none !important; }
         }
     </style>
 </head>
@@ -207,7 +238,7 @@
         </div>
     </div>
 
-    <div id="info">W,A,S,D: Yürü | Shift: Koş | Sol Tık: Saldır / Sürükle: Bak | E: Etkileşim / Pet Dükkânı | Q: Bırak | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
+    <div id="info">W,A,S,D: Yürü | Shift: Hızlı koş | Sol Tık: Saldırı / Sürükle: Bak | E: Tüccar / Etkileşim | B: Çanta | Q: Bırak | Space: Zıpla | C: Eğil | T: Kamera | Tab: Oyuncular | ESC: Menü</div>
 
     <div id="hud">
         <div><span class="label">Saat:</span> <span id="hudTime">00:00</span></div>
@@ -4427,8 +4458,9 @@ function stepCar(c,dt){
                 if (target.closest('#joystickZone') || target.closest('.mob-btn-group') ||
                     target.closest('#mobMenuBtn') || target.closest('#mobViewBtn') ||
                     target.closest('#mobChatBtn') || target.closest('#mobPlayersBtn') ||
-                    target.closest('#mobOpenBtn') || target.closest('#settingsPanel') ||
-                    target.closest('#chatPanel') || target.closest('#playerListPanel') ||
+                    target.closest('#mobOpenBtn') || target.closest('#mobWeaponBtns') ||
+                    target.closest('#rpgMobileBag') || target.closest('#rpgPanel') ||
+                    target.closest('#settingsPanel') || target.closest('#chatPanel') || target.closest('#playerListPanel') ||
                     target.closest('#menu')) continue;
                 if (cameraTouchId === null) {
                     cameraTouchId = touch.identifier;
@@ -4712,9 +4744,10 @@ function stepCar(c,dt){
                 let isCrouching = controlMode === 'pc' ? keys.c : isCouchingMobile;
                 let isSprinting = controlMode === 'pc' ? keys.shift : isSprintingMobile;
                 const canSprintNow = isSprinting && !isCrouching && needs.stamina > 0.25;
-                // PC ve mobil aynı hız tablosunu kullanır; kullanıcı isteğiyle belirgin biçimde yavaşlatıldı.
-                let baseSpeed = isCrouching ? 0.06 : 0.12;
-                if (canSprintNow) baseSpeed = 0.21;
+                // Hızı kare hızından bağımsız tut; düşük FPS'li telefonlarda da aynı mesafeyi kat et.
+                const frameScale = Math.min(3, Math.max(0, deltaSec * 60));
+                let baseSpeed = isCrouching ? 0.06 : (controlMode === 'mobile' ? 0.16 : 0.12);
+                if (canSprintNow) baseSpeed = controlMode === 'mobile' ? 0.32 : 0.30;
                 if (activePetId === 'rabbit') baseSpeed *= 1.12;
                 baseSpeed *= Math.max(0.65, Math.min(1.6, Number(needs.speedMultiplier) || 1));
                 // ===== GÖLET HAREKET/FİZİK DÜZENLEMESİ BAŞLANGIÇ =====
@@ -4728,7 +4761,7 @@ function stepCar(c,dt){
                 // ===== GÖLET HAREKET/FİZİK DÜZENLEMESİ BİTİŞ =====
 
                 const deepPoolNormBeforeMove=deepPoolNormAt(playerDonkey.position.x,playerDonkey.position.z);
-                let speed = baseSpeed;
+                let speed = baseSpeed * frameScale;
                 if (inPond || deepPoolNormBeforeMove < DEEP_POOL_SWIM_RADIUS) speed *= 0.55;
                 let moveX = 0, moveZ = 0, isMoving = false;
                 // Klavye ve joystick aynı ileri/yan vektörünü üretir; ikisi de aynı azami hıza sahiptir.

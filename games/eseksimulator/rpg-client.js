@@ -13,6 +13,11 @@
     const hostileModels = new Map();
     const hostileStates = new Map();
     const zoneMarkers = new Map();
+    const HOSTILE_RENDER_DISTANCE = 190;
+    function hostileIsNearPlayer(state) {
+      const pos = ctx.getPlayerPosition();
+      return !pos || Math.hypot(Number(state.x) - pos.x, Number(state.z) - pos.z) <= HOSTILE_RENDER_DISTANCE;
+    }
     const owned = id => (rpgState.inventory || []).some(entry => entry.id === id && entry.quantity > 0);
     const itemById = id => data.items.find(item => item.id === id);
     const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -23,9 +28,9 @@
       #rpgHud .rpg-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.rpg-level{font-size:13px;color:#ffe7a0}.rpg-coins{font-size:14px;color:#ffd768;white-space:nowrap}.rpg-xp-track{height:10px;border-radius:9px;background:#ffffff20;overflow:hidden;margin-top:7px}.rpg-xp-fill{height:100%;width:0;background:linear-gradient(90deg,#77d887,#d5ed86);transition:width .22s}.rpg-xp-caption{display:flex;justify-content:space-between;margin-top:4px;color:#d5ded7;font-size:10px}.rpg-buffs{display:flex;flex-direction:column;gap:3px;margin-top:2px;color:#b9f1c4;font-size:10px}.rpg-buff-row{display:flex;justify-content:space-between;gap:8px}
       #rpgPanel{position:fixed;inset:0;z-index:350;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(7,11,13,.72);color:#f5f6f1;font:14px Arial;pointer-events:auto;touch-action:pan-y}#rpgPanel *{box-sizing:border-box}#rpgWindow{display:flex;flex-direction:column;width:min(980px,96vw);height:min(760px,92vh);overflow:hidden;border:1px solid rgba(222,190,112,.48);border-radius:18px;background:linear-gradient(145deg,#202a28,#12191a);box-shadow:0 24px 80px #000b}#rpgHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #ffffff18;background:#ffffff08}#rpgTitle{font-size:20px;font-weight:900;color:#ffe6a0}#rpgSubtitle{margin-top:3px;color:#b9c4bd;font-size:11px}#rpgClose{width:40px;height:38px;border:0;border-radius:10px;background:#ffffff18;color:white;font-size:26px;line-height:1;cursor:pointer}#rpgBody{display:flex;min-height:0;flex:1}#rpgNav{display:flex;flex:0 0 150px;flex-direction:column;gap:7px;padding:12px;border-right:1px solid #ffffff18;background:#ffffff04;overflow:auto}#rpgNav button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 9px;border:1px solid transparent;border-radius:10px;background:transparent;color:#c9d1cd;text-align:left;font-weight:800;cursor:pointer}#rpgNav button.active{border-color:#d9bc6a66;background:#d9bc6a18;color:#ffe8a0}#rpgContent{min-width:0;flex:1;overflow:auto;padding:16px}#rpgSummary{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}.rpg-chip{padding:6px 9px;border:1px solid #ffffff20;border-radius:999px;background:#ffffff0b;color:#d8e0db;font-size:11px;font-weight:800}.rpg-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:10px}.rpg-card{display:flex;flex-direction:column;gap:7px;min-height:156px;padding:12px;border:1px solid #ffffff1c;border-radius:13px;background:linear-gradient(145deg,#ffffff0d,#ffffff04)}.rpg-card-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:900;color:#fff0c3}.rpg-icon{font-size:24px}.rpg-desc{flex:1;line-height:1.42;color:#c4cec8;font-size:11px}.rpg-meta{display:flex;justify-content:space-between;gap:8px;color:#ffe18b;font-size:11px;font-weight:800}.rpg-buy,.rpg-action{width:100%;min-height:36px;padding:8px 10px;border:1px solid #d9b86188;border-radius:9px;background:#715523;color:#fff4d3;font-weight:900;cursor:pointer}.rpg-buy:disabled,.rpg-action:disabled{border-color:#ffffff16;background:#ffffff0b;color:#87918b;cursor:default}.rpg-section{margin:0 0 18px}.rpg-section h3{margin:0 0 9px;color:#ffe7a2;font-size:14px}.rpg-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:7px}.rpg-slot{display:flex;min-height:72px;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:7px;border:1px dashed #ffffff32;border-radius:10px;background:#ffffff05;color:#a8b3ad;text-align:center;font-size:10px}.rpg-slot.filled{border-style:solid;border-color:#d9bc6a55;background:#d9bc6a10;color:#fff0c3}.rpg-slot-icon{font-size:21px}.rpg-inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}.rpg-inv-item{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #ffffff19;border-radius:10px;background:#ffffff08}.rpg-inv-item .rpg-icon{font-size:22px}.rpg-inv-copy{min-width:0;flex:1}.rpg-inv-copy strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}.rpg-inv-copy span{display:block;margin-top:3px;color:#afbbb3;font-size:10px}.rpg-mini-btn{flex:0 0 auto;padding:7px 8px;border:1px solid #d9bc6a66;border-radius:8px;background:#4e482f;color:#ffedbd;font-size:10px;font-weight:900;cursor:pointer}.rpg-empty{padding:13px;border:1px dashed #ffffff24;border-radius:10px;color:#aeb8b1;font-size:11px}#rpgMobileBag{position:fixed;left:14px;bottom:calc(112px + env(safe-area-inset-bottom));z-index:205;display:none;padding:10px 12px;border:1px solid #f1d17a88;border-radius:12px;background:#292b28e8;color:#ffeba9;font-weight:900;box-shadow:0 6px 20px #0007;touch-action:manipulation}#rpgMobileBag:active{transform:scale(.96)}
       .rpg-zone-label{font:900 18px Arial;letter-spacing:1px}
-      @media(max-width:650px){#rpgHud{right:8px;top:8px;width:min(225px,53vw);padding:8px 9px;border-radius:11px}.rpg-coins{font-size:12px}#rpgPanel{padding:0}#rpgWindow{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}#rpgHeader{padding:11px 13px}#rpgTitle{font-size:17px}#rpgBody{flex-direction:column}#rpgNav{flex:0 0 auto;flex-direction:row;gap:5px;padding:7px 9px;border-right:0;border-bottom:1px solid #ffffff18;overflow-x:auto}#rpgNav button{flex:0 0 auto;width:auto;min-width:88px;padding:9px 10px;font-size:11px}#rpgContent{padding:11px}.rpg-cards{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}.rpg-card{min-height:146px;padding:10px}.rpg-inv-grid{grid-template-columns:1fr}.rpg-slots{grid-template-columns:repeat(auto-fill,minmax(58px,1fr))}#rpgMobileBag{font-size:12px}}
+      @media(max-width:650px){#rpgHud{box-sizing:border-box;right:8px;top:8px;width:min(225px,calc(100vw - 132px));padding:8px 9px;border-radius:11px}.rpg-coins{font-size:12px}#rpgPanel{padding:0}#rpgWindow{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}#rpgHeader{padding:11px 13px}#rpgTitle{font-size:17px}#rpgBody{flex-direction:column}#rpgNav{flex:0 0 auto;flex-direction:row;gap:5px;padding:7px 9px;border-right:0;border-bottom:1px solid #ffffff18;overflow-x:auto}#rpgNav button{flex:0 0 auto;width:auto;min-width:88px;padding:9px 10px;font-size:11px}#rpgContent{padding:11px}.rpg-cards{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}.rpg-card{min-height:146px;padding:10px}.rpg-inv-grid{grid-template-columns:1fr}.rpg-slots{grid-template-columns:repeat(auto-fill,minmax(58px,1fr))}#rpgMobileBag{font-size:12px}}
     `;
-    style.textContent += '@media(max-width:650px){#rpgMobileBag{left:14px;top:calc(190px + env(safe-area-inset-top));bottom:auto}}';
+    style.textContent += '@media(max-width:650px){#rpgMobileBag{left:auto;right:8px;top:calc(178px + env(safe-area-inset-top));bottom:auto;width:84px;height:44px;padding:8px 7px;font-size:11px}}@media(orientation:landscape) and (max-width:1000px){#rpgMobileBag{left:auto;right:12px;top:150px;bottom:auto;width:84px;height:44px}}@media(orientation:landscape) and (max-width:650px){#rpgMobileBag{left:114px;right:auto;top:8px;bottom:auto;width:40px;height:40px;padding:0;font-size:0}#rpgMobileBag::before{content:"🎒";font-size:20px}}@media(orientation:landscape) and (max-width:360px){#rpgHud{width:158px;padding:6px 7px}#rpgHud .rpg-top{flex-direction:column;align-items:flex-start;gap:2px}.rpg-level,.rpg-coins{font-size:10px}}';
     document.head.appendChild(style);
 
     const hud = document.createElement('aside');
@@ -277,15 +282,18 @@
     }
     function applyEnemyState(state) {
       if (!state || !state.id) return;
-      hostileStates.set(state.id, { ...(hostileStates.get(state.id) || {}), ...state });
-      let model = hostileModels.get(state.id); if (!model) model = createEnemy(state);
+      const merged = { ...(hostileStates.get(state.id) || {}), ...state };
+      hostileStates.set(state.id, merged);
+      let model = hostileModels.get(state.id);
+      if (!model && (!ctx.isGameStarted() || !hostileIsNearPlayer(merged))) return;
+      if (!model) model = createEnemy(merged);
       const previous = model.userData.hostileState || {};
-      model.userData.hostileState = { ...previous, ...state };
-      if (state.x != null && state.z != null) { model.userData.networkTarget = { x: Number(state.x), z: Number(state.z) }; }
-      model.visible = true;
-      model.userData.hostileState = { ...model.userData.hostileState, health: Number(state.health) || 0, maxHealth: Number(state.maxHealth) || 1, alive: !!state.alive, respawnAt: Number(state.respawnAt) || 0 };
+      model.userData.hostileState = { ...previous, ...merged };
+      if (merged.x != null && merged.z != null) { model.userData.networkTarget = { x: Number(merged.x), z: Number(merged.z) }; }
+      model.visible = hostileIsNearPlayer(merged);
+      model.userData.hostileState = { ...model.userData.hostileState, health: Number(merged.health) || 0, maxHealth: Number(merged.maxHealth) || 1, alive: !!merged.alive, respawnAt: Number(merged.respawnAt) || 0 };
       makeEnemyStatus(model, model.userData.hostileState);
-      if (state.alive) { model.rotation.z = 0; model.visible = true; }
+      if (merged.alive) { model.rotation.z = 0; }
       else { model.rotation.z = Math.PI / 2; }
     }
     function makeZoneMarker(zone) {
@@ -302,8 +310,23 @@
       for (const state of enemies || []) applyEnemyState(state);
     }
     function updateEnemyModels(now) {
-      for (const [id, model] of hostileModels) {
-        const state = model.userData.hostileState; if (!state) continue;
+      if (!ctx.isGameStarted()) return;
+      const player = ctx.getPlayerPosition();
+      for (const [id, state] of hostileStates) {
+        if (!state) continue;
+        let model = hostileModels.get(id);
+        const distance = player ? Math.hypot(Number(state.x) - player.x, Number(state.z) - player.z) : 0;
+        if (distance > HOSTILE_RENDER_DISTANCE) {
+          if (model) { model.visible = false; model.position.set(state.x, ctx.terrainHeightAt(state.x, state.z), state.z); model.userData.networkTarget = null; }
+          continue;
+        }
+        if (!model) {
+          model = createEnemy(state);
+          if (!state.alive) model.rotation.z = Math.PI / 2;
+          continue;
+        }
+        model.visible = true;
+        model.userData.hostileState = { ...(model.userData.hostileState || {}), ...state };
         const target = model.userData.networkTarget;
         if (state.alive && target) {
           const dx = target.x - model.position.x, dz = target.z - model.position.z, d = Math.hypot(dx, dz);
@@ -312,6 +335,7 @@
           if (model.userData.legs) model.userData.legs.forEach((leg, index) => { leg.rotation.x = gait * (index % 2 ? -1 : 1); });
           model.position.y = ctx.terrainHeightAt(model.position.x, model.position.z);
         }
+        if (!state.alive) model.rotation.z = Math.PI / 2;
         makeEnemyStatus(model, state);
       }
     }
