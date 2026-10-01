@@ -686,15 +686,31 @@ const animals = new Map();  // animalId -> { health, hunger, thirst, alive }
 const hunters = new Map(HUNTER_SPAWNS.map(h => [h.id, {
     health: HUNTER_MAX_HEALTH, alive: true, respawnAt: 0, nextShotAt: 0
 }]));
+const HOSTILE_SAFE_RADIUS = Math.max(100, Number(RPG_DATA.enemySafeRadius) || 410);
+function clampHostilePosition(x, z) {
+    const distance = Math.hypot(x, z);
+    if (distance <= HOSTILE_SAFE_RADIUS) return { x, z };
+    const scale = HOSTILE_SAFE_RADIUS / distance;
+    return { x: x * scale, z: z * scale };
+}
 function createHostileDonkeys() {
-    const offsets = [[-12, 0], [12, 0], [0, 12]];
     const enemies = new Map();
     for (const zone of RPG_DATA.enemyZones) {
         for (let i = 0; i < zone.count; i++) {
-            const offset = offsets[i % offsets.length], id = `${zone.id}-donkey-${i + 1}`;
-            const maxHealth = Math.round(12 + zone.level * 0.72 + (zone.boss ? 42 : 0));
-            const x = zone.x + offset[0], z = zone.z + offset[1];
-            enemies.set(id, { id, zoneId: zone.id, level: zone.level, name: zone.name, color: zone.color, armorColor: zone.armorColor, boss: !!zone.boss, spawnX: x, spawnZ: z, x, z, health: maxHealth, maxHealth, alive: true, respawnAt: 0, nextAttackAt: 0 });
+            const angle = i * 2.399963229728653;
+            const maxOffset = Math.min(22, (Number(zone.radius) || 36) * 0.52);
+            const distance = 8 + (maxOffset - 8) * Math.sqrt((i + 1) / (zone.count + 1));
+            const spawn = clampHostilePosition(zone.x + Math.cos(angle) * distance, zone.z + Math.sin(angle) * distance);
+            const id = `${zone.id}-donkey-${i + 1}`;
+            const x = spawn.x, z = spawn.z;
+            const maxHealth = Math.round(12 + zone.level * 0.72);
+            enemies.set(id, { id, zoneId: zone.id, level: zone.level, name: zone.name, color: zone.color, armorColor: zone.armorColor, boss: false, spawnX: x, spawnZ: z, x, z, health: maxHealth, maxHealth, alive: true, respawnAt: 0, nextAttackAt: 0 });
+        }
+        if (zone.boss) {
+            const spawn = clampHostilePosition(zone.x, zone.z);
+            const id = `${zone.id}-boss`, x = spawn.x, z = spawn.z;
+            const maxHealth = Math.round(12 + zone.level * 0.72 + 90);
+            enemies.set(id, { id, zoneId: zone.id, level: zone.level, name: zone.bossName || zone.name, color: zone.bossColor || zone.color, armorColor: zone.bossArmorColor || zone.armorColor, boss: true, spawnX: x, spawnZ: z, x, z, health: maxHealth, maxHealth, alive: true, respawnAt: 0, nextAttackAt: 0 });
         }
     }
     return enemies;
@@ -1324,14 +1340,14 @@ function damageHostileDonkey(player, enemyId, baseDamage, weaponType) {
         const oldLevel = getPlayerLevel(player.progress.xp), levelGap = oldLevel - enemy.level;
         const xpScale = levelGap <= 0 ? 1.1 : Math.max(0.08, 1 - levelGap * 0.035);
         const coinScale = levelGap <= 0 ? 1 : Math.max(0.12, 1 - levelGap * 0.025);
-        const earnedXp = Math.round(enemy.level * 5 * xpScale), oldXp = player.progress.xp;
-        const earnedCoins = Math.max(2, Math.round((4 + enemy.level * 2) * coinScale));
+        const earnedXp = Math.round(enemy.level * 5 * xpScale * (enemy.boss ? 2 : 1)), oldXp = player.progress.xp;
+        const earnedCoins = Math.max(2, Math.round((4 + enemy.level * 2) * coinScale * (enemy.boss ? 3 : 1)));
         player.progress.xp = Math.min(totalXpForLevel(RPG_DATA.maxLevel), player.progress.xp + earnedXp);
         const xpGranted = player.progress.xp - oldXp;
         player.progress.coins = Math.min(999999999, player.progress.coins + earnedCoins);
         const newLevel = getPlayerLevel(player.progress.xp);
         savePlayerProgress(player);
-        sendTo(player, { type: "rpg_reward", xp: xpGranted, coins: earnedCoins, enemyLevel: enemy.level, level: newLevel, levelUp: newLevel > oldLevel, message: `Lv ${enemy.level} ${enemy.name} yenildi · +${xpGranted} XP · +${earnedCoins} coin` });
+        sendTo(player, { type: "rpg_reward", xp: xpGranted, coins: earnedCoins, enemyLevel: enemy.level, level: newLevel, levelUp: newLevel > oldLevel, message: `${enemy.boss ? "BOSS YENİLDİ! " : ""}Lv ${enemy.level} ${enemy.name} yenildi · +${xpGranted} XP · +${earnedCoins} coin` });
         if (newLevel > oldLevel) sendTo(player, { type: "rpg_level_up", level: newLevel, message: `Seviye atladın! Yeni seviyen ${newLevel}.` });
         sendNeeds(player); sendRpgState(player); broadcastPlayers();
     }
@@ -1845,21 +1861,21 @@ setInterval(() => {
         }
         let moved = false;
         if (target && bestDistance > 3.2) {
-            const pursuitSpeed = 5.8 + enemy.level * 0.022;
+            const pursuitSpeed = (5.8 + enemy.level * 0.022) * (enemy.boss ? 1.18 : 1);
             const scaledStep = Math.min(bestDistance - 2.8, pursuitSpeed * elapsed);
-            enemy.x += (target.x - enemy.x) / bestDistance * scaledStep;
-            enemy.z += (target.z - enemy.z) / bestDistance * scaledStep;
-            moved = scaledStep > 0;
+            const next = clampHostilePosition(enemy.x + (target.x - enemy.x) / bestDistance * scaledStep, enemy.z + (target.z - enemy.z) / bestDistance * scaledStep);
+            moved = Math.hypot(next.x - enemy.x, next.z - enemy.z) > 0.01;
+            enemy.x = next.x; enemy.z = next.z;
         } else if (target && now >= enemy.nextAttackAt) {
             enemy.nextAttackAt = now + 1800;
-            damagePlayer(target, 1.4 + enemy.level * 0.025, null, enemy.name, `${enemy.name} saldırdı.`);
+            damagePlayer(target, (1.4 + enemy.level * 0.025) * (enemy.boss ? 1.65 : 1), null, enemy.name, `${enemy.name} saldırdı.`);
         } else if (!target) {
             const homeDistance = Math.hypot(enemy.spawnX - enemy.x, enemy.spawnZ - enemy.z);
             if (homeDistance > 1) {
                 const step = Math.min(homeDistance, 1.35 * elapsed);
-                enemy.x += (enemy.spawnX - enemy.x) / homeDistance * step;
-                enemy.z += (enemy.spawnZ - enemy.z) / homeDistance * step;
-                moved = step > 0;
+                const next = clampHostilePosition(enemy.x + (enemy.spawnX - enemy.x) / homeDistance * step, enemy.z + (enemy.spawnZ - enemy.z) / homeDistance * step);
+                moved = Math.hypot(next.x - enemy.x, next.z - enemy.z) > 0.01;
+                enemy.x = next.x; enemy.z = next.z;
             }
         }
         if (moved) broadcastHostileDonkey(enemy);

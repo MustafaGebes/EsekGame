@@ -57,6 +57,9 @@
     bagSlotsBase: 3,
     bagSlotsPerUpgrade: 4,
     respawnMs: 10000,
+    // Mountains form two rings near radii 470 and 500 in the client map (MAP_LIMIT=510).
+    // Keep hostile spawn and AI coordinates inside this radius to avoid the mountain wall.
+    enemySafeRadius: 410,
     trader: { x: 177, z: 247, range: 9 },
     categories: [
       { id: 'weapons', name: 'Silahlar', icon: '⚔️' },
@@ -81,16 +84,16 @@
       { id: 'spring_tea', category: 'food', kind: 'food', name: 'Enerji Çayı', icon: '🍵', price: 75, requiredLevel: 1, thirst: 2, stamina: 40, durationMs: 60000, buffs: { staminaRegen: 1.5 }, description: '+40 enerji ve 60 sn boyunca %50 enerji yenilenmesi.' }
     ],
     enemyZones: [
-      { id: 'zone-10', level: 10, x: 330, z: 260, radius: 36, count: 3, name: 'Çayır Eşeği', color: '#8a6d50', armorColor: '#b99d72' },
-      { id: 'zone-20', level: 20, x: 390, z: 120, radius: 36, count: 3, name: 'Kabadayı Eşek', color: '#98654b', armorColor: '#c78238' },
-      { id: 'zone-30', level: 30, x: 390, z: -150, radius: 36, count: 3, name: 'Kızıl Akıncı', color: '#a84e3f', armorColor: '#d17a50' },
-      { id: 'zone-40', level: 40, x: 250, z: -360, radius: 36, count: 3, name: 'Çelik Yelekli', color: '#66747d', armorColor: '#9fb4c1' },
-      { id: 'zone-50', level: 50, x: 0, z: -435, radius: 36, count: 3, name: 'Kara Muhafız', color: '#4f4d58', armorColor: '#9992ad' },
-      { id: 'zone-60', level: 60, x: -260, z: -350, radius: 36, count: 3, name: 'Gece Baskıncısı', color: '#3f5668', armorColor: '#58a0b3' },
-      { id: 'zone-70', level: 70, x: -420, z: -160, radius: 36, count: 3, name: 'Savaş Reisi', color: '#72604a', armorColor: '#d6a43d' },
-      { id: 'zone-80', level: 80, x: -430, z: 120, radius: 36, count: 3, name: 'Fırtına Eşeği', color: '#71808d', armorColor: '#74c1d1' },
-      { id: 'zone-90', level: 90, x: -280, z: 370, radius: 36, count: 3, name: 'Kül Savaşçısı', color: '#56525c', armorColor: '#c77963' },
-      { id: 'zone-100', level: 100, x: 30, z: 440, radius: 40, count: 1, name: 'Efsanevi Kral Eşek', color: '#382d40', armorColor: '#e0bd53', boss: true }
+      { id: 'zone-10', level: 10, x: 300, z: 180, radius: 44, count: 5, name: 'Çayır Eşeği', color: '#8a6d50', armorColor: '#b99d72' },
+      { id: 'zone-20', level: 20, x: 350, z: 20, radius: 44, count: 5, name: 'Kabadayı Eşek', color: '#98654b', armorColor: '#c78238' },
+      { id: 'zone-30', level: 30, x: 330, z: -160, radius: 44, count: 5, name: 'Kızıl Akıncı', color: '#a84e3f', armorColor: '#d17a50' },
+      { id: 'zone-40', level: 40, x: 80, z: -375, radius: 44, count: 5, name: 'Çelik Yelekli', color: '#66747d', armorColor: '#9fb4c1' },
+      { id: 'zone-50', level: 50, x: -80, z: -375, radius: 44, count: 5, name: 'Kara Muhafız', color: '#4f4d58', armorColor: '#9992ad' },
+      { id: 'zone-60', level: 60, x: -380, z: 0, radius: 44, count: 5, name: 'Gece Baskıncısı', color: '#3f5668', armorColor: '#58a0b3' },
+      { id: 'zone-70', level: 70, x: -300, z: 230, radius: 44, count: 5, name: 'Savaş Reisi', color: '#72604a', armorColor: '#d6a43d' },
+      { id: 'zone-80', level: 80, x: -120, z: 350, radius: 44, count: 5, name: 'Fırtına Eşeği', color: '#71808d', armorColor: '#74c1d1' },
+      { id: 'zone-90', level: 90, x: 170, z: 340, radius: 44, count: 5, name: 'Kül Savaşçısı', color: '#56525c', armorColor: '#c77963' },
+      { id: 'zone-100', level: 100, x: 0, z: 380, radius: 46, count: 5, name: 'Kral Muhafızı', bossName: 'Efsanevi Kral Eşek', color: '#382d40', armorColor: '#8c719c', bossColor: '#211a2a', bossArmorColor: '#e0bd53', boss: true }
     ]
   };
 });
