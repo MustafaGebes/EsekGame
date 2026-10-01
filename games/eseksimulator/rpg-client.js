@@ -5,7 +5,7 @@
     const data = ctx.data;
     let currentCategory = 'weapons';
     let panelMode = '';
-    let rpgState = { xp: 0, level: 1, xpInLevel: 0, xpToNext: 80, coins: 250, bagLevel: 0, bagCapacity: 3, inventory: [], equippedWeapon: null, equippedWeaponType: 'none', equippedArmor: null, petId: null, buffs: {}, stats: { maxHealth: 9, maxStamina: 100, speedMultiplier: 1 } };
+    let rpgState = { xp: 0, level: 1, xpInLevel: 0, xpToNext: 80, coins: 250, bagLevel: 0, bagCapacity: 3, inventory: [], equippedWeapon: null, equippedWeaponType: 'none', magazines: 0, equippedArmor: null, petId: null, buffs: {}, stats: { maxHealth: 9, maxStamina: 100, speedMultiplier: 1 } };
     let shopItems = data.items;
     let shopCategories = data.categories;
     let boundSocket = null;
@@ -174,7 +174,7 @@
         const staminaBuff = rpgState.buffs && rpgState.buffs.staminaRegen && rpgState.buffs.staminaRegen.expiresAt > Date.now() ? rpgState.buffs.staminaRegen.multiplier : 1;
         ctx.applyNeeds({ maxHealth: rpgState.stats.maxHealth, maxStamina: rpgState.stats.maxStamina, speedMultiplier: rpgState.stats.speedMultiplier, staminaRegenBuffMultiplier: staminaBuff, xp: rpgState.xp, level: rpgState.level, xpInLevel: rpgState.xpInLevel, xpToNext: rpgState.xpToNext, coins: rpgState.coins, buffs: rpgState.buffs });
       }
-      if (typeof ctx.setHeldWeapon === 'function') ctx.setHeldWeapon(rpgState.equippedWeaponType || 'none', rpgState.ammo || 0, rpgState.equippedWeapon, itemById(rpgState.equippedWeapon));
+      if (typeof ctx.setHeldWeapon === 'function') ctx.setHeldWeapon(rpgState.equippedWeaponType || 'none', rpgState.ammo || 0, rpgState.equippedWeapon, itemById(rpgState.equippedWeapon), rpgState.magazines || 0);
       applyPlayerArmor(ctx.getPlayerModel(), rpgState.equippedArmor);
       setHud();
       if (panelMode) render();

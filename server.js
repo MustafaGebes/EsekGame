@@ -501,7 +501,7 @@ function getRpgSnapshot(player) {
     return {
         xp: p.xp, level: levelData.level, xpInLevel: levelData.current, xpToNext: levelData.next, coins: p.coins,
         bagLevel: p.bagLevel, bagCapacity: getBagCapacity(p), inventory: p.inventory.map(entry => ({ ...entry })),
-        equippedWeapon: p.equippedWeapon, equippedWeaponType: weapon ? weapon.weaponType : "none", ammo: p.ammo,
+        equippedWeapon: p.equippedWeapon, equippedWeaponType: weapon ? weapon.weaponType : "none", ammo: p.ammo, magazines: (p.inventory.find(entry => entry.id === AMMO_ITEM_ID)?.quantity || 0),
         equippedArmor: p.equippedArmor, petId: p.petId, buffs: { ...p.buffs },
         stats: { maxHealth: getMaxHealth(player), maxStamina: getMaxStamina(player), speedMultiplier: getSpeedMultiplier(player), staminaRegenBuffMultiplier: getBuffMultiplier(p, "staminaRegen") }
     };
@@ -1541,18 +1541,24 @@ function handleWeaponAttack(player, data) {
     const weapon = String((data && data.weapon) || "");
 
     if (weapon === "gun") {
+        const now = Date.now();
+        if (now < player.nextRpgAttackAt) {
+            sendTo(player, { type: 'weapon_result', ok: false, cooldown: true, ammo: player.ammo, magazines: (player.progress.inventory.find(entry => entry.id === AMMO_ITEM_ID)?.quantity || 0), magazine: GUN_MAGAZINE });
+            return;
+        }
+        player.nextRpgAttackAt = now + 350;
         if (player.weapon !== "gun") {
             sendTo(player, { type: "weapon_result", ok: false, message: "Elinde silah yok.", ammo: player.ammo, magazine: GUN_MAGAZINE });
             return;
         }
         if (player.ammo <= 0) {
-            sendTo(player, { type: "weapon_result", ok: false, message: "Mermi bitti. Çiftlikteki kutudan 12 mermi al.", ammo: 0, magazine: GUN_MAGAZINE });
+            sendTo(player, { type: "weapon_result", ok: false, message: "Mermi bitti. Tüccardan şarjör satın alıp çantandan tak.", ammo: 0, magazine: GUN_MAGAZINE });
             return;
         }
         player.ammo = Math.max(0, player.ammo - 1);
         player.progress.ammo = player.ammo;
         savePlayerProgress(player);
-        sendTo(player, { type: "weapon_result", ok: true, ammo: player.ammo, magazine: GUN_MAGAZINE });
+        sendTo(player, { type: "weapon_result", ok: true, ammo: player.ammo, magazines: (player.progress.inventory.find(entry => entry.id === AMMO_ITEM_ID)?.quantity || 0), magazine: GUN_MAGAZINE });
         const targetId = data.targetId ? String(data.targetId) : null;
         const targetAnimalId = data.targetAnimalId ? String(data.targetAnimalId) : null;
         const targetHunterId = data.targetHunterId ? String(data.targetHunterId) : null;

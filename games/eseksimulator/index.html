@@ -6220,6 +6220,7 @@ function bindItemSocket(){
         if(data.ok)applyNeeds(data);else showFullWarning(data.message||'Zırh alınamadı.');
       }else if(data.type==='weapon_result'){
         if(heldItem&&heldItem.type==='gun'&&Number.isFinite(Number(data.ammo)))heldItem.ammo=Number(data.ammo);
+        if(heldItem&&heldItem.type==='gun'&&Number.isFinite(Number(data.magazines)))heldItem.magazines=Number(data.magazines);
         updateAmmoHud();
         if(!data.ok){showFullWarning(data.message||'Silah kullanılamadı.');if(typeof appendChatMessage==='function')appendChatMessage({system:true,text:data.message||'Silah kullanılamadı.'});}
       }else if(data.type==='weapon_equipped'){
@@ -6257,7 +6258,8 @@ document.body.appendChild(ammoHudEl);
 let lastAmmoText='';
 function updateAmmoHud(){
   const count=heldItem&&heldItem.type==='gun'?Math.max(0,Math.min(GUN_MAGAZINE,Number(heldItem.ammo)||0)):0;
-  const txt=(heldItem&&heldItem.type==='gun')?('🔫  '+count+' / '+GUN_MAGAZINE):'';
+  const magazines=window.__esekRpg&&typeof window.__esekRpg.getMagazineCount==='function'?window.__esekRpg.getMagazineCount():0;
+  const txt=(heldItem&&heldItem.type==='gun')?('🔫  '+count+' / '+GUN_MAGAZINE+'   🧰 '+magazines):'';
   if(txt===lastAmmoText)return;
   lastAmmoText=txt;ammoHudEl.textContent=txt;ammoHudEl.style.display=txt?'block':'none';
 }
@@ -6519,7 +6521,8 @@ const rpgClient=window.createEsekRpgClient({
   getPlayerId:()=>myId,getPlayerPosition:()=>playerDonkey&&playerDonkey.position,
   getPlayerModel:()=>playerDonkey,getOtherPlayerModel:id=>otherPlayers[id],
   applyNeeds,applyPetState,showWarning:showFullWarning,
-  setHeldWeapon:(type,ammo,itemId,style)=>{if(heldItem&&heldItem.group&&heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);if(type!=='sword'&&type!=='gun'){clearHeld();return;}heldItem={type,ammo:Number(ammo)||0,style:style||((window.EsekRpgData&&window.EsekRpgData.items||[]).find(item=>item.id===itemId)||null),group:null};heldVisual();updateAmmoHud();}
+  getMagazineCount:()=>Number(heldItem&&heldItem.magazines)||0,
+  setHeldWeapon:(type,ammo,itemId,style,magazines)=>{if(heldItem&&heldItem.group&&heldItem.group.parent)heldItem.group.parent.remove(heldItem.group);if(type!=='sword'&&type!=='gun'){clearHeld();return;}heldItem={type,ammo:Number(ammo)||0,magazines:Number(magazines)||0,style:style||((window.EsekRpgData&&window.EsekRpgData.items||[]).find(item=>item.id===itemId)||null),group:null};heldVisual();updateAmmoHud();}
 });
 window.__esekRpg=rpgClient;
 window.esekSetPetShopOpen=open=>rpgClient.openTrader(open);
