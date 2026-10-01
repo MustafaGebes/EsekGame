@@ -234,6 +234,7 @@
             <button id="resumeBtn" class="btn">🏠 MENÜYE DÖN</button>
             <button id="pauseSettingsBtn" class="btn btn-yellow">⚙️ AYARLAR</button>
             <button id="returnGameMenuBtn" class="btn btn-blue">MENÜYE DÖN</button>
+            <button id="resetProgressBtn" class="btn btn-red" style="display:none">⚠️ İLERLEMEYİ SIFIRLA</button>
             <button id="returnMenuBtn" class="btn btn-red">OYUNDAN ÇIK</button>
         </div>
     </div>
@@ -3586,7 +3587,7 @@ function stepCar(c,dt){
             const statusSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: statusTex, transparent: true, depthTest: false }));
             statusSprite.position.set(0, type === 'rabbit' ? 2.35 : 2.7, 0); statusSprite.scale.set(3.3, .82, 1); g.add(statusSprite);
             g.position.set(x, terrainHeightAt(x, z), z); g.scale.setScalar(profile.scale); g.rotation.y = seed * 1.4;
-            g.userData = { id, type, label: profile.label, temperament: profile.temperament, legs, body, head, statusCanvas, statusTex, statusSprite, health: 9, hunger: 9, thirst: 9, alive: true, homeX: x, homeZ: z, phase: seed * 1.7, walkTimer: 1 + seed % 4, attackAt: 0, foodTimer: 0, drinkTimer: 0, deadAt: 0, lastFoodSearch: 0, foodTarget: null, careAction: '', careAnimUntil: 0 };
+            g.userData = { id, type, label: profile.label, temperament: profile.temperament, legs, body, head, statusCanvas, statusTex, statusSprite, health: 9, hunger: 9, thirst: 9, alive: true, homeX: x, homeZ: z, phase: seed * 1.7, walkTimer: 1 + seed % 4, attackAt: 0, foodTimer: 0, drinkTimer: 0, deadAt: 0, lastFoodSearch: 0, foodTarget: null, careAction: '', careAnimUntil: 0, hitUntil: 0 };
             scene.add(g); wildlife.push(g); return g;
         }
         // ===== AYRINTILI HAYVAN MODELLERİ BİTİŞ =====
@@ -5198,13 +5199,13 @@ function stepCar(c,dt){
             } else if(data.type==='animal_states'){
                 for(const [id,state] of Object.entries(data.states||{})){
                     const a=wildlife.find(x=>x.userData.id===id);
-                    if(a){a.userData.health=state.health;a.userData.hunger=state.hunger??a.userData.hunger;a.userData.thirst=state.thirst??a.userData.thirst;a.userData.alive=state.alive;if(!state.alive)a.userData.deadAt=performance.now();paintAnimalStatus(a);}
-                    const bear=caveBears.find(x=>x.userData.id===id);if(bear){bear.userData.health=state.health;bear.userData.alive=state.alive;}
+                    if(a){if(Number(state.health)<Number(a.userData.health))a.userData.hitUntil=performance.now()+360;a.userData.health=state.health;a.userData.hunger=state.hunger??a.userData.hunger;a.userData.thirst=state.thirst??a.userData.thirst;a.userData.alive=state.alive;if(!state.alive)a.userData.deadAt=performance.now();paintAnimalStatus(a);}
+                    const bear=caveBears.find(x=>x.userData.id===id);if(bear){if(Number(state.health)<Number(bear.userData.health))bear.userData.hitUntil=performance.now()+360;bear.userData.health=state.health;bear.userData.alive=state.alive;}
                 }
             } else if(data.type==='animal_state'){
                 const a=wildlife.find(x=>x.userData.id===data.id);
-                if(a){a.userData.health=data.health;a.userData.hunger=data.hunger??a.userData.hunger;a.userData.thirst=data.thirst??a.userData.thirst;a.userData.alive=data.alive;if(data.care){a.userData.careAction=data.care;a.userData.careAnimUntil=performance.now()+1500;}if(!data.alive)a.userData.deadAt=performance.now();paintAnimalStatus(a);}
-                const bear=caveBears.find(x=>x.userData.id===data.id);if(bear){bear.userData.health=data.health;bear.userData.alive=data.alive;}
+                if(a){if(Number(data.health)<Number(a.userData.health))a.userData.hitUntil=performance.now()+360;a.userData.health=data.health;a.userData.hunger=data.hunger??a.userData.hunger;a.userData.thirst=data.thirst??a.userData.thirst;a.userData.alive=data.alive;if(data.care){a.userData.careAction=data.care;a.userData.careAnimUntil=performance.now()+1500;}if(!data.alive)a.userData.deadAt=performance.now();paintAnimalStatus(a);}
+                const bear=caveBears.find(x=>x.userData.id===data.id);if(bear){if(Number(data.health)<Number(bear.userData.health))bear.userData.hitUntil=performance.now()+360;bear.userData.health=data.health;bear.userData.alive=data.alive;}
             } else if(data.type==='combat_hit'){
                 const victim=otherPlayers[data.targetId];if(victim){victim.userData.hitUntil=performance.now()+340;victim.userData.health=data.health;}
                 if(data.targetId===myId){applyNeeds({health:data.health,armor:data.armor});playerDonkey.userData.hitUntil=performance.now()+340;actionAnimationType='hurt';actionAnimationUntil=performance.now()+420;}
@@ -5531,6 +5532,7 @@ const resumeBtn     = document.getElementById('resumeBtn');
 const settingsBtn   = document.getElementById('pauseSettingsBtn');
 const gameMenuBtn   = document.getElementById('returnGameMenuBtn');
 const exitBtn       = document.getElementById('returnMenuBtn');
+const resetProgressBtn = document.getElementById('resetProgressBtn');
 const settingsPanel = document.getElementById('settingsPanel');
 const closeSettings = document.getElementById('closeSettings');
 const mainButtons   = document.getElementById('mainButtons');
@@ -5593,6 +5595,7 @@ function setPauseButtonVisibility(inGame) {
     settingsBtn.style.display = inGame ? 'block' : 'none';
     gameMenuBtn.style.display = inGame ? 'block' : 'none';
     exitBtn.style.display = inGame ? 'none' : 'block';
+    if (resetProgressBtn) resetProgressBtn.style.display = inGame ? 'block' : 'none';
     exitBtn.textContent = '🚪 OYUNDAN ÇIK';
 }
 
@@ -5805,6 +5808,12 @@ if (gameMenuBtn) gameMenuBtn.addEventListener('click', e => {
     e.preventDefault();
     e.stopImmediatePropagation();
     backToGameMenu();
+}, true);
+if (resetProgressBtn) resetProgressBtn.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const confirmed = window.confirm('Bütün ilerlemelerin sıfırlanacak: XP, coin, silahlar, şarjörler, pet, zırh ve çanta. Bu işlem geri alınamaz. Sıfırlansın mı?');
+    if (confirmed && typeof sendSocketMessage === 'function') sendSocketMessage('rpg_reset_progress', {});
 }, true);
 
 if (exitBtn) exitBtn.addEventListener('click', e => {
@@ -6218,6 +6227,8 @@ function bindItemSocket(){
       }else if(data.type==='armor_pick_result'){
         const item=worldItems.find(x=>x.userData.id==='station-armor');if(item){item.userData.pending=false;if(data.ok){item.visible=false;item.userData.respawnAt=Date.now()+Number(data.respawnMs||item.userData.respawnMs);}}
         if(data.ok)applyNeeds(data);else showFullWarning(data.message||'Zırh alınamadı.');
+      }else if(data.type==='rpg_reset_result'){
+        if(data.ok)showFullWarning(data.message||'Bütün ilerlemelerin sıfırlandı.');
       }else if(data.type==='weapon_result'){
         if(heldItem&&heldItem.type==='gun'&&Number.isFinite(Number(data.ammo)))heldItem.ammo=Number(data.ammo);
         if(heldItem&&heldItem.type==='gun'&&Number.isFinite(Number(data.magazines)))heldItem.magazines=Number(data.magazines);
@@ -6242,7 +6253,7 @@ function setDonkeyRed(group,on){
 }
 function updateDamageFlash(){
   const now=performance.now();
-  const list=[playerDonkey];
+  const list=[playerDonkey,...wildlife,...caveBears,...hunters];
   for(const id in otherPlayers)list.push(otherPlayers[id]);
   for(const g of list){
     if(!g||!g.userData.hitUntil)continue;

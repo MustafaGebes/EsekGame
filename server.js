@@ -508,6 +508,22 @@ function getRpgSnapshot(player) {
     };
 }
 function sendRpgState(player) { if (player && player.inGame) sendTo(player, { type: "rpg_state", state: getRpgSnapshot(player) }); }
+function handleRpgResetProgress(player) {
+    if (!player.inGame || !player.alive || !player.progressKey) return;
+    player.progress = createDefaultProgress();
+    player.progress.stamina = getMaxStamina(player);
+    player.weapon = 'none';
+    player.ammo = 0;
+    player.armor = 0;
+    player.health = getMaxHealth(player);
+    player.hunger = MAX_NEED;
+    player.thirst = MAX_NEED;
+    savePlayerProgress(player);
+    sendTo(player, { type: 'rpg_reset_result', ok: true, message: 'Bütün ilerlemelerin sıfırlandı.' });
+    sendRpgState(player);
+    sendNeeds(player);
+    broadcastPlayers();
+}
 function inventorySlotCount(progress) { return (progress.inventory || []).length; }
 function nearTrader(player) { return Math.hypot(player.x - PET_SHOP.x, player.z - PET_SHOP.z) <= PET_SHOP_RANGE; }
 function handleRpgShopRequest(player) {
@@ -1730,6 +1746,9 @@ wss.on("connection", (ws, req) => {
 
             case "rpg_state_request":
                 handleRpgStateRequest(player);
+                break;
+            case "rpg_reset_progress":
+                handleRpgResetProgress(player);
                 break;
 
             case "rpg_shop_request":

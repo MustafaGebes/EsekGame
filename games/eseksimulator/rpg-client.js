@@ -286,6 +286,22 @@
       hostileModels.set(state.id, model); hostileStates.set(state.id, { ...state });
       return model;
     }
+    function setEnemyHitFlash(model, on) {
+      model.traverse(node => {
+        if (!node.isMesh || !node.material) return;
+        const materials = Array.isArray(node.material) ? node.material : [node.material];
+        for (const material of materials) {
+          if (!material.emissive) continue;
+          if (material.__baseEmissive === undefined) material.__baseEmissive = material.emissive.getHex();
+          material.emissive.setHex(on ? 0xff2020 : material.__baseEmissive);
+        }
+      });
+    }
+    function updateEnemyHitFlash(model, now) {
+      if (!model || !model.userData.hitUntil) return;
+      if (now < model.userData.hitUntil) setEnemyHitFlash(model, Math.floor((model.userData.hitUntil - now) / 90) % 2 === 0);
+      else { setEnemyHitFlash(model, false); model.userData.hitUntil = 0; }
+    }
     function applyEnemyState(state) {
       if (!state || !state.id) return;
       const merged = { ...(hostileStates.get(state.id) || {}), ...state };
@@ -294,6 +310,7 @@
       if (!model && (!ctx.isGameStarted() || !hostileIsNearPlayer(merged))) return;
       if (!model) model = createEnemy(merged);
       const previous = model.userData.hostileState || {};
+      if (Number(merged.health) < Number(previous.health)) model.userData.hitUntil = performance.now() + 360;
       model.userData.hostileState = { ...previous, ...merged };
       if (merged.x != null && merged.z != null) { model.userData.networkTarget = { x: Number(merged.x), z: Number(merged.z) }; }
       model.visible = hostileIsNearPlayer(merged);
@@ -342,6 +359,7 @@
           model.position.y = ctx.terrainHeightAt(model.position.x, model.position.z);
         }
         if (!state.alive) model.rotation.z = Math.PI / 2;
+        updateEnemyHitFlash(model, now);
         makeEnemyStatus(model, state);
       }
     }

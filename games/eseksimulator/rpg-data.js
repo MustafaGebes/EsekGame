@@ -86,7 +86,9 @@
       { id: 'spring_tea', category: 'food', kind: 'food', name: 'Enerji Çayı', icon: '🍵', price: 75, requiredLevel: 1, thirst: 2, stamina: 40, durationMs: 60000, buffs: { staminaRegen: 1.5 }, description: '+40 enerji ve 60 sn boyunca %50 enerji yenilenmesi.' }
     ],
     enemyZones: [
-      { id: 'zone-10', level: 10, x: 300, z: 180, radius: 44, count: 5, name: 'Çayır Eşeği', color: '#8a6d50', armorColor: '#b99d72' },
+      { id: 'zone-1', level: 1, x: 235, z: 235, radius: 34, count: 5, name: 'Uysal Çayır Eşeği', color: '#8c765e', armorColor: '#c7ab82' },
+      { id: 'zone-5', level: 5, x: 270, z: 225, radius: 38, count: 5, name: 'Çayır Eşeği', color: '#967354', armorColor: '#c39a68' },
+      { id: 'zone-10', level: 10, x: 320, z: 180, radius: 44, count: 5, name: 'Güçlü Çayır Eşeği', color: '#8a6d50', armorColor: '#b99d72' },
       { id: 'zone-20', level: 20, x: 350, z: 20, radius: 44, count: 5, name: 'Kabadayı Eşek', color: '#98654b', armorColor: '#c78238' },
       { id: 'zone-30', level: 30, x: 330, z: -160, radius: 44, count: 5, name: 'Kızıl Akıncı', color: '#a84e3f', armorColor: '#d17a50' },
       { id: 'zone-40', level: 40, x: 80, z: -375, radius: 44, count: 5, name: 'Çelik Yelekli', color: '#66747d', armorColor: '#9fb4c1' },
