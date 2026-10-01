@@ -391,6 +391,7 @@ const ANIMAL_BITE_DAMAGE = 1;
 
 const GUN_MAGAZINE = 12;
 const AMMO_ITEM_ID = 'ammo_magazine';
+const STARTER_MAGAZINES = 3;
 const SUPPLY_STATION = { x: 165, z: 268 };
 const SUPPLY_STATION_RANGE = 12;
 const ARMOR_PICKUP_COOLDOWN_MS = 60000;
@@ -532,7 +533,8 @@ function handleRpgBuy(player, data) {
         p.bagLevel = item.bagLevel;
     } else {
         const existing = p.inventory.find(entry => entry.id === item.id);
-        if (!existing && inventorySlotCount(p) - replacements.length >= getBagCapacity(p)) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Çantan dolu. Bir çanta yükseltmesi al veya yiyeceklerini kullan." }); return; }
+        const giftMagazineSlot = item.kind === 'weapon' && item.weaponType === 'gun' && !p.inventory.some(entry => entry.id === AMMO_ITEM_ID) ? 1 : 0;
+        if (!existing && inventorySlotCount(p) - replacements.length + giftMagazineSlot >= getBagCapacity(p)) { sendTo(player, { type: "rpg_action_result", ok: false, message: "Çantan dolu. Bir çanta yükseltmesi al veya yiyeceklerini kullan." }); return; }
         const oldWeapon = replacements.some(entry => entry.id === p.equippedWeapon);
         const oldArmor = replacements.some(entry => entry.id === p.equippedArmor);
         const oldMaxHealth = getMaxHealth(player), oldMaxStamina = getMaxStamina(player);
@@ -541,6 +543,11 @@ function handleRpgBuy(player, data) {
         else p.inventory.push({ id: item.id, quantity: 1 });
         if (item.kind === "weapon" && (oldWeapon || !p.equippedWeapon)) {
             p.equippedWeapon = item.id; player.weapon = item.weaponType; p.ammo = item.weaponType === "gun" ? (item.ammo || GUN_MAGAZINE) : 0;
+            if (item.weaponType === 'gun') {
+                const gift = p.inventory.find(entry => entry.id === AMMO_ITEM_ID);
+                if (gift) gift.quantity = Math.min(999, gift.quantity + STARTER_MAGAZINES);
+                else p.inventory.push({ id: AMMO_ITEM_ID, quantity: STARTER_MAGAZINES });
+            }
         }
         if (item.kind === "armor" && (oldArmor || !p.equippedArmor)) p.equippedArmor = item.id;
         if (item.kind === "pet" && !p.petId) p.petId = item.id;
@@ -549,7 +556,7 @@ function handleRpgBuy(player, data) {
     }
     p.coins = Math.max(0, p.coins + tradeInCoins - item.price);
     savePlayerProgress(player);
-    sendTo(player, { type: "rpg_action_result", ok: true, message: `${item.name} alındı.${tradeInCoins ? ` Eski ekipman takası: +${tradeInCoins} coin.` : ""}` });
+    sendTo(player, { type: "rpg_action_result", ok: true, message: `${item.name} alındı.${item.kind === 'weapon' && item.weaponType === 'gun' ? ` ${STARTER_MAGAZINES} yedek şarjör hediye edildi.` : ''}${tradeInCoins ? ` Eski ekipman takası: +${tradeInCoins} coin.` : ""}` });
     sendRpgState(player); sendNeeds(player); broadcastPlayers();
 }
 function handleRpgEquip(player, data) {
