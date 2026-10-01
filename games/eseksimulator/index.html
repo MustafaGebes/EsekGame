@@ -6259,7 +6259,7 @@ let lastAmmoText='';
 function updateAmmoHud(){
   const count=heldItem&&heldItem.type==='gun'?Math.max(0,Math.min(GUN_MAGAZINE,Number(heldItem.ammo)||0)):0;
   const magazines=window.__esekRpg&&typeof window.__esekRpg.getMagazineCount==='function'?window.__esekRpg.getMagazineCount():0;
-  const txt=(heldItem&&heldItem.type==='gun')?('🔫  '+count+' / '+GUN_MAGAZINE+'   🧰 '+magazines):'';
+  const txt=(heldItem&&heldItem.type==='gun')?('🔫  '+count+' mermi   🧰 '+magazines+' şarjör'):'';
   if(txt===lastAmmoText)return;
   lastAmmoText=txt;ammoHudEl.textContent=txt;ammoHudEl.style.display=txt?'block':'none';
 }
