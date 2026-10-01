@@ -29,7 +29,7 @@ const ROOT = __dirname;
 
 const DATA_DIR = path.join(ROOT, "data");
 const ACCOUNTS_FILE = path.join(DATA_DIR, "accounts.json");
-const PLAYER_PROGRESS_FILE = path.join(DATA_DIR, "player-progress.json");
+const PLAYER_PETS_FILE = path.join(DATA_DIR, "player-pets.json");
 
 const MAIN_INDEX = path.join(ROOT, "index.html");
 const SIMULATOR_INDEX = path.join(ROOT, "games", "eseksimulator", "index.html");
@@ -42,23 +42,23 @@ if (!fs.existsSync(ACCOUNTS_FILE)) {
     fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify({ accounts: {} }, null, 2), "utf8");
 }
 
-function loadPlayerProgressStore() {
+function loadPlayerPetsStore() {
     try {
-        const data = JSON.parse(fs.readFileSync(PLAYER_PROGRESS_FILE, "utf8"));
+        const data = JSON.parse(fs.readFileSync(PLAYER_PETS_FILE, "utf8"));
         return data && data.profiles && typeof data.profiles === "object" ? data : { profiles: {} };
     } catch (_) {
         return { profiles: {} };
     }
 }
-let playerProgressStore = loadPlayerProgressStore();
-function persistPlayerProgressStore() {
-    const tempFile = `${PLAYER_PROGRESS_FILE}.tmp`;
+let playerPetsStore = loadPlayerPetsStore();
+function persistPlayerPetsStore() {
+    const tempFile = `${PLAYER_PETS_FILE}.tmp`;
     try {
-        fs.writeFileSync(tempFile, JSON.stringify(playerProgressStore, null, 2), { encoding: "utf8", mode: 0o600 });
-        fs.renameSync(tempFile, PLAYER_PROGRESS_FILE);
+        fs.writeFileSync(tempFile, JSON.stringify(playerPetsStore, null, 2), { encoding: "utf8", mode: 0o600 });
+        fs.renameSync(tempFile, PLAYER_PETS_FILE);
     } catch (err) {
         try { if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile); } catch (_) {}
-        console.error("Oyuncu ilerlemesi kaydedilemedi:", err.message);
+        console.error("Pet seçimi kaydedilemedi:", err.message);
     }
 }
 
@@ -411,132 +411,63 @@ const HUNTER_SPAWNS = [
 ];
 let campfireLit = false;
 
-const DAILY_QUEST_TEMPLATES = [
-    { id: "forage", title: "Yem ara: 5 yiyecek topla", target: 5, reward: 55 },
-    { id: "explore", title: "Keşif rotası: kampı, göleti ve şehri bul", target: 3, reward: 85 },
-    { id: "delivery", title: "Köye 2 paket ulaştır", target: 2, reward: 105 },
-    { id: "drink", title: "Üç kez su iç", target: 3, reward: 45 }
-];
-const QUEST_LANDMARKS = [
-    { id: "camp", x: CAMP_SITE.x, z: CAMP_SITE.z, radius: 18 },
-    { id: "pond", x: 300, z: -8, radius: 22 },
-    { id: "city", x: -105, z: -105, radius: 34 }
-];
-const DELIVERY_POST = { x: -47, z: -105 };
-const DELIVERY_POST_RANGE = 11;
-const DELIVERY_DEPOT = { x: 140, z: 271 };
-const DELIVERY_DEPOT_RANGE = 8;
-const COMPANION_STABLE = { x: 185, z: 268 };
-const COMPANION_STABLE_RANGE = 8;
+const PET_SHOP = { x: -47, z: -105 };
+const PET_SHOP_RANGE = 9;
+const PET_TYPES = Object.freeze({
+    dog: { name: "Bekçi Köpek", damageMultiplier: 1.25, damageTakenMultiplier: 1, maxStaminaBonus: 0, sprintCostMultiplier: 1, staminaRegenMultiplier: 1 },
+    rabbit: { name: "Çevik Tavşan", damageMultiplier: 1, damageTakenMultiplier: 1, maxStaminaBonus: 20, sprintCostMultiplier: 0.8, staminaRegenMultiplier: 1.4 },
+    turtle: { name: "Sağlam Kaplumbağa", damageMultiplier: 1, damageTakenMultiplier: 0.8, maxStaminaBonus: 0, sprintCostMultiplier: 1, staminaRegenMultiplier: 1 }
+});
 
-function createDefaultProgress() {
-    return {
-        level: 1, xp: 0, skillPoints: 0,
-        upgrades: { speed: 0, stamina: 0, capacity: 0 },
-        stamina: 100, cargo: 0, hasCompanion: false,
-        questDay: "", quests: [], discovered: []
-    };
-}
+function createDefaultProgress() { return { petId: null, stamina: 100 }; }
 function normalizeProgress(raw) {
     const p = createDefaultProgress();
     if (!raw || typeof raw !== "object") return p;
-    p.level = Math.max(1, Math.min(50, Math.floor(Number(raw.level) || 1)));
-    p.xp = Math.max(0, Number(raw.xp) || 0);
-    p.skillPoints = Math.max(0, Math.min(999, Math.floor(Number(raw.skillPoints) || 0)));
-    const upgrades = raw.upgrades && typeof raw.upgrades === "object" ? raw.upgrades : {};
-    p.upgrades.speed = Math.max(0, Math.min(5, Math.floor(Number(upgrades.speed) || 0)));
-    p.upgrades.stamina = Math.max(0, Math.min(5, Math.floor(Number(upgrades.stamina) || 0)));
-    p.upgrades.capacity = Math.max(0, Math.min(2, Math.floor(Number(upgrades.capacity) || 0)));
-    const maxStamina = 100 + p.upgrades.stamina * 20;
+    p.petId = Object.prototype.hasOwnProperty.call(PET_TYPES, String(raw.petId || "")) ? String(raw.petId) : null;
+    const maxStamina = 100 + (p.petId ? PET_TYPES[p.petId].maxStaminaBonus : 0);
     const storedStamina = Number(raw.stamina);
     p.stamina = Number.isFinite(storedStamina) ? Math.max(0, Math.min(maxStamina, storedStamina)) : maxStamina;
-    p.cargo = Math.max(0, Math.min(1 + p.upgrades.capacity, Math.floor(Number(raw.cargo) || 0)));
-    p.hasCompanion = !!raw.hasCompanion;
-    p.questDay = typeof raw.questDay === "string" ? raw.questDay.slice(0, 10) : "";
-    p.quests = Array.isArray(raw.quests) ? raw.quests.slice(0, DAILY_QUEST_TEMPLATES.length).map(q => ({
-        id: String(q && q.id || ""),
-        title: String(q && q.title || "").slice(0, 100),
-        target: Math.max(1, Math.min(100, Math.floor(Number(q && q.target) || 1))),
-        progress: Math.max(0, Math.min(100, Math.floor(Number(q && q.progress) || 0))),
-        reward: Math.max(0, Math.min(1000, Math.floor(Number(q && q.reward) || 0)))
-    })) : [];
-    p.discovered = Array.isArray(raw.discovered) ? [...new Set(raw.discovered.map(String))].slice(0, 20) : [];
     return p;
 }
-function ensureDailyQuests(progress) {
-    const today = new Date().toISOString().slice(0, 10);
-    if (progress.questDay === today && progress.quests.length === DAILY_QUEST_TEMPLATES.length) return false;
-    progress.questDay = today;
-    progress.quests = DAILY_QUEST_TEMPLATES.map(q => ({ ...q, progress: 0 }));
-    progress.discovered = [];
-    progress.cargo = 0;
-    return true;
-}
-function loadProgressForKey(key) {
-    const progress = normalizeProgress(playerProgressStore.profiles[key]);
-    const reset = ensureDailyQuests(progress);
-    return { progress, reset };
-}
+function loadProgressForKey(key) { return normalizeProgress(playerPetsStore.profiles[key]); }
 function savePlayerProgress(player) {
     if (!player || !player.progressKey || !player.progress) return;
-    playerProgressStore.profiles[player.progressKey] = normalizeProgress(player.progress);
-    persistPlayerProgressStore();
+    playerPetsStore.profiles[player.progressKey] = normalizeProgress(player.progress);
+    persistPlayerPetsStore();
 }
 function getMaxStamina(player) {
-    return 100 + ((player && player.progress && player.progress.upgrades.stamina) || 0) * 20;
+    const pet = player && player.progress && PET_TYPES[player.progress.petId];
+    return 100 + (pet ? pet.maxStaminaBonus : 0);
 }
-function getMaxCargo(player) {
-    return 1 + ((player && player.progress && player.progress.upgrades.capacity) || 0);
+function getPetDamageMultiplier(player) {
+    const pet = player && player.progress && PET_TYPES[player.progress.petId];
+    return pet ? pet.damageMultiplier : 1;
 }
-function xpForNextLevel(level) {
-    return 100 + Math.max(0, Math.min(20, Number(level) - 1)) * 40;
+function getPetDamageTakenMultiplier(player) {
+    const pet = player && player.progress && PET_TYPES[player.progress.petId];
+    return pet ? pet.damageTakenMultiplier : 1;
 }
-function progressionSnapshot(player) {
-    const p = player && player.progress ? player.progress : createDefaultProgress();
-    return {
-        level: p.level, xp: p.xp, xpToNext: xpForNextLevel(p.level), skillPoints: p.skillPoints,
-        upgrades: { ...p.upgrades }, stamina: p.stamina, maxStamina: getMaxStamina(player),
-        cargo: p.cargo, maxCargo: getMaxCargo(player), hasCompanion: p.hasCompanion,
-        questDay: p.questDay, quests: p.quests.map(q => ({ ...q }))
-    };
-}
-function sendProgression(player, message) {
-    if (!player || !player.inGame) return;
-    sendTo(player, { type: "progression_state", progression: progressionSnapshot(player), message: message || "" });
-}
-function addProgressXp(progress, amount) {
-    progress.xp += Math.max(0, Number(amount) || 0);
-    let levelsGained = 0;
-    while (progress.level < 50 && progress.xp >= xpForNextLevel(progress.level)) {
-        progress.xp -= xpForNextLevel(progress.level);
-        progress.level++;
-        progress.skillPoints++;
-        levelsGained++;
+function handlePetSelect(player, data) {
+    if (!player.inGame || !player.alive || !player.progress) return;
+    if (Math.hypot(player.x - PET_SHOP.x, player.z - PET_SHOP.z) > PET_SHOP_RANGE) {
+        sendTo(player, { type: "pet_shop_result", ok: false, petId: player.progress.petId, message: "Ücretsiz bir pet seçmek için şehirdeki pet dükkânına gel." });
+        return;
     }
-    return levelsGained;
-}
-function progressQuest(player, questId, amount = 1) {
-    if (!player || !player.progress) return false;
-    const quest = player.progress.quests.find(q => q.id === questId);
-    if (!quest || quest.progress >= quest.target) return false;
-    quest.progress = Math.min(quest.target, quest.progress + Math.max(1, Math.floor(Number(amount) || 1)));
-    let message = "";
-    if (quest.progress >= quest.target) {
-        const levels = addProgressXp(player.progress, quest.reward);
-        message = `Görev tamamlandı: ${quest.title} · +${quest.reward} XP${levels ? ` · Seviye ${player.progress.level}!` : ""}`;
+    const petId = String(data && data.petId || "");
+    if (!Object.prototype.hasOwnProperty.call(PET_TYPES, petId)) {
+        sendTo(player, { type: "pet_shop_result", ok: false, petId: player.progress.petId, message: "Bu pet dükkânda bulunmuyor." });
+        return;
     }
+    if (player.progress.petId === petId) {
+        sendTo(player, { type: "pet_shop_result", ok: true, petId, message: `${PET_TYPES[petId].name} zaten yanında.` });
+        return;
+    }
+    player.progress.petId = petId;
+    player.progress.stamina = Math.min(getMaxStamina(player), player.progress.stamina + PET_TYPES[petId].maxStaminaBonus);
     savePlayerProgress(player);
-    sendProgression(player, message);
-    return true;
-}
-function checkProgressLandmarks(player) {
-    if (!player || !player.inGame || !player.alive || !player.progress) return;
-    for (const spot of QUEST_LANDMARKS) {
-        if (player.progress.discovered.includes(spot.id)) continue;
-        if (Math.hypot(player.x - spot.x, player.z - spot.z) > spot.radius) continue;
-        player.progress.discovered.push(spot.id);
-        progressQuest(player, "explore", 1);
-    }
+    sendTo(player, { type: "pet_shop_result", ok: true, petId, message: `${PET_TYPES[petId].name} artık seninle! Pet seçimi şimdilik ücretsiz.` });
+    sendNeeds(player);
+    broadcastPlayers();
 }
 
 function berryMulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
@@ -709,7 +640,7 @@ function getPublicPlayer(p) {
         armor: p.armor,
         stamina: p.progress ? p.progress.stamina : 100,
         maxStamina: getMaxStamina(p),
-        hasCompanion: !!(p.progress && p.progress.hasCompanion),
+        petId: p.progress ? p.progress.petId : null,
         alive: p.alive
     };
 }
@@ -739,6 +670,7 @@ function sendNeeds(player) {
         thirst: player.thirst,
         stamina: player.progress ? player.progress.stamina : 100,
         maxStamina: getMaxStamina(player),
+        petId: player.progress ? player.progress.petId : null,
         alive: player.alive
     });
 }
@@ -812,11 +744,9 @@ function joinGame(player, data) {
         const progressHash = crypto.createHash("sha256").update(safeProgressId).digest("hex").slice(0, 32);
         player.progressKey = `guest:${progressHash}`;
     }
-    const loadedProgress = loadProgressForKey(player.progressKey);
-    player.progress = loadedProgress.progress;
+    player.progress = loadProgressForKey(player.progressKey);
     player.progress.stamina = getMaxStamina(player);
     player.lastStaminaUpdateAt = Date.now();
-    if (loadedProgress.reset) savePlayerProgress(player);
 
     player.health = MAX_NEED;
     player.hunger = MAX_NEED;
@@ -843,11 +773,9 @@ function joinGame(player, data) {
             armor: player.armor,
             stamina: player.progress.stamina,
             maxStamina: getMaxStamina(player),
-            progression: progressionSnapshot(player)
+            petId: player.progress.petId
         }
     });
-
-    sendProgression(player);
 
     sendTo(player, { type: "chat_history", messages: chatHistory.slice(-CHAT_HISTORY_LIMIT) });
 
@@ -869,7 +797,7 @@ function leaveGame(player) {
 // ============================================================
 
 function applyPlayerDamage(target, amount) {
-    const damage = Math.max(0, Number(amount) || 0);
+    const damage = Math.max(0, Number(amount) || 0) * getPetDamageTakenMultiplier(target);
     if (damage <= 0) return;
     target.lastDamageAt = Date.now();
     const armor = clampNeed(target.armor);
@@ -938,13 +866,13 @@ function handleMove(player, data) {
 
     const now = Date.now();
     const elapsed = Math.max(0, Math.min(0.35, (now - (player.lastStaminaUpdateAt || now)) / 1000));
-    const staminaUpgrade = player.progress ? player.progress.upgrades.stamina : 0;
+    const pet = player.progress && PET_TYPES[player.progress.petId];
     const sprintRequested = !!data.isSprinting && !!data.isMoving && !data.isCrouching;
     if (player.progress) {
         if (sprintRequested && player.progress.stamina > 0) {
-            player.progress.stamina = Math.max(0, player.progress.stamina - Math.max(10, 22 - staminaUpgrade * 1.5) * elapsed);
+            player.progress.stamina = Math.max(0, player.progress.stamina - 22 * (pet ? pet.sprintCostMultiplier : 1) * elapsed);
         } else {
-            player.progress.stamina = Math.min(getMaxStamina(player), player.progress.stamina + (12 + staminaUpgrade * 2) * elapsed);
+            player.progress.stamina = Math.min(getMaxStamina(player), player.progress.stamina + 12 * (pet ? pet.staminaRegenMultiplier : 1) * elapsed);
         }
     }
     player.lastStaminaUpdateAt = now;
@@ -962,7 +890,6 @@ function handleMove(player, data) {
 
     if (data.platform === "mobile" || data.platform === "pc") player.platform = data.platform;
     if (Number.isFinite(Number(data.pingMs))) player.pingMs = Number(data.pingMs);
-    checkProgressLandmarks(player);
 }
 
 function handlePresence(player, data) {
@@ -1067,7 +994,6 @@ function handleApplePick(player, data) {
 
     player.hunger = clampNeed(player.hunger + 1.5);
     sendNeeds(player);
-    progressQuest(player, "forage", 1);
 
     sendTo(player, {
         type: "apple_pick_result",
@@ -1089,7 +1015,6 @@ function handleDrink(player) {
     }
     player.thirst = clampNeed(player.thirst + 2);
     sendNeeds(player);
-    progressQuest(player, "drink", 1);
 
     sendTo(player, {
         type: "action_ok",
@@ -1134,7 +1059,6 @@ function handleCarrotPick(player, data) {
 
     player.hunger = clampNeed(player.hunger + 2);
     sendNeeds(player);
-    progressQuest(player, "forage", 1);
     sendTo(player, { type: "carrot_pick_result", carrotId, ok: true, health: player.health, hunger: player.hunger, thirst: player.thirst });
     broadcast({ type: "carrot_update", carrotId, available: false });
 }
@@ -1154,7 +1078,6 @@ function handleBerryPick(player,data) {
     if(!state.available){sendTo(player,{type:"berry_pick_result",berryId,ok:false,message:"Bu çalıdaki dutlar henüz yetişmedi."});return;}
     state.available=false;state.respawnAt=Date.now()+BERRY_RESPAWN_MS;
     player.hunger=clampNeed(player.hunger+1.5);sendNeeds(player);
-    progressQuest(player, "forage", 1);
     sendTo(player,{type:"berry_pick_result",berryId,ok:true,health:player.health,hunger:player.hunger,thirst:player.thirst});
     broadcast({type:"berry_update",berryId,available:false,respawnAt:state.respawnAt});
     setTimeout(()=>{if(state.respawnAt&&Date.now()>=state.respawnAt){state.available=true;state.respawnAt=0;broadcast({type:"berry_update",berryId,available:true,respawnAt:0});}},BERRY_RESPAWN_MS+25);
@@ -1206,7 +1129,7 @@ function handleAttackAnimal(player, data) {
     const animalId = String((data && data.animalId) || "");
     if (!animalId) return;
 
-    damageAnimal(animalId, ANIMAL_ATTACK_DAMAGE);
+    damageAnimal(animalId, ANIMAL_ATTACK_DAMAGE * getPetDamageMultiplier(player));
 }
 
 function handleAnimalAttack(player, data) {
@@ -1320,7 +1243,7 @@ function damageHunter(player, hunterId, amount, weapon) {
     if (!spawn || !state || !state.alive || !player.inGame || !player.alive) return false;
     const limit = weapon === "gun" ? 42 : weapon === "sword" ? 10.5 : 7.5;
     if (Math.hypot(player.x - spawn.x, player.z - spawn.z) > limit) return false;
-    state.health = Math.max(0, state.health - amount);
+    state.health = Math.max(0, state.health - amount * getPetDamageMultiplier(player));
     if (state.health <= 0) {
         state.alive = false;
         state.respawnAt = Date.now() + HUNTER_RESPAWN_MS;
@@ -1380,7 +1303,7 @@ function handleWeaponAttack(player, data) {
             const target = players.get(targetId);
             if (target && target.inGame && target.alive) damagePlayer(target, GUN_DAMAGE, player.id, player.name);
         } else if (targetAnimalId) {
-            damageAnimal(targetAnimalId, GUN_DAMAGE);
+            damageAnimal(targetAnimalId, GUN_DAMAGE * getPetDamageMultiplier(player));
         } else if (targetHunterId) {
             damageHunter(player, targetHunterId, GUN_DAMAGE, "gun");
         }
@@ -1403,7 +1326,7 @@ function handleWeaponAttack(player, data) {
                 damagePlayer(target, SWORD_DAMAGE, player.id, player.name);
             }
         } else if (targetAnimalId) {
-            damageAnimal(targetAnimalId, SWORD_DAMAGE);
+            damageAnimal(targetAnimalId, SWORD_DAMAGE * getPetDamageMultiplier(player));
         } else if (targetHunterId) {
             damageHunter(player, targetHunterId, SWORD_DAMAGE, "sword");
         }
@@ -1411,84 +1334,6 @@ function handleWeaponAttack(player, data) {
     }
 
     sendTo(player, { type: "weapon_result", ok: false, message: "Geçersiz silah.", ammo: player.ammo });
-}
-
-function handleParcelPickup(player) {
-    if (!player.inGame || !player.alive || !player.progress) return;
-    if (Math.hypot(player.x - DELIVERY_DEPOT.x, player.z - DELIVERY_DEPOT.z) > DELIVERY_DEPOT_RANGE) {
-        sendTo(player, { type: "delivery_result", ok: false, message: "Paket almak için çiftlikteki kargo tezgâhına yaklaş." });
-        return;
-    }
-    if (player.progress.cargo >= getMaxCargo(player)) {
-        sendTo(player, { type: "delivery_result", ok: false, message: `Heybe dolu (${player.progress.cargo}/${getMaxCargo(player)}). Önce köye teslim et.` });
-        return;
-    }
-    player.progress.cargo++;
-    savePlayerProgress(player);
-    sendProgression(player);
-    sendTo(player, { type: "delivery_result", ok: true, action: "pickup", message: "Paket yüklendi. Şehirdeki teslimat noktasına götür." });
-}
-
-function handleParcelDeliver(player) {
-    if (!player.inGame || !player.alive || !player.progress) return;
-    if (Math.hypot(player.x - DELIVERY_POST.x, player.z - DELIVERY_POST.z) > DELIVERY_POST_RANGE) {
-        sendTo(player, { type: "delivery_result", ok: false, message: "Paketi teslim etmek için şehirdeki posta tezgâhına yaklaş." });
-        return;
-    }
-    if (player.progress.cargo <= 0) {
-        sendTo(player, { type: "delivery_result", ok: false, message: "Heybende teslim edilecek paket yok." });
-        return;
-    }
-    player.progress.cargo--;
-    const deliveryQuest = player.progress.quests.find(q => q.id === "delivery");
-    const questWillComplete = !!(deliveryQuest && deliveryQuest.progress + 1 >= deliveryQuest.target);
-    progressQuest(player, "delivery", 1);
-    if (!questWillComplete) sendProgression(player, "Paket teslim edildi. Güzel iş!");
-    sendTo(player, { type: "delivery_result", ok: true, action: "deliver" });
-}
-
-function handleUpgradeStat(player, data) {
-    if (!player.inGame || !player.alive || !player.progress) return;
-    const stat = String(data && data.stat || "");
-    const caps = { speed: 5, stamina: 5, capacity: 2 };
-    if (!Object.prototype.hasOwnProperty.call(caps, stat)) return;
-    if (player.progress.skillPoints <= 0) {
-        sendProgression(player, "Yükseltme için görevlerden bir gelişim puanı kazan.");
-        return;
-    }
-    if (player.progress.upgrades[stat] >= caps[stat]) {
-        sendProgression(player, "Bu özellik en yüksek seviyede.");
-        return;
-    }
-    player.progress.skillPoints--;
-    player.progress.upgrades[stat]++;
-    if (stat === "stamina") player.progress.stamina = Math.min(getMaxStamina(player), player.progress.stamina + 20);
-    savePlayerProgress(player);
-    const names = { speed: "Koşu hızı", stamina: "Dayanıklılık", capacity: "Heybe kapasitesi" };
-    sendProgression(player, `${names[stat]} ${player.progress.upgrades[stat]}. seviyeye yükseltildi.`);
-    sendNeeds(player);
-    broadcastPlayers();
-}
-
-function handleCompanionAdopt(player) {
-    if (!player.inGame || !player.alive || !player.progress) return;
-    if (Math.hypot(player.x - COMPANION_STABLE.x, player.z - COMPANION_STABLE.z) > COMPANION_STABLE_RANGE) {
-        sendTo(player, { type: "companion_result", ok: false, message: "Yoldaş eşeği sahiplenmek için çiftlikteki küçük ağıla git." });
-        return;
-    }
-    if (player.progress.hasCompanion) {
-        sendTo(player, { type: "companion_result", ok: true, message: "Yoldaşın zaten yanında." });
-        return;
-    }
-    if (player.progress.level < 2) {
-        sendTo(player, { type: "companion_result", ok: false, message: "Önce görevlerle 2. seviyeye ulaş; sonra ağıldaki eşeği yanına alabilirsin." });
-        return;
-    }
-    player.progress.hasCompanion = true;
-    savePlayerProgress(player);
-    sendProgression(player);
-    sendTo(player, { type: "companion_result", ok: true, message: "Yoldaş eşek artık süründe." });
-    broadcastPlayers();
 }
 
 function handleRespawn(player) {
@@ -1502,8 +1347,6 @@ function handleRespawn(player) {
     player.lastDamageAt = Date.now();
     if (player.progress) {
         player.progress.stamina = getMaxStamina(player);
-        player.progress.cargo = 0;
-        savePlayerProgress(player);
     }
 
     player.x = SPAWN.x;
@@ -1516,11 +1359,9 @@ function handleRespawn(player) {
         state: {
             health: player.health, armor: player.armor, hunger: player.hunger, thirst: player.thirst,
             stamina: player.progress ? player.progress.stamina : 100,
-            maxStamina: getMaxStamina(player), progression: progressionSnapshot(player)
+            maxStamina: getMaxStamina(player), petId: player.progress ? player.progress.petId : null
         }
     });
-
-    sendProgression(player, "Yeniden doğdun. Heybendeki teslim edilmemiş paketler kayboldu.");
 
     broadcastPlayers();
 }
@@ -1657,20 +1498,8 @@ wss.on("connection", (ws, req) => {
                 handleArmorPick(player);
                 break;
 
-            case "parcel_pickup":
-                handleParcelPickup(player);
-                break;
-
-            case "parcel_deliver":
-                handleParcelDeliver(player);
-                break;
-
-            case "upgrade_stat":
-                handleUpgradeStat(player, data);
-                break;
-
-            case "companion_adopt":
-                handleCompanionAdopt(player);
+            case "pet_select":
+                handlePetSelect(player, data);
                 break;
 
             case "respawn":
