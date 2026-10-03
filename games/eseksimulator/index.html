@@ -411,10 +411,10 @@
         let controlMode = 'pc';
         const MAP_LIMIT = 510;
         const MAP_CATALOG = Object.freeze({
-            forest: { id: 'forest', name: 'Ormanlık Alan', icon: '🌲', description: 'Sık orman, kayalık geçitler ve dağ sırtları.', boundary: 'Dağlar ve sık orman', boundaryRadius: 500, style: 'forest' },
-            city: { id: 'city', name: 'Şehir', icon: '🏙️', description: 'Binalar, çevre yolu ve şehir çıkış bariyerleri.', boundary: 'Binalar ve beton çevre duvarları', boundaryRadius: 455, style: 'city' },
-            farm: { id: 'farm', name: 'Çiftlik', icon: '🚜', description: 'Çitler, taş setler, tepeler ve açık kır arazisi.', boundary: 'Ahşap çitler, taş setler ve tepeler', boundaryRadius: 495, style: 'farm' },
-            military: { id: 'military', name: 'Askerî Alan', icon: '🪖', description: 'Beton duvarlar, tel örgüler ve dağlık kontrol hattı.', boundary: 'Beton duvar, tel örgü ve dağlık arazi', boundaryRadius: 475, style: 'military' }
+            forest: { id: 'forest', name: 'Ormanlık Alan', icon: '🌲', description: 'Sık orman, kayalık geçitler ve dağ sırtları.', boundary: 'Dağlar ve sık orman', boundaryRadius: 175, centerX: 330, centerZ: 100, spawnX: 315, spawnY: .28, spawnZ: 100, style: 'forest' },
+            city: { id: 'city', name: 'Şehir', icon: '🏙️', description: 'Binalar, çevre yolu ve şehir çıkış bariyerleri.', boundary: 'Binalar ve beton çevre duvarları', boundaryRadius: 175, centerX: -105, centerZ: -105, spawnX: -105, spawnY: .28, spawnZ: -70, style: 'city' },
+            farm: { id: 'farm', name: 'Çiftlik', icon: '🚜', description: 'Çitler, taş setler, tepeler ve açık kır arazisi.', boundary: 'Ahşap çitler, taş setler ve tepeler', boundaryRadius: 175, centerX: 151.2, centerZ: 211.2, spawnX: 151.2, spawnY: .28, spawnZ: 211.2, style: 'farm' },
+            military: { id: 'military', name: 'Askerî Alan', icon: '🪖', description: 'Beton duvarlar, tel örgüler ve dağlık kontrol hattı.', boundary: 'Beton duvar, tel örgü ve dağlık arazi', boundaryRadius: 175, centerX: -330, centerZ: 180, spawnX: -330, spawnY: .28, spawnZ: 180, style: 'military' }
         });
         let activeRoomId = null;
         let activeMapId = 'farm';
@@ -685,7 +685,7 @@
             const count = 42;
             for (let i = 0; i < count; i++) {
                 const angle = i / count * Math.PI * 2;
-                const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
+                const x = cfg.centerX + Math.cos(angle) * radius, z = cfg.centerZ + Math.sin(angle) * radius;
                 const tangent = -angle;
                 if (cfg.style === 'forest') {
                     const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(5 + (i % 3) * 1.4, 0), new THREE.MeshLambertMaterial({ color: i % 2 ? 0x5b665d : 0x77806d }));
@@ -702,6 +702,30 @@
                     const post = new THREE.Mesh(new THREE.BoxGeometry(.35, 1.7, .35), new THREE.MeshLambertMaterial({ color: 0x8a5b31 }));
                     post.position.set(x, .85, z); roomBoundaryGroup.add(post);
                     if (i % 2 === 0) { const rail = new THREE.Mesh(new THREE.BoxGeometry(15, .18, .18), new THREE.MeshLambertMaterial({ color: 0xb8864d })); rail.position.set(x, 1.05, z); rail.rotation.y = tangent; roomBoundaryGroup.add(rail); }
+                }
+            }
+            const cx = cfg.centerX, cz = cfg.centerZ;
+            if (cfg.style === 'military') {
+                const concrete = new THREE.MeshLambertMaterial({ color: 0x747b80 });
+                for (const [dx, dz] of [[-45,-35],[45,-35],[-45,35],[45,35]]) {
+                    const bunker = new THREE.Mesh(new THREE.BoxGeometry(28, 5, 18), concrete);
+                    bunker.position.set(cx + dx, 2.5, cz + dz); roomBoundaryGroup.add(bunker);
+                }
+                for (const [dx, dz] of [[0,-55],[-55,0],[55,0],[0,55]]) {
+                    const tower = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 15, 8), concrete);
+                    tower.position.set(cx + dx, 7.5, cz + dz); roomBoundaryGroup.add(tower);
+                }
+            } else if (cfg.style === 'forest') {
+                for (let i = 0; i < 18; i++) {
+                    const a = i / 18 * Math.PI * 2, r = 35 + (i % 4) * 12;
+                    const tree = new THREE.Mesh(new THREE.ConeGeometry(3.2, 13 + (i % 3) * 2, 7), new THREE.MeshLambertMaterial({ color: i % 2 ? 0x285c35 : 0x397344 }));
+                    tree.position.set(cx + Math.cos(a) * r, 6.5 + (i % 3), cz + Math.sin(a) * r); roomBoundaryGroup.add(tree);
+                }
+            } else if (cfg.style === 'city') {
+                for (let i = 0; i < 8; i++) {
+                    const a = i / 8 * Math.PI * 2, r = 42;
+                    const block = new THREE.Mesh(new THREE.BoxGeometry(18, 12 + (i % 3) * 5, 18), new THREE.MeshLambertMaterial({ color: [0x778493, 0x9a806d, 0x5d6d78][i % 3] }));
+                    block.position.set(cx + Math.cos(a) * r, block.geometry.parameters.height / 2, cz + Math.sin(a) * r); roomBoundaryGroup.add(block);
                 }
             }
             scene.add(roomBoundaryGroup);
@@ -4427,10 +4451,8 @@ function stepCar(c,dt){
             refreshKeybindSection();
             tryLockMobileLandscape();
             initWebSocket();
-            // Başlangıç noktası doğrudan yeni çiftlik modelindeki ahırın içi.
-            const barnSpawnX=FARM_CX+1.2, barnSpawnZ=FARM_CZ+1.2;
-            // Ahır içindeki saman zemin yüksekliği (farmRoot.y=0.08 + yerel zemin üstü)
-            playerDonkey.position.set(barnSpawnX, 0.28, barnSpawnZ);
+            const selectedMap = activeMapConfig();
+            playerDonkey.position.set(selectedMap.spawnX, selectedMap.spawnY, selectedMap.spawnZ);
             gameStarted = true;
             cameraMode = 'third';
             releaseFirstPersonPointerLock();
@@ -4939,12 +4961,15 @@ function stepCar(c,dt){
                     playerDonkey.position.z = newZ;
                 }
 
-                const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
+                const mapConfig = activeMapConfig();
+                const offsetX = playerDonkey.position.x - mapConfig.centerX;
+                const offsetZ = playerDonkey.position.z - mapConfig.centerZ;
+                const distFromCenter = Math.sqrt(offsetX ** 2 + offsetZ ** 2);
                 const activeBoundaryLimit = activeMapBoundaryRadius() - 5;
                 if (distFromCenter > activeBoundaryLimit) {
                     const scale = activeBoundaryLimit / distFromCenter;
-                    playerDonkey.position.x *= scale;
-                    playerDonkey.position.z *= scale;
+                    playerDonkey.position.x = mapConfig.centerX + offsetX * scale;
+                    playerDonkey.position.z = mapConfig.centerZ + offsetZ * scale;
                 }
                 // Kamera ve eşek aynı yaw değerini paylaşır: kamera eşeğin arkasında kalır.
                 playerDonkey.rotation.y = yaw;
@@ -5388,7 +5413,7 @@ function stepCar(c,dt){
                 return;
             } else if(data.type==='room_created'){
                 activeRoomId = data.room && data.room.id ? data.room.id : null;
-                setRoomNotice(`"${data.room && data.room.name ? data.room.name : 'Sunucu'}" oluşturuldu. Listeden OYUNA GİR diyerek başlayabilirsin.`, true);
+                setRoomNotice(`"${data.room && data.room.name ? data.room.name : 'Sunucu'}" oluşturuldu. Otomatik olarak oyuna giriliyor…`, true);
                 requestRoomList();
                 return;
             } else if(data.type==='room_joined'){
@@ -5402,6 +5427,7 @@ function stepCar(c,dt){
                 return;
             }
             if(data.type==='join_accepted'){
+                if(serverLobbyEl) serverLobbyEl.style.display='none';
                 const pending=joinPending||{mode:controlMode,isResume:false};joinPending=null;currentPlayerName=String((data.state&&data.state.name)||'Guest-000');activeRoomId=data.state&&data.state.roomId?data.state.roomId:activeRoomId;activeMapId=data.state&&data.state.mapId?data.state.mapId:activeMapId;if(typeof window.applyEsekMapBoundaryTheme==='function')window.applyEsekMapBoundaryTheme(activeMapId);setNameError('');applyNeeds(data.state||{});applyPetState(data.state&&data.state.petId);sendSocketMessage('berry_state_request',{});
                 if(pending.isResume)completeResume(pending.mode);else startGameOriginal(pending.mode);
                 setGameUiVisible(true);sendSocketMessage('animal_states_request',{ids:[...wildlife.map(a=>a.userData.id),...caveBears.map(a=>a.userData.id)]});
@@ -5895,6 +5921,7 @@ function openPause() {
     menuEl.classList.add('pause-mode');
     menuEl.classList.toggle('pre-game-pause', !pauseWasInGame);
     menuEl.style.display = 'flex';
+    if (typeof serverLobbyEl !== 'undefined' && serverLobbyEl) serverLobbyEl.style.display = 'none';
 
     if (nameCard) nameCard.style.display = 'none';
     if (mainButtons) mainButtons.style.display = 'none';

@@ -29,22 +29,26 @@ const ROOM_MAPS = Object.freeze({
     forest: {
         id: "forest", name: "Ormanlık Alan", icon: "🌲",
         description: "Sık orman, kayalık geçitler ve dağ sırtları.",
-        boundary: "Dağlar ve sık orman", boundaryRadius: 500
+        boundary: "Dağlar ve sık orman", boundaryRadius: 175,
+        center: { x: 330, z: 100 }, spawn: { x: 315, y: 0.28, z: 100 }
     },
     city: {
         id: "city", name: "Şehir", icon: "🏙️",
         description: "Binalar, çevre yolu ve şehir çıkış bariyerleri.",
-        boundary: "Binalar ve beton çevre duvarları", boundaryRadius: 455
+        boundary: "Binalar ve beton çevre duvarları", boundaryRadius: 175,
+        center: { x: -105, z: -105 }, spawn: { x: -105, y: 0.28, z: -70 }
     },
     farm: {
         id: "farm", name: "Çiftlik", icon: "🚜",
         description: "Çitler, taş setler, tepeler ve açık kır arazisi.",
-        boundary: "Ahşap çitler, taş setler ve tepeler", boundaryRadius: 495
+        boundary: "Ahşap çitler, taş setler ve tepeler", boundaryRadius: 175,
+        center: { x: 151.2, z: 211.2 }, spawn: { x: 151.2, y: 0.28, z: 211.2 }
     },
     military: {
         id: "military", name: "Askerî Alan", icon: "🪖",
         description: "Beton duvarlar, tel örgüler ve dağlık kontrol hattı.",
-        boundary: "Beton duvar, tel örgü ve dağlık arazi", boundaryRadius: 475
+        boundary: "Beton duvar, tel örgü ve dağlık arazi", boundaryRadius: 175,
+        center: { x: -330, z: 180 }, spawn: { x: -330, y: 0.28, z: 180 }
     }
 });
 const rooms = new Map();
@@ -133,6 +137,7 @@ function handleCreateRoom(player, data) {
     player.roomId = room.id;
     player.mapId = mapId;
     sendTo(player, { type: "room_created", room: publicRoom(room) });
+    joinGame(player, { roomId: room.id, platform: data && data.platform, token: data && data.token, progressId: data && data.progressId });
     broadcastRoomLists();
 }
 function handleJoinRoom(player, data) {
@@ -168,12 +173,24 @@ function getRoomBoundaryRadius(player) {
     const map = room ? ROOM_MAPS[room.mapId] : ROOM_MAPS.farm;
     return Math.max(60, Number(map && map.boundaryRadius) || ROOM_MAPS.farm.boundaryRadius);
 }
+function getRoomCenter(player) {
+    const room = getPlayerRoom(player);
+    const map = room ? ROOM_MAPS[room.mapId] : ROOM_MAPS.farm;
+    return map.center || ROOM_MAPS.farm.center;
+}
+function getRoomSpawn(player) {
+    const room = getPlayerRoom(player);
+    const map = room ? ROOM_MAPS[room.mapId] : ROOM_MAPS.farm;
+    return map.spawn || ROOM_MAPS.farm.spawn;
+}
 function clampPlayerToRoom(player, x, z) {
     const radius = getRoomBoundaryRadius(player) - 5;
-    const distance = Math.hypot(x, z);
+    const center = getRoomCenter(player);
+    const offsetX = x - center.x, offsetZ = z - center.z;
+    const distance = Math.hypot(offsetX, offsetZ);
     if (!Number.isFinite(distance) || distance <= radius) return { x, z };
     const scale = radius / distance;
-    return { x: x * scale, z: z * scale };
+    return { x: center.x + offsetX * scale, z: center.z + offsetZ * scale };
 }
 
 // ============================================================
@@ -1178,9 +1195,10 @@ function joinGame(player, data) {
     player.armor = 0;
     player.lastDamageAt = Date.now();
 
-    player.x = SPAWN.x;
-    player.y = SPAWN.y;
-    player.z = SPAWN.z;
+    const roomSpawn = getRoomSpawn(player);
+    player.x = roomSpawn.x;
+    player.y = roomSpawn.y;
+    player.z = roomSpawn.z;
     player.yaw = 0;
     player.pitch = 0;
 
@@ -1841,13 +1859,14 @@ function handleRespawn(player) {
         player.progress.stamina = getMaxStamina(player);
     }
 
-    player.x = SPAWN.x;
-    player.y = SPAWN.y;
-    player.z = SPAWN.z;
+    const roomSpawn = getRoomSpawn(player);
+    player.x = roomSpawn.x;
+    player.y = roomSpawn.y;
+    player.z = roomSpawn.z;
 
     sendTo(player, {
         type: "respawned",
-        spawn: { x: SPAWN.x, y: SPAWN.y, z: SPAWN.z },
+        spawn: { x: roomSpawn.x, y: roomSpawn.y, z: roomSpawn.z },
         state: {
             health: player.health, maxHealth: getMaxHealth(player), armor: player.armor, hunger: player.hunger, thirst: player.thirst,
             stamina: player.progress ? player.progress.stamina : 100,
