@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EsekCraft</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#000; font-family:'Segoe UI',Verdana,sans-serif; }
+  .hidden { display:none !important; }
+
+  /* ---------- generic screens ---------- */
+  .screen {
+    position:fixed; inset:0; z-index:100;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:linear-gradient(#6c9fe0 0%, #a8cbe8 45%, #c9e4ff 58%, #5d9c3f 58.2%, #4a7d32 100%);
+    image-rendering:pixelated;
+  }
+  .screen.dark { background:rgba(10,10,15,0.92); }
+  .panel {
+    background:rgba(0,0,0,0.55); border:3px solid #222; outline:2px solid #555;
+    padding:28px 36px; display:flex; flex-direction:column; align-items:center; gap:10px;
+    min-width:420px; max-width:90vw; max-height:88vh; overflow-y:auto;
+  }
+  .mcbtn {
+    display:block; width:340px; padding:11px 16px; margin:3px 0;
+    font-size:17px; color:#e8e8e8; text-align:center; cursor:pointer;
+    background:#7a7a7a; border:2px solid; border-color:#c9c9c9 #3d3d3d #3d3d3d #c9c9c9;
+    text-shadow:2px 2px 0 #3a3a3a; letter-spacing:0.5px;
+  }
+  .mcbtn:hover:not(.disabled) { background:#868ddf; border-color:#d6dafb #454a75 #454a75 #d6dafb; }
+  .mcbtn:active:not(.disabled) { border-color:#3d3d3d #c9c9c9 #c9c9c9 #3d3d3d; }
+  .mcbtn.disabled { color:#a0a0a0; cursor:not-allowed; background:#5c5c5c; border-color:#8a8a8a #333 #333 #8a8a8a; }
+  .mcbtn.small { width:auto; padding:8px 18px; font-size:15px; display:inline-block; }
+  .mctitle {
+    font-family:'Courier New',monospace; font-weight:900; font-size:64px; letter-spacing:4px;
+    color:#5fce46; text-shadow:4px 4px 0 #1e3d16, 8px 8px 0 rgba(0,0,0,0.35);
+    margin-bottom:6px;
+  }
+  .subtitle { color:#ffe45e; font-size:15px; text-shadow:2px 2px 0 #3f3a16; margin-bottom:22px; }
+  .h2 { font-size:24px; color:#fff; text-shadow:2px 2px 0 #222; margin-bottom:12px; font-weight:700; }
+  .version { position:absolute; left:10px; bottom:8px; color:#eee; font-size:12px; text-shadow:1px 1px 0 #333; }
+  .credit { position:absolute; right:10px; bottom:8px; color:#eee; font-size:12px; text-shadow:1px 1px 0 #333; }
+
+  /* loading bars */
+  .barOuter { width:360px; height:22px; background:#222; border:2px solid #555; margin-top:8px; }
+  .barInner { height:100%; width:0%; background:linear-gradient(#7ed957,#4caf2f); transition:width .15s; }
+  .loadText { color:#ddd; margin-top:10px; font-size:14px; text-shadow:1px 1px 0 #000; min-height:18px; }
+  .splash { color:#ff5; font-size:18px; transform:rotate(-8deg); margin:10px 0 18px; text-shadow:2px 2px 0 #665b00; animation:pulse 1s infinite alternate; }
+  @keyframes pulse { from{transform:rotate(-8deg) scale(1);} to{transform:rotate(-8deg) scale(1.08);} }
+
+  /* forms */
+  .formRow { display:flex; align-items:center; gap:10px; width:100%; margin:4px 0; }
+  .formRow label { color:#ddd; width:90px; font-size:15px; text-shadow:1px 1px 0 #000; }
+  .formRow input[type=text], .formRow select {
+    flex:1; padding:8px; font-size:15px; color:#fff; background:#111; border:2px solid #555;
+    border-color:#333 #666 #666 #333; outline:none; user-select:text;
+  }
+  .formRow input[type=range] { flex:1; }
+  .btnRow { display:flex; gap:10px; margin-top:14px; justify-content:center; }
+
+  /* world list */
+  #worldList { width:100%; max-height:300px; overflow-y:auto; background:#111; border:2px solid #555; padding:4px; }
+  .worldItem {
+    display:flex; align-items:center; gap:10px; padding:8px 10px; margin:2px 0; cursor:pointer;
+    background:#2a2a2a; border:2px solid #1a1a1a; color:#ddd;
+  }
+  .worldItem:hover { background:#3a4a6a; }
+  .worldItem.sel { background:#455a8a; border-color:#8ab4ff; }
+  .worldItem .wname { font-size:16px; color:#fff; flex:1; }
+  .worldItem .winfo { font-size:12px; color:#aaa; }
+  .worldItem .wdel { color:#f66; font-weight:bold; padding:2px 8px; font-size:16px; }
+  .worldItem .wdel:hover { color:#f22; }
+  .emptyNote { color:#888; padding:16px; text-align:center; font-size:14px; }
+
+  /* ---------- game / HUD ---------- */
+  #gameWrap { position:fixed; inset:0; z-index:1; }
+  #gameWrap canvas { display:block; width:100%; height:100%; }
+  #hud { position:absolute; inset:0; pointer-events:none; z-index:10; }
+
+  #crosshair { position:absolute; left:50%; top:50%; width:20px; height:20px; transform:translate(-50%,-50%); mix-blend-mode:difference; }
+  #crosshair::before, #crosshair::after { content:''; position:absolute; background:#fff; }
+  #crosshair::before { left:9px; top:0; width:2px; height:20px; }
+  #crosshair::after { left:0; top:9px; width:20px; height:2px; }
+
+  #hotbar {
+    position:absolute; left:50%; bottom:6px; transform:translateX(-50%);
+    display:flex; background:rgba(0,0,0,0.35); border:2px solid #1a1a1a;
+  }
+  .hslot {
+    width:48px; height:48px; border:2px solid; border-color:#373737 #8b8b8b #8b8b8b #373737;
+    position:relative; background:#5a5a5a;
+  }
+  .hslot.sel { border-color:#111 #fff #fff #111; outline:2px solid #fff; outline-offset:-1px; }
+  .hslot img, .slot img { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); image-rendering:pixelated; pointer-events:none; }
+  .cnt {
+    position:absolute; right:2px; bottom:0px; color:#fff; font-size:15px; font-weight:bold;
+    text-shadow:2px 2px 0 #3f3f3f; pointer-events:none; font-family:'Courier New',monospace;
+  }
+
+  #hearts, #hunger { position:absolute; bottom:62px; display:flex; gap:1px; }
+  #hearts { left:50%; margin-left:-182px; }
+  #hunger { left:50%; margin-left:92px; flex-direction:row-reverse; }
+  #hearts canvas, #hunger canvas { image-rendering:pixelated; }
+
+  #debugInfo { position:absolute; left:6px; top:6px; color:#fff; font:12px 'Courier New',monospace; text-shadow:1px 1px 0 #000; line-height:1.5; }
+  #damageFlash { position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(255,0,0,0) 30%, rgba(200,0,0,0.55) 100%); opacity:0; transition:opacity .4s; }
+  #toast {
+    position:absolute; left:50%; top:16%; transform:translateX(-50%); color:#ffe45e;
+    font-size:17px; text-shadow:2px 2px 0 #000; opacity:0; transition:opacity .3s; white-space:nowrap;
+  }
+
+  /* ---------- overlays (pause / death / inventory) ---------- */
+  .overlay {
+    position:absolute; inset:0; z-index:20; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; background:rgba(0,0,0,0.55);
+  }
+  .overlay .mcbtn { width:300px; }
+
+  #invOverlay { justify-content:flex-start; padding-top:5vh; background:rgba(0,0,0,0.45); }
+  #invPanel {
+    background:#c6c6c6; border:3px solid; border-color:#fff #555 #555 #fff;
+    padding:12px 14px; position:relative;
+  }
+  #invTop { display:flex; gap:14px; align-items:stretch; margin-bottom:12px; }
+  #playerPreview { background:#8b8b8b; border:2px solid; border-color:#373737 #fff #fff #373737; width:110px; display:flex; align-items:center; justify-content:center; }
+  #invRightZone { display:flex; flex-direction:column; gap:8px; flex:1; }
+  .zoneRow { display:flex; align-items:center; gap:8px; }
+  .zoneLabel { font-size:12px; color:#404040; margin-bottom:2px; }
+  .slot {
+    width:44px; height:44px; background:#8b8b8b; border:2px solid; border-color:#373737 #fff #fff #373737;
+    position:relative; cursor:pointer;
+  }
+  .slot.noclick { cursor:not-allowed; }
+  #craftGrid { display:grid; grid-template-columns:repeat(2,44px); grid-template-rows:repeat(2,44px); gap:2px; }
+  #mainGrid { display:grid; grid-template-columns:repeat(9,44px); gap:2px; margin-top:2px; }
+  #invHotRow { display:grid; grid-template-columns:repeat(9,44px); gap:2px; margin-top:10px; padding-top:8px; border-top:2px solid #9a9a9a; }
+  #craftArrow { font-size:26px; color:#404040; padding:0 4px; font-weight:bold; }
+  #bookBtn {
+    width:44px; height:44px; background:#8b8b8b; border:2px solid; border-color:#fff #373737 #373737 #fff;
+    display:flex; align-items:center; justify-content:center; cursor:not-allowed; position:relative;
+  }
+  #bookBtn canvas { image-rendering:pixelated; }
+  #heldItem { position:absolute; pointer-events:none; z-index:50; image-rendering:pixelated; display:none; }
+  #heldItem .cnt { font-size:16px; }
+  #invTitleBar { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  #invTitleBar span { color:#404040; font-size:14px; font-weight:bold; }
+  #invClose { cursor:pointer; color:#600; font-weight:bold; font-size:14px; padding:2px 8px; background:#8b8b8b; border:2px solid; border-color:#fff #373737 #373737 #fff; }
+  #invClose:hover { background:#a88; }
+
+  #errBox { max-width:500px; color:#faa; font-size:15px; text-align:center; line-height:1.6; }
+</style>
+</head>
+<body>
+
+<!-- ============ BOOT / LOADING ============ -->
+<div id="screen-boot" class="screen dark">
+  <div class="mctitle">ESEKCRAFT</div>
+  <div class="subtitle">Bir EsekGames Oyunu</div>
+  <div class="barOuter"><div class="barInner" id="bootBar"></div></div>
+  <div class="loadText" id="bootText">Yükleniyor...</div>
+  <div id="errBox" class="hidden"></div>
+</div>
+
+<!-- ============ TITLE ============ -->
+<div id="screen-title" class="screen hidden">
+  <div class="mctitle">ESEKCRAFT</div>
+  <div class="subtitle">Bir EsekGames Oyunu</div>
+  <div class="splash" id="splashText">EsekCraft 0.1! At degil, ESEK!</div>
+  <div id="titleBlocks" style="display:flex;gap:6px;margin-bottom:18px;"></div>
+  <button class="mcbtn" id="btnOyna">Oyna</button>
+  <button class="mcbtn" id="btnAyarlar">Ayarlar</button>
+  <div class="version">EsekCraft v0.1.0</div>
+  <div class="credit">EsekGames &copy; 2026</div>
+</div>
+
+<!-- ============ SETTINGS ============ -->
+<div id="screen-settings" class="screen dark hidden">
+  <div class="panel">
+    <div class="h2">Ayarlar</div>
+    <div class="formRow"><label>Fare Duyarl.</label><input type="range" id="setSens" min="20" max="300" value="100"><span id="setSensV" style="color:#fff;width:40px;"></span></div>
+    <div class="formRow"><label>Görüş (FOV)</label><input type="range" id="setFov" min="60" max="110" value="75"><span id="setFovV" style="color:#fff;width:40px;"></span></div>
+    <div class="formRow"><label>Ses</label><input type="range" id="setVol" min="0" max="100" value="70"><span id="setVolV" style="color:#fff;width:40px;"></span></div>
+    <div class="formRow"><label>3. Şahıs</label><input type="range" id="setView" min="0" max="1" value="0"><span id="setViewV" style="color:#fff;width:60px;"></span></div>
+    <div class="btnRow">
+      <button class="mcbtn small" id="btnSetBack">Geri</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PLAY MENU ============ -->
+<div id="screen-play" class="screen dark hidden">
+  <div class="panel">
+    <div class="h2">Oyna</div>
+    <button class="mcbtn" id="btnSingle">Tek Başına</button>
+    <button class="mcbtn disabled" id="btnOnline" title="Yakında!">Online (Yakında!)</button>
+    <div class="btnRow"><button class="mcbtn small" id="btnPlayBack">Geri</button></div>
+  </div>
+</div>
+
+<!-- ============ WORLDS ============ -->
+<div id="screen-worlds" class="screen dark hidden">
+  <div class="panel">
+    <div class="h2">Dünyalar</div>
+    <div id="worldList"></div>
+    <div class="btnRow">
+      <button class="mcbtn small" id="btnNewWorld">Dünya Oluştur</button>
+      <button class="mcbtn small" id="btnWorldPlay">Oyna</button>
+      <button class="mcbtn small" id="btnWorldsBack">Geri</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CREATE WORLD ============ -->
+<div id="screen-create" class="screen dark hidden">
+  <div class="panel">
+    <div class="h2">Dünya Oluştur</div>
+    <div class="formRow"><label>Dünya Adı</label><input type="text" id="cwName" maxlength="24" placeholder="Yeni Dünya"></div>
+    <div class="formRow"><label>Seed</label><input type="text" id="cwSeed" maxlength="32" placeholder="(boş = rastgele)"></div>
+    <div class="formRow"><label>Zorluk</label>
+      <select id="cwDiff">
+        <option value="0">Kolay</option>
+        <option value="1" selected>Normal</option>
+        <option value="2">Zor</option>
+      </select>
+    </div>
+    <div class="formRow"><label>Mod</label><span style="color:#ffe45e;font-size:15px;">Hayatta Kalma</span></div>
+    <div class="btnRow">
+      <button class="mcbtn small" id="cwCreate">Dünyayı Oluştur!</button>
+      <button class="mcbtn small" id="cwBack">Geri</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ WORLD GENERATION LOADING ============ -->
+<div id="screen-gen" class="screen dark hidden">
+  <div class="mctitle" style="font-size:40px;">ESEKCRAFT</div>
+  <div class="barOuter"><div class="barInner" id="genBar"></div></div>
+  <div class="loadText" id="genText">Dünya oluşturuluyor...</div>
+</div>
+
+<!-- ============ GAME ============ -->
+<div id="gameWrap" class="hidden">
+  <div id="hud">
+    <div id="crosshair"></div>
+    <div id="hearts"></div>
+    <div id="hunger"></div>
+    <div id="hotbar"></div>
+    <div id="debugInfo" class="hidden"></div>
+    <div id="damageFlash"></div>
+    <div id="toast"></div>
+  </div>
+
+  <div id="pauseOverlay" class="overlay hidden">
+    <div class="panel">
+      <div class="h2" id="pauseTitle">Oyun Duraklatıldı</div>
+      <button class="mcbtn" id="btnResume">Devam Et</button>
+      <button class="mcbtn" id="btnPauseSettings">Ayarlar</button>
+      <button class="mcbtn" id="btnSaveQuit">Kaydet ve Çık</button>
+    </div>
+  </div>
+
+  <div id="deathOverlay" class="overlay hidden">
+    <div class="panel">
+      <div class="h2" style="color:#f55;">Öldün!</div>
+      <div id="deathMsg" style="color:#ddd;margin-bottom:8px;"></div>
+      <button class="mcbtn" id="btnRespawn">Yeniden Doğ</button>
+      <button class="mcbtn" id="btnDeathQuit">Ana Menüye Dön</button>
+    </div>
+  </div>
+
+  <div id="invOverlay" class="overlay hidden">
+    <div id="invPanel">
+      <div id="invTitleBar"><span>Envanter</span><div id="invClose">X Kapat</div></div>
+      <div id="invTop">
+        <div id="playerPreview"><canvas id="donkeyCanvas" width="96" height="130"></canvas></div>
+        <div id="invRightZone">
+          <div>
+            <div class="zoneLabel">Sol El</div>
+            <div class="zoneRow"><div class="slot" id="slotOff"></div></div>
+          </div>
+          <div>
+            <div class="zoneLabel">Üretme (Crafting)</div>
+            <div class="zoneRow">
+              <div id="bookBtn" title="Tarif Kitabı — Yakında!"><canvas id="bookCanvas" width="32" height="32"></canvas></div>
+              <div id="craftGrid"></div>
+              <div id="craftArrow">&rarr;</div>
+              <div class="slot noclick" id="slotOut" style="width:52px;height:52px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="zoneLabel">Eşyalar</div>
+      <div id="mainGrid"></div>
+      <div id="invHotRow"></div>
+    </div>
+    <div id="heldItem"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+/* =====================================================================
+   ESEKCRAFT v0.1 — EsekGames
+   Tek dosyalik Minecraft-benzeri. Three.js r128 gerekir.
+===================================================================== */
+
+/* ---------------- helpers ---------------- */
+const $ = id => document.getElementById(id);
+function show(el){ el.classList.remove('hidden'); }
+function hide(el){ el.classList.add('hidden'); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function hashStr(s){
+  s = String(s); let h = 1779033703 ^ s.length;
+  for(let i=0;i<s.length;i++){ h = Math.imul(h ^ s.charCodeAt(i), 3432918353); h = (h<<13)|(h>>>19); }
+  h = Math.imul(h ^ (h>>>16), 2246822507); h = Math.imul(h ^ (h>>>13), 3266489909);
+  return (h ^ (h>>>16)) >>> 0;
+}
+function mulberry32(a){
+  return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a);
+    t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; };
+}
+
+/* ---------------- constants ---------------- */
+const SX=80, SY=40, SZ=80;                 // dünya boyutu
+const MAXSTACK=64;
+const AIR=0, GRASS=1, DIRT=2, STONE=3, BEDROCK=4, LOG=5, LEAVES=6, PLANKS=7, COBBLE=8;
+
+/* atlas tile index: 0 grass_top 1 grass_side 2 dirt 3 stone 4 bedrock 5 log_side 6 log_top 7 leaves 8 planks 9 cobble */
+const BLOCKS = {
+  [GRASS]:   { name:'Çim',           top:0, bottom:2, side:1, hard:0.6,  drop:DIRT },
+  [DIRT]:    { name:'Toprak',        top:2, bottom:2, side:2, hard:0.5,  drop:DIRT },
+  [STONE]:   { name:'Taş',           top:3, bottom:3, side:3, hard:2.5,  drop:COBBLE },
+  [BEDROCK]: { name:'Katman Kayası', top:4, bottom:4, side:4, hard:Infinity, drop:null },
+  [LOG]:     { name:'Kütük',         top:6, bottom:6, side:5, hard:1.6,  drop:LOG },
+  [LEAVES]:  { name:'Yapraklar',     top:7, bottom:7, side:7, hard:0.25, drop:null },
+  [PLANKS]:  { name:'Tahta',         top:8, bottom:8, side:8, hard:1.8,  drop:PLANKS },
+  [COBBLE]:  { name:'Kırık Taş',     top:9, bottom:9, side:9, hard:3.0,  drop:COBBLE },
+};
+const DIFF_NAMES = ['Kolay','Normal','Zor'];
+const HUNGER_RATE = [0.05,0.09,0.14];
+const STARVE_MIN  = [10,2,0];
+
+/* box faces: dir + corners [x,y,z,u,v] */
+const FACES = [
+  { dir:[-1,0,0], corners:[[0,1,0,0,1],[0,0,0,0,0],[0,1,1,1,1],[0,0,1,1,0]] },
+  { dir:[ 1,0,0], corners:[[1,1,1,0,1],[1,0,1,0,0],[1,1,0,1,1],[1,0,0,1,0]] },
+  { dir:[0,-1,0], corners:[[1,0,1,1,0],[0,0,1,0,0],[1,0,0,1,1],[0,0,0,0,1]] },
+  { dir:[0, 1,0], corners:[[0,1,1,1,1],[1,1,1,0,1],[0,1,0,1,0],[1,1,0,0,0]] },
+  { dir:[0,0,-1], corners:[[1,0,0,0,0],[0,0,0,1,0],[1,1,0,0,1],[0,1,0,1,1]] },
+  { dir:[0,0, 1], corners:[[0,0,1,0,0],[1,0,1,1,0],[0,1,1,0,1],[1,1,1,1,1]] },
+];
+const FACE_SHADE = [0.6,0.6,0.5,1.0,0.8,0.8];
+
+/* ---------------- global state ---------------- */
+let scene=null, camera=null, renderer=null, atlasCanvas=null, atlasTex=null, worldMat=null;
+let worldMesh=null, highlightBox=null, crackMesh=null, crackTex=[];
+let donkey3P=null, handGroup=null;
+let state='boot';           // boot | menu | playing | paused | inventory | dead | gen
+let settingsBackTarget='title';
+const keys={};
+let mouseL=false, mouseR=false, placeCooldown=0, punchT=-1;
+let breakProgress=0, breaking=null, swingT=-1;
+let drops=[];
+let currentMeta=null;       // kayitli dunya meta
+let world=null, mods={};
+let fpsAcc=0, fpsCnt=0, fps=0, lastTime=0;
+
+const settings = { sens:1.0, fov:75, vol:0.7, third:false };
+
+const G = {
+  player:{ pos:{x:0,y:0,z:0}, vel:{x:0,y:0,z:0}, yaw:0, pitch:0, onGround:false,
+           sneak:false, hp:18, hunger:18, sel:0, fallStart:0, walkPhase:0, stepDist:0,
+           exh:0, regenT:0, starveT:0 },
+  inv:new Array(36).fill(null),
+  offhand:null,
+  craft:[null,null,null,null],
+  view:1,
+};
+let held=null; // envanterde elde tutulan yigin
+
+/* ================= TEXTURE ATLAS ================= */
+function buildAtlas(){
+  atlasCanvas = document.createElement('canvas');
+  atlasCanvas.width = 256; atlasCanvas.height = 256;
+  const ctx = atlasCanvas.getContext('2d');
+  const rnd = mulberry32(9876);
+  function tile(idx, fn){
+    const tx = (idx%16)*16, ty = ((idx/16)|0)*16;
+    for(let py=0;py<16;py++)for(let px=0;px<16;px++){
+      const c = fn(px,py,rnd);
+      if(c){ ctx.fillStyle=c; ctx.fillRect(tx+px,ty+py,1,1); }
+    }
+  }
+  const pick=(r,opts)=>opts[Math.min(opts.length-1,Math.floor(r()*opts.length))];
+  // 0 grass top
+  tile(0,(x,y,r)=>pick(r,['#5d9c3f','#67a845','#548f38','#71b34c','#5d9c3f','#4f8534']));
+  // 1 grass side (dirt + green top)
+  tile(1,(x,y,r)=>{
+    if(y<3 || (y<5 && r()<0.4)) return pick(r,['#5d9c3f','#67a845','#548f38']);
+    return pick(r,['#79553a','#8a6244','#6b4a32','#7d5a3e']);
+  });
+  // 2 dirt
+  tile(2,(x,y,r)=>pick(r,['#79553a','#8a6244','#6b4a32','#7d5a3e','#6f4e36']));
+  // 3 stone
+  tile(3,(x,y,r)=>{ const v=r(); return v<0.06?'#6f6f6f':pick(r,['#8a8a8a','#7d7d7d','#949494','#858585']); });
+  // 4 bedrock
+  tile(4,(x,y,r)=>pick(r,['#3a3a3a','#555555','#222222','#4a4a4a','#2e2e2e']));
+  // 5 log side
+  tile(5,(x,y,r)=>{
+    const stripe = (x%4===0)||(x%7===3);
+    if(stripe) return r()<0.7?'#57401f':'#4a361a';
+    return pick(r,['#6b5030','#745837','#63492b']);
+  });
+  // 6 log top (rings)
+  tile(6,(x,y,r)=>{
+    const d=Math.max(Math.abs(x-7.5),Math.abs(y-7.5));
+    if(d<2) return '#57401f';
+    if(d<3) return '#a0814c';
+    if(d<5) return (Math.floor(d)%2)? '#8a6d3f':'#a0814c';
+    return '#6b5030';
+  });
+  // 7 leaves
+  tile(7,(x,y,r)=>pick(r,['#2d6b1f','#3a8525','#1f5216','#35791f','#276119']));
+  // 8 planks
+  tile(8,(x,y,r)=>{
+    if(y%4===3) return '#6e562f';
+    if((y<4&&x===6)||(y>=4&&y<8&&x===12)||(y>=8&&y<12&&x===3)||(y>=12&&x===9)) return '#6e562f';
+    return pick(r,['#9c7f4e','#a78a56','#937648']);
+  });
+  // 9 cobble
+  tile(9,(x,y,r)=>{
+    const cell=((x/5)|0)+((y/5)|0)*3;
+    const v=r();
+    if((x%5===4)||(y%5===4)) return v<0.5?'#5a5a5a':'#4f4f4f';
+    const base=['#8a8a8a','#797979','#949494'][cell%3];
+    return v<0.1?'#6c6c6c':base;
+  });
+  atlasTex = new THREE.CanvasTexture(atlasCanvas);
+  atlasTex.magFilter = THREE.NearestFilter;
+  atlasTex.minFilter = THREE.NearestFilter;
+  atlasTex.generateMipmaps = false;
+}
+
+function buildCrackTextures(){
+  crackTex=[];
+  const rnd=mulberry32(4242);
+  const segs=[];
+  let cx=8, cy=8;
+  for(let s=0;s<14;s++){
+    const nx=clamp(cx+Math.floor(rnd()*5)-2,1,15);
+    const ny=clamp(cy+Math.floor(rnd()*5)-2,1,15);
+    segs.push([cx,cy,nx,ny]);
+    if(rnd()<0.5){ cx=nx; cy=ny; } else { cx=8+Math.floor(rnd()*3)-1; cy=8+Math.floor(rnd()*3)-1; }
+  }
+  for(let stage=0;stage<10;stage++){
+    const c=document.createElement('canvas'); c.width=16; c.height=16;
+    const x=c.getContext('2d');
+    x.strokeStyle='rgba(15,15,15,0.85)'; x.lineWidth=1;
+    const n=Math.max(2,Math.round((stage+1)/10*segs.length));
+    for(let i=0;i<n;i++){
+      x.beginPath(); x.moveTo(segs[i][0]+0.5,segs[i][1]+0.5); x.lineTo(segs[i][2]+0.5,segs[i][3]+0.5); x.stroke();
+    }
+    const t=new THREE.CanvasTexture(c);
+    t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; t.generateMipmaps=false;
+    crackTex.push(t);
+  }
+}
+
+/* item icon from atlas tile */
+const iconCache={};
+function itemIcon(id){
+  if(iconCache[id]) return iconCache[id];
+  const def=BLOCKS[id]; if(!def) return null;
+  const c=document.createElement('canvas'); c.width=32; c.height=32;
+  const x=c.getContext('2d'); x.imageSmoothingEnabled=false;
+  const t=def.side%16, ty=((def.side/16)|0);
+  x.drawImage(atlasCanvas, t*16, ty*16, 16,16, 0,0, 32,32);
+  const url=c.toDataURL();
+  iconCache[id]=url; return url;
+}
+
+/* ================= AUDIO ================= */
+let actx=null, masterGain=null;
+function audioInit(){
+  if(actx) return;
+  try{
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    masterGain = actx.createGain(); masterGain.gain.value=settings.vol; masterGain.connect(actx.destination);
+  }catch(e){}
+}
+function tone(f0,f1,dur,type,vol){
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type=type||'square'; o.frequency.setValueAtTime(f0,actx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(Math.max(30,f1),actx.currentTime+dur);
+  g.gain.setValueAtTime(vol||0.15,actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+dur);
+  o.connect(g); g.connect(masterGain); o.start(); o.stop(actx.currentTime+dur+0.02);
+}
+function noiseBurst(dur,vol,freq){
+  if(!actx) return;
+  const n=actx.sampleRate*dur, buf=actx.createBuffer(1,n,actx.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+  const src=actx.createBufferSource(); src.buffer=buf;
+  const f=actx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=freq||900;
+  const g=actx.createGain(); g.gain.value=vol||0.3;
+  src.connect(f); f.connect(g); g.connect(masterGain); src.start();
+}
+const SFX={
+  brk(id){ noiseBurst(0.12, 0.35, id===STONE||id===COBBLE||id===BEDROCK?500:1200); },
+  crumble(){ noiseBurst(0.04, 0.12, 700); },
+  place(){ noiseBurst(0.07, 0.3, 800); tone(180,120,0.06,'square',0.08); },
+  step(){ noiseBurst(0.035, 0.08, 500); },
+  pickup(){ tone(880,1320,0.09,'sine',0.18); },
+  hurt(){ tone(220,70,0.22,'sawtooth',0.22); },
+  jump(){ tone(300,420,0.07,'sine',0.06); },
+  click(){ tone(600,600,0.03,'square',0.06); },
+  craft(){ tone(500,900,0.12,'triangle',0.15); },
+};
+
+/* ================= WORLD STORAGE ================= */
+const IDX=(x,y,z)=>(y*SZ+z)*SX+x;
+function inB(x,y,z){ return x>=0&&x<SX&&y>=0&&y<SY&&z>=0&&z<SZ; }
+function getB(x,y,z){ return inB(x,y,z)? world[IDX(x,y,z)] : 0; }
+/* meshing: y<0 solid (taban), dis kenarlar hava (sinir yuzeyleri cizilsin) */
+function getBMesh(x,y,z){ if(y<0) return BEDROCK; return inB(x,y,z)? world[IDX(x,y,z)] : 0; }
+/* physics: dis kenarlar gorunmez duvar */
+function getBPhys(x,y,z){ if(y<0) return BEDROCK; if(y>=SY) return 0; if(x<0||x>=SX||z<0||z>=SZ) return BEDROCK; return world[IDX(x,y,z)]; }
+
+function valueNoise(seed){
+  function nrnd(ix,iz){
+    let h=(Math.imul(ix,374761393)+Math.imul(iz,668265263)+Math.imul(seed,144665))|0;
+    h=Math.imul(h^(h>>>13),1274126177); return ((h^(h>>>16))>>>0)/4294967296;
+  }
+  return function(x,z){
+    const ix=Math.floor(x), iz=Math.floor(z);
+    let fx=x-ix, fz=z-iz;
+    fx=fx*fx*(3-2*fx); fz=fz*fz*(3-2*fz);
+    const a=nrnd(ix,iz), b=nrnd(ix+1,iz), c=nrnd(ix,iz+1), d=nrnd(ix+1,iz+1);
+    return (a*(1-fx)+b*fx)*(1-fz)+(c*(1-fx)+d*fx)*fz;
+  };
+}
+
+function generateColumns(fromCol,toCol,seed){
+  const nz1=valueNoise(seed), nz2=valueNoise(seed*7+13), nz3=valueNoise(seed*31+7);
+  for(let col=fromCol;col<toCol;col++){
+    const z=(col/SX)|0, x=col%SX;
+    const n=(nz1(x*0.05,z*0.05)*1.0 + nz2(x*0.13,z*0.13)*0.45 + nz3(x*0.3,z*0.3)*0.15)/1.6;
+    const h=clamp(Math.floor(9+n*18),5,SY-10);
+    for(let y=0;y<=h;y++){
+      let id;
+      if(y===0) id=BEDROCK;
+      else if(y<3 && ((x*7+y*13+z*3)%5===0)) id=BEDROCK;
+      else if(y===h) id=GRASS;
+      else if(y>=h-3) id=DIRT;
+      else id=STONE;
+      world[IDX(x,y,z)]=id;
+    }
+  }
+}
+function topSolid(x,z){ for(let y=SY-1;y>=0;y--) if(getB(x,y,z)) return y; return 0; }
+
+function generateTrees(seed){
+  const rnd=mulberry32(seed*977+5);
+  const taken=[];
+  for(let z=2;z<SZ-2;z++)for(let x=2;x<SX-2;x++){
+    if(rnd()>=0.015) continue;
+    const y=topSolid(x,z);
+    if(getB(x,y,z)!==GRASS) continue;
+    if(y+8>=SY) continue;
+    let ok=true;
+    for(const t of taken) if(Math.abs(t[0]-x)<3&&Math.abs(t[1]-z)<3){ ok=false; break; }
+    if(!ok) continue;
+    taken.push([x,z]);
+    const th=4+Math.floor(rnd()*3);
+    for(let ly=th-2;ly<=th+1;ly++){
+      const r= ly<=th-1 ? 2 : 1;
+      for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){
+        if(dx===0&&dz===0&&ly<=th) continue;
+        if(Math.abs(dx)===r&&Math.abs(dz)===r&&rnd()<0.5) continue;
+        const yy=y+ly;
+        if(inB(x+dx,yy,z+dz)&&getB(x+dx,yy,z+dz)===AIR) world[IDX(x+dx,yy,z+dz)]=LEAVES;
+      }
+    }
+    for(let i=1;i<=th;i++) world[IDX(x,y+i,z)]=LOG;
+  }
+}
+
+/* ---------------- meshing ---------------- */
+function buildWorldMesh(){
+  const pos=[],norm=[],uv=[],col=[],idx=[];
+  let vc=0;
+  for(let y=0;y<SY;y++)for(let z=0;z<SZ;z++)for(let x=0;x<SX;x++){
+    const id=world[IDX(x,y,z)]; if(!id) continue;
+    const def=BLOCKS[id];
+    for(let f=0;f<6;f++){
+      const d=FACES[f].dir;
+      if(getBMesh(x+d[0],y+d[1],z+d[2])) continue;
+      const tile = f===3?def.top : f===2?def.bottom : def.side;
+      const tx=tile%16, ty=(tile/16)|0;
+      const u0=tx/16, u1=(tx+1)/16, v0=1-(ty+1)/16, v1=1-ty/16;
+      const sh=FACE_SHADE[f];
+      const corners=FACES[f].corners;
+      for(let i=0;i<4;i++){
+        const c=corners[i];
+        pos.push(x+c[0],y+c[1],z+c[2]);
+        norm.push(d[0],d[1],d[2]);
+        uv.push(u0+c[3]*(u1-u0), v0+c[4]*(v1-v0));
+        col.push(sh,sh,sh);
+      }
+      idx.push(vc,vc+1,vc+2, vc+2,vc+1,vc+3); vc+=4;
+    }
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('normal',new THREE.Float32BufferAttribute(norm,3));
+  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  geo.setIndex(idx);
+  if(worldMesh){ scene.remove(worldMesh); worldMesh.geometry.dispose(); }
+  worldMesh=new THREE.Mesh(geo,worldMat);
+  worldMesh.frustumCulled=false;
+  scene.add(worldMesh);
+}
+function setBlock(x,y,z,id,record){
+  if(!inB(x,y,z)) return;
+  world[IDX(x,y,z)]=id;
+  if(record!==false) mods[IDX(x,y,z)]=id;
+  buildWorldMesh();
+}
+
+/* ---------------- raycast (DDA) ---------------- */
+function raycast(o,d,maxD){
+  let x=Math.floor(o.x),y=Math.floor(o.y),z=Math.floor(o.z);
+  const sx=d.x>0?1:-1, sy=d.y>0?1:-1, sz=d.z>0?1:-1;
+  const ix=d.x!==0?1/Math.abs(d.x):Infinity, iy=d.y!==0?1/Math.abs(d.y):Infinity, iz=d.z!==0?1/Math.abs(d.z):Infinity;
+  let tx=d.x!==0?(sx>0?x+1-o.x:o.x-x)*ix:Infinity;
+  let ty=d.y!==0?(sy>0?y+1-o.y:o.y-y)*iy:Infinity;
+  let tz=d.z!==0?(sz>0?z+1-o.z:o.z-z)*iz:Infinity;
+  let nx=0,ny=0,nz=0,t=0;
+  while(t<=maxD){
+    if(inB(x,y,z)&&world[IDX(x,y,z)]) return {x,y,z,nx,ny,nz,id:world[IDX(x,y,z)]};
+    if(tx<ty&&tx<tz){ x+=sx; t=tx; tx+=ix; nx=-sx;ny=0;nz=0; }
+    else if(ty<tz){ y+=sy; t=ty; ty+=iy; nx=0;ny=-sy;nz=0; }
+    else { z+=sz; t=tz; tz+=iz; nx=0;ny=0;nz=-sz; }
+  }
+  return null;
+}
+function lookDir(){
+  const cp=Math.cos(G.player.pitch);
+  return { x:-Math.sin(G.player.yaw)*cp, y:Math.sin(G.player.pitch), z:-Math.cos(G.player.yaw)*cp };
+}
+
+/* ---------------- three init ---------------- */
+function initThree(){
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x87ceeb);
+  scene.fog=new THREE.Fog(0x87ceeb,40,110);
+  camera=new THREE.PerspectiveCamera(settings.fov,window.innerWidth/window.innerHeight,0.08,300);
+  camera.rotation.order='YXZ';
+  renderer=new THREE.WebGLRenderer({antialias:false});
+  renderer.setPixelRatio(1);
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  $('gameWrap').insertBefore(renderer.domElement,$('gameWrap').firstChild);
+
+  const hemi=new THREE.HemisphereLight(0xffffff,0x7799aa,0.95);
+  scene.add(hemi);
+  const sun=new THREE.DirectionalLight(0xffffff,0.45);
+  sun.position.set(60,120,30);
+  scene.add(sun);
+
+  worldMat=new THREE.MeshLambertMaterial({map:atlasTex,vertexColors:true});
+
+  highlightBox=new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(1.003,1.003,1.003)),
+    new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:0.55}));
+  highlightBox.visible=false; scene.add(highlightBox);
+
+  crackMesh=new THREE.Mesh(new THREE.BoxGeometry(1.006,1.006,1.006),
+    new THREE.MeshBasicMaterial({transparent:true,opacity:0.9,depthWrite:false,map:crackTex[0],polygonOffset:true,polygonOffsetFactor:-2}));
+  crackMesh.visible=false; scene.add(crackMesh);
+
+  scene.add(camera);
+  handGroup=createHand();
+  camera.add(handGroup);
+
+  donkey3P=createDonkey();
+  donkey3P.visible=false;
+  scene.add(donkey3P);
+
+  window.addEventListener('resize',()=>{
+    camera.aspect=window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth,window.innerHeight);
+  });
+}
+
+/* ---------------- donkey models ---------------- */
+function createDonkey(){
+  const g=new THREE.Group();
+  const body=new THREE.MeshLambertMaterial({color:0x9a9a9a});
+  const dark=new THREE.MeshLambertMaterial({color:0x6b6b6b});
+  const light=new THREE.MeshLambertMaterial({color:0xc9c4bb});
+  function box(w,h,ht,mat,x,y,z){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,ht),mat); m.position.set(x,y,z); g.add(m); return m; }
+  box(0.7,0.6,1.2,body,0,0.95,0);
+  box(0.72,0.1,1.22,dark,0,1.26,0);            // sirt cizgisi
+  box(0.4,0.34,0.4,body,0,1.28,-0.62);          // boyun
+  const head=box(0.44,0.42,0.55,body,0,1.42,-0.95);
+  box(0.34,0.28,0.2,light,0,1.33,-1.24);        // burun
+  box(0.1,0.42,0.1,body,-0.13,1.82,-0.9);       // kulaklar
+  box(0.1,0.42,0.1,body, 0.13,1.82,-0.9);
+  box(0.06,0.3,0.06,dark,-0.13,1.78,-0.88);
+  box(0.06,0.3,0.06,dark, 0.13,1.78,-0.88);
+  box(0.08,0.08,0.08,new THREE.MeshLambertMaterial({color:0x111111}),-0.14,1.5,-1.15); // gozler
+  box(0.08,0.08,0.08,new THREE.MeshLambertMaterial({color:0x111111}), 0.14,1.5,-1.15);
+  box(0.08,0.5,0.08,dark,0,1.1,0.66);           // kuyruk
+  const legs=[];
+  const lp=[[-0.24,-0.45],[0.24,-0.45],[-0.24,0.45],[0.24,0.45]];
+  for(const p of lp){
+    const lg=new THREE.Group(); lg.position.set(p[0],0.68,p[1]);
+    const m1=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.62,0.17),body); m1.position.y=-0.31; lg.add(m1);
+    const m2=new THREE.Mesh(new THREE.BoxGeometry(0.19,0.1,0.19),dark); m2.position.y=-0.64; lg.add(m2);
+    g.add(lg); legs.push(lg);
+  }
+  g.userData={legs,head};
+  return g;
+}
+function createHand(){
+  const g=new THREE.Group();
+  const body=new THREE.MeshLambertMaterial({color:0x9a9a9a});
+  const dark=new THREE.MeshLambertMaterial({color:0x6b6b6b});
+  const leg=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.5,0.16),body);
+  leg.geometry.translate(0,-0.25,0);
+  g.add(leg);
+  const hoof=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.12,0.18),dark);
+  hoof.position.set(0,-0.52,0); g.add(hoof);
+  g.position.set(0.42,-0.4,-0.55);
+  g.rotation.set(0.3,0,-0.15);
+  return g;
+}
+
+/* ---------------- item drop meshes ---------------- */
+function makeItemMesh(id){
+  const def=BLOCKS[id];
+  const geo=new THREE.BoxGeometry(0.3,0.3,0.3);
+  const uvAttr=geo.attributes.uv;
+  const tiles=[def.side,def.side,def.top,def.bottom,def.side,def.side];
+  for(let f=0;f<6;f++){
+    const t=tiles[f], tx=t%16, ty=(t/16)|0;
+    const u0=tx/16,u1=(tx+1)/16,v0=1-(ty+1)/16,v1=1-ty/16;
+    const vals=[[u0,v1],[u1,v1],[u0,v0],[u1,v0]];
+    for(let i=0;i<4;i++) uvAttr.setXY(f*4+i,vals[i][0],vals[i][1]);
+  }
+  uvAttr.needsUpdate=true;
+  return new THREE.Mesh(geo,worldMat);
+}
+function spawnDrop(x,y,z,id,count){
+  if(id==null) return;
+  const m=makeItemMesh(id);
+  m.position.set(x,y,z);
+  scene.add(m);
+  drops.push({mesh:m,id,count:count||1,
+    vel:{x:(Math.random()-0.5)*2.5,y:3+Math.random()*1.5,z:(Math.random()-0.5)*2.5},
+    age:0,baseY:null});
+}
+function updateDrops(dt){
+  const p=G.player.pos;
+  for(let i=drops.length-1;i>=0;i--){
+    const d=drops[i];
+    d.age+=dt;
+    const dx=p.x-d.mesh.position.x, dy=(p.y+0.8)-d.mesh.position.y, dz=p.z-d.mesh.position.z;
+    const dist=Math.sqrt(dx*dx+dy*dy+dz*dz);
+    if(d.age>0.6&&dist<2.8){
+      const sp=Math.min(1,dt*(6+ (2.8-dist)*6));
+      d.mesh.position.x+=dx*sp; d.mesh.position.y+=dy*sp; d.mesh.position.z+=dz*sp;
+      if(dist<0.85){
+        const left=addToInventory(d.id,d.count);
+        if(left<=0){ scene.remove(d.mesh); d.mesh.geometry.dispose(); drops.splice(i,1); SFX.pickup(); updateHUD(); continue; }
+        d.count=left;
+      }
+    } else {
+      d.vel.y-=20*dt;
+      let nx=d.mesh.position.x+d.vel.x*dt, ny=d.mesh.position.y+d.vel.y*dt, nz=d.mesh.position.z+d.vel.z*dt;
+      const by=Math.floor(ny-0.16);
+      if(d.vel.y<0&&getBPhys(Math.floor(nx),by,Math.floor(nz))){ ny=by+1+0.16; d.vel.y=0; d.baseY=ny; d.vel.x*=0.5; d.vel.z*=0.5; }
+      if(getBPhys(Math.floor(nx),Math.floor(ny),Math.floor(d.mesh.position.z))) { nx=d.mesh.position.x; d.vel.x*=-0.3; }
+      if(getBPhys(Math.floor(d.mesh.position.x),Math.floor(ny),Math.floor(nz))) { nz=d.mesh.position.z; d.vel.z*=-0.3; }
+      d.mesh.position.set(clamp(nx,0.2,SX-0.2),ny,clamp(nz,0.2,SZ-0.2));
+      if(d.baseY!==null&&d.vel.y===0){ d.mesh.position.y=d.baseY+Math.sin(d.age*2.2)*0.06; }
+    }
+    d.mesh.rotation.y+=dt*1.6;
+  }
+}
+
+/* ---------------- inventory data ---------------- */
+function stackAdd(st,count){ const mv=Math.min(MAXSTACK-st.count,count); st.count+=mv; return count-mv; }
+function addToInventory(id,count){
+  for(let i=0;i<36&&count>0;i++){ const st=G.inv[i]; if(st&&st.id===id) count=stackAdd(st,count); }
+  for(let i=0;i<36&&count>0;i++){ if(!G.inv[i]){ const mv=Math.min(MAXSTACK,count); G.inv[i]={id,count:mv}; count-=mv; } }
+  return count;
+}
+function selectedItem(){ return G.inv[G.player.sel]; }
+
+/* ---------------- HUD ---------------- */
+const HEART_MAP=[".XX.XX.","XXXXXXX","XXXXXXX","XXXXXXX",".XXXXX.","..XXX..","...X..."];
+const FOOD_MAP=["...MM..","..MMMMM",".MMMMM.","MMMM B.",".MMBB..",".BB....","B......"]; // simplified
+function drawIcon(canvas,kind,fill){ // fill: 0 empty, 0.5 half, 1 full
+  const c=canvas.getContext('2d');
+  c.clearRect(0,0,18,18);
+  const map=kind==='heart'?HEART_MAP:FOOD_MAP;
+  const full=kind==='heart'?'#e3313b':'#b5651d';
+  const darkFull=kind==='heart'?'#7d1a1f':'#5e3410';
+  const empty=kind==='heart'?'#3b1418':'#2c2417';
+  for(let y=0;y<map.length;y++)for(let x=0;x<map[y].length;x++){
+    const ch=map[y][x];
+    let col=null;
+    if(kind==='heart'){ if(ch==='X') col=(fill===0)?empty:((fill===0.5&&x>3)?empty:full); }
+    else { if(ch==='M') col=(fill===0)?empty:((fill===0.5&&x>3)?empty:full); if(ch==='B') col='#e6ddc4'; }
+    if(col){ c.fillStyle=col; c.fillRect(x*2+2,y*2+2,2,2); }
+  }
+  // hafif parlaklik
+  if(fill>0){ c.fillStyle='rgba(255,255,255,0.35)'; c.fillRect(kind==='heart'?4:8,4,2,2); }
+  void darkFull;
+}
+function buildStatusRows(){
+  const hs=$('hearts'), hu=$('hunger');
+  hs.innerHTML=''; hu.innerHTML='';
+  for(let i=0;i<9;i++){
+    const c1=document.createElement('canvas'); c1.width=18;c1.height=18; hs.appendChild(c1);
+    const c2=document.createElement('canvas'); c2.width=18;c2.height=18; hu.appendChild(c2);
+  }
+}
+function updateStatus(){
+  const p=G.player;
+  const hc=$('hearts').children, uc=$('hunger').children;
+  for(let i=0;i<9;i++){
+    drawIcon(hc[i],'heart', clamp(p.hp-i*2,0,2)/2);
+    drawIcon(uc[i],'food', clamp(p.hunger-i*2,0,2)/2);
+  }
+}
+function buildHotbarDOM(){
+  const hb=$('hotbar'); hb.innerHTML='';
+  for(let i=0;i<9;i++){ const d=document.createElement('div'); d.className='hslot'; hb.appendChild(d); }
+}
+function updateHotbar(){
+  const hb=$('hotbar').children;
+  for(let i=0;i<9;i++){
+    const st=G.inv[i];
+    hb[i].innerHTML='';
+    hb[i].classList.toggle('sel',i===G.player.sel);
+    if(st){
+      const img=document.createElement('img'); img.src=itemIcon(st.id); img.width=34; img.height=34;
+      hb[i].appendChild(img);
+      if(st.count>1){ const s=document.createElement('span'); s.className='cnt'; s.textContent=st.count; hb[i].appendChild(s); }
+    }
+  }
+}
+function updateHUD(){ updateStatus(); updateHotbar(); }
+let toastTimer=null;
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.style.opacity='1';
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>{ t.style.opacity='0'; },1800);
+}
+function damageFlash(){
+  const f=$('damageFlash'); f.style.transition='none'; f.style.opacity='1';
+  requestAnimationFrame(()=>{ f.style.transition='opacity .4s'; f.style.opacity='0'; });
+}
+
+/* ---------------- player physics ---------------- */
+const PW=0.3, PH=1.8, EYE=1.62, EYE_SNEAK=1.38;
+function boxCollides(px,py,pz){
+  const x0=Math.floor(px-PW),x1=Math.floor(px+PW);
+  const y0=Math.floor(py),y1=Math.floor(py+PH-0.001);
+  const z0=Math.floor(pz-PW),z1=Math.floor(pz+PW);
+  for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++)for(let x=x0;x<=x1;x++)
+    if(getBPhys(x,y,z)) return true;
+  return false;
+}
+function updatePlayer(dt){
+  const p=G.player;
+  p.sneak=!!(keys['ShiftLeft']||keys['ShiftRight'])&&p.onGround;
+  let mx=0,mz=0;
+  if(keys['KeyW'])mz-=1; if(keys['KeyS'])mz+=1;
+  if(keys['KeyA'])mx-=1; if(keys['KeyD'])mx+=1;
+  const len=Math.hypot(mx,mz); if(len>0){ mx/=len; mz/=len; }
+  const sin=Math.sin(p.yaw), cos=Math.cos(p.yaw);
+  // forward=(-sin,-cos), right=(cos,-sin)
+  const wishX=mx*cos + mz*sin;
+  const wishZ=-mx*sin + mz*cos;
+  let speed=p.sneak?1.35:4.35;
+  const wishLen=Math.hypot(wishX,wishZ);
+  const tvx=wishLen>0?wishX/wishLen*speed*(Math.min(1,wishLen)):0;
+  const tvz=wishLen>0?wishZ/wishLen*speed*(Math.min(1,wishLen)):0;
+  if(p.onGround){ p.vel.x=tvx; p.vel.z=tvz; }
+  else { p.vel.x+=(tvx-p.vel.x)*Math.min(1,dt*2.2); p.vel.z+=(tvz-p.vel.z)*Math.min(1,dt*2.2); }
+  if(keys['Space']&&p.onGround){ p.vel.y=8.3; p.onGround=false; SFX.jump(); }
+  p.vel.y-=25*dt; if(p.vel.y<-45)p.vel.y=-45;
+
+  // Y
+  const oldY=p.pos.y;
+  p.pos.y+=p.vel.y*dt;
+  if(boxCollides(p.pos.x,p.pos.y,p.pos.z)){
+    if(p.vel.y<0){
+      p.pos.y=Math.floor(p.pos.y)+1;
+      while(boxCollides(p.pos.x,p.pos.y,p.pos.z)) p.pos.y+=0.01;
+      const fd=p.fallStart-p.pos.y;
+      if(fd>3.5){ damage(Math.floor(fd-3),'Düşerek öldün'); }
+      p.onGround=true; p.fallStart=p.pos.y;
+      if(fd>0.5) SFX.step();
+    } else {
+      p.pos.y=oldY;
+      while(boxCollides(p.pos.x,p.pos.y,p.pos.z)) p.pos.y-=0.01;
+    }
+    p.vel.y=0;
+  } else {
+    if(p.onGround){ p.fallStart=p.pos.y; }
+    p.onGround=false;
+    if(p.vel.y>0) p.fallStart=p.pos.y;
+  }
+  // X
+  p.pos.x+=p.vel.x*dt;
+  if(boxCollides(p.pos.x,p.pos.y,p.pos.z)){ p.pos.x-=p.vel.x*dt; p.vel.x=0; }
+  // Z
+  p.pos.z+=p.vel.z*dt;
+  if(boxCollides(p.pos.x,p.pos.y,p.pos.z)){ p.pos.z-=p.vel.z*dt; p.vel.z=0; }
+  p.pos.x=clamp(p.pos.x,PW+0.001,SX-PW-0.001);
+  p.pos.z=clamp(p.pos.z,PW+0.001,SZ-PW-0.001);
+  if(p.pos.y<-5){ damage(20,'Boşluğa düştün'); p.pos.y=SY; }
+
+  // adim sesi + yurume animasyonu
+  const hspd=Math.hypot(p.vel.x,p.vel.z);
+  if(p.onGround&&hspd>0.5){
+    p.stepDist+=hspd*dt; p.walkPhase+=hspd*dt*2.2;
+    if(p.stepDist>2){ p.stepDist=0; SFX.step(); }
+  } else if(p.onGround){ p.walkPhase+=dt*2; }
+
+  // aclik / can
+  const diff=currentMeta?currentMeta.difficulty:1;
+  p.exh+=HUNGER_RATE[diff]*dt + (p.onGround&&hspd>0.5?0.05*dt:0);
+  if(p.exh>=4){ p.exh-=4; if(p.hunger>0){ p.hunger--; updateStatus(); } }
+  if(p.hunger>=15&&p.hp<18){ p.regenT+=dt; if(p.regenT>=4){ p.regenT=0; p.hp=Math.min(18,p.hp+1); updateStatus(); } }
+  if(p.hunger<=0){ p.starveT+=dt; if(p.starveT>=4){ p.starveT=0; if(p.hp>STARVE_MIN[diff]) damage(1,'Açlıktan öldün'); } }
+}
+function damage(n,cause){
+  const p=G.player;
+  if(state!=='playing') return;
+  p.hp-=n; SFX.hurt(); damageFlash(); updateStatus();
+  if(p.hp<=0){ p.hp=0; updateStatus(); die(cause||'Öldün'); }
+}
+function die(cause){
+  state='dead';
+  $('deathMsg').textContent=cause||'';
+  show($('deathOverlay'));
+  if(document.pointerLockElement) document.exitPointerLock();
+}
+
+/* ---------------- break / place ---------------- */
+function doBreak(t){
+  const def=BLOCKS[t.id];
+  if(def.drop!=null){
+    if(t.id!==LEAVES||Math.random()<0.9)
+      spawnDrop(t.x+0.5,t.y+0.4,t.z+0.5,def.drop,1);
+  }
+  setBlock(t.x,t.y,t.z,AIR);
+  SFX.brk(t.id);
+}
+function blockIntersectsPlayer(bx,by,bz){
+  const p=G.player.pos;
+  return bx+1>p.x-PW && bx<p.x+PW && by+1>p.y && by<p.y+PH && bz+1>p.z-PW && bz<p.z+PW;
+}
+function tryPlace(){
+  const t=raycast(eyePos(),lookDir(),5);
+  if(!t) return;
+  const st=selectedItem();
+  if(!st||!BLOCKS[st.id]) return;
+  const x=t.x+t.nx, y=t.y+t.ny, z=t.z+t.nz;
+  if(!inB(x,y,z)) return;
+  if(getB(x,y,z)!==AIR) return;
+  if(BLOCKS[st.id].hard===undefined) return;
+  if(blockIntersectsPlayer(x,y,z)&&st.id!==LEAVES) return;
+  setBlock(x,y,z,st.id);
+  st.count--; if(st.count<=0) G.inv[G.player.sel]=null;
+  SFX.place(); swingT=0; updateHotbar();
+}
+function eyePos(){ const p=G.player; return {x:p.pos.x,y:p.pos.y+(p.sneak?EYE_SNEAK:EYE),z:p.pos.z}; }
+
+let crumbleT=0;
+function updateInteraction(dt){
+  const t=raycast(eyePos(),lookDir(),5);
+  if(t){ highlightBox.visible=true; highlightBox.position.set(t.x+0.5,t.y+0.5,t.z+0.5); }
+  else highlightBox.visible=false;
+
+  if(placeCooldown>0) placeCooldown-=dt;
+  if(mouseR&&placeCooldown<=0){ tryPlace(); placeCooldown=0.23; if(swingT<0) swingT=0; }
+
+  if(mouseL&&t){
+    const def=BLOCKS[t.id];
+    if(def.hard===Infinity){
+      crackMesh.visible=false; breakProgress=0;
+      if(!breaking||breaking.x!==t.x||breaking.y!==t.y||breaking.z!==t.z){
+        breaking={x:t.x,y:t.y,z:t.z};
+        toast('Katman Kayası kırılamaz!');
+      }
+    } else {
+      if(!breaking||breaking.x!==t.x||breaking.y!==t.y||breaking.z!==t.z){
+        breaking={x:t.x,y:t.y,z:t.z}; breakProgress=0;
+      }
+      breakProgress+=dt/def.hard;
+      swingT=(swingT<0?0:swingT);
+      const stage=Math.min(9,Math.floor(breakProgress*10));
+      crackMesh.visible=true;
+      crackMesh.position.set(t.x+0.5,t.y+0.5,t.z+0.5);
+      if(crackMesh.material.map!==crackTex[stage]){ crackMesh.material.map=crackTex[stage]; crackMesh.material.needsUpdate=true; }
+      crumbleT+=dt;
+      if(crumbleT>0.28){ crumbleT=0; SFX.crumble(); }
+      if(breakProgress>=1){ doBreak(t); breaking=null; breakProgress=0; crackMesh.visible=false; }
+    }
+  } else {
+    if(breaking){ breaking=null; breakProgress=0; crackMesh.visible=false; }
+    if(mouseL&&swingT<0) swingT=0; // bosta yumruk
+  }
+  // swing animasyonu
+  if(swingT>=0){ swingT+=dt; if(swingT>0.32) swingT=-1; }
+}
+
+/* ---------------- camera / donkey update ---------------- */
+function updateCamera(){
+  const p=G.player;
+  const eye=eyePos();
+  G.view=settings.third?3:1;
+  if(G.view===1){
+    camera.position.set(eye.x,eye.y,eye.z);
+    camera.rotation.set(p.pitch,p.yaw,0);
+    donkey3P.visible=false;
+    handGroup.visible=true;
+  } else {
+    donkey3P.visible=true;
+    handGroup.visible=false;
+    const d=lookDir();
+    const dist=3.8;
+    let camX=eye.x-d.x*dist, camY=eye.y-d.y*dist+0.6, camZ=eye.z-d.z*dist;
+    // kamera blok icine girmesin
+    for(let s=0.4;s<=dist;s+=0.35){
+      const sx=eye.x-d.x*s, sy=eye.y-d.y*s+0.3, sz=eye.z-d.z*s;
+      if(getBPhys(Math.floor(sx),Math.floor(sy),Math.floor(sz))){ camX=sx;camY=sy;camZ=sz; break; }
+      camX=sx;camY=sy;camZ=sz;
+    }
+    camera.position.set(camX,camY,camZ);
+    camera.lookAt(eye.x,eye.y,eye.z);
+  }
+}
+function updateDonkey(dt){
+  const p=G.player;
+  donkey3P.position.set(p.pos.x,p.pos.y-(p.sneak?0.22:0),p.pos.z);
+  donkey3P.rotation.y=p.yaw;
+  const legs=donkey3P.userData.legs;
+  const air=!p.onGround;
+  const sw=Math.sin(p.walkPhase)*0.55*Math.min(1,Math.hypot(p.vel.x,p.vel.z)/2.5);
+  let fl=sw, fr=-sw, bl=-sw, br=sw;
+  if(swingT>=0){ const s=Math.sin(swingT/0.32*Math.PI); fr=-1.4*s; fl=-0.5*s; }
+  if(air){ fl=-0.6; fr=-0.5; bl=0.5; br=0.6; }
+  legs[0].rotation.x=fl; legs[1].rotation.x=fr; legs[2].rotation.x=bl; legs[3].rotation.x=br;
+  donkey3P.userData.head.rotation.x=p.sneak?0.5:(air?-0.25:(swingT>=0?Math.sin(swingT/0.32*Math.PI)*0.4:0));
+  // FP el
+  if(G.view===1){
+    let rx=0.3;
+    if(swingT>=0){ const s=Math.sin(swingT/0.32*Math.PI); rx=0.3-s*1.5; }
+    else if(breaking){ rx=0.3-Math.abs(Math.sin(performance.now()/90))*0.9; }
+    handGroup.rotation.x+=(rx-handGroup.rotation.x)*Math.min(1,dt*14);
+    handGroup.position.y=-0.4+Math.sin(p.walkPhase)*0.015*Math.min(1,Math.hypot(p.vel.x,p.vel.z)/3);
+  }
+}
+
+/* ---------------- game loop ---------------- */
+function animate(now){
+  requestAnimationFrame(animate);
+  if(!renderer) return;
+  const dt=Math.min(0.05,(now-lastTime)/1000||0.016);
+  lastTime=now;
+  fpsAcc+=dt; fpsCnt++;
+  if(fpsAcc>=0.5){ fps=Math.round(fpsCnt/fpsAcc); fpsAcc=0; fpsCnt=0; }
+  if(state==='playing'){
+    updatePlayer(dt);
+    updateInteraction(dt);
+    updateDrops(dt);
+    if(!$('debugInfo').classList.contains('hidden')) updateDebug();
+  }
+  if(state==='playing'||state==='paused'||state==='inventory'){
+    updateDonkey(dt);
+    updateCamera();
+    renderer.render(scene,camera);
+  }
+}
+function updateDebug(){
+  const p=G.player.pos;
+  const t=raycast(eyePos(),lookDir(),5);
+  $('debugInfo').innerHTML=
+    `EsekCraft v0.1.0 | ${fps} fps<br>`+
+    `XYZ: ${p.x.toFixed(1)} / ${p.y.toFixed(1)} / ${p.z.toFixed(1)}<br>`+
+    `Baktığın: ${t?BLOCKS[t.id].name:'-'}<br>`+
+    `Dünya: ${currentMeta?currentMeta.name:'-'} | Seed: ${currentMeta?currentMeta.seed:'-'}<br>`+
+    `Zorluk: ${DIFF_NAMES[currentMeta?currentMeta.difficulty:1]} | Görünüm: ${G.view===1?'1. Şahıs':'3. Şahıs'} (F5)`;
+}
+
+/* ================= SAVE / LOAD ================= */
+const LS_KEY='esekcraft_worlds_v1', LS_SET='esekcraft_settings_v1';
+function loadMeta(){
+  try{ return JSON.parse(localStorage.getItem(LS_KEY))||[]; }catch(e){ return []; }
+}
+function saveMetas(m){ try{ localStorage.setItem(LS_KEY,JSON.stringify(m)); }catch(e){ toast('Kayıt sığmadı!'); } }
+function saveSettings(){
+  try{ localStorage.setItem(LS_SET,JSON.stringify(settings)); }catch(e){}
+}
+function loadSettings(){
+  try{
+    const s=JSON.parse(localStorage.getItem(LS_SET));
+    if(s){ settings.sens=s.sens??1; settings.fov=s.fov??75; settings.vol=s.vol??0.7; settings.third=!!s.third; }
+  }catch(e){}
+}
+function saveWorld(silent){
+  if(!currentMeta) return;
+  const p=G.player;
+  currentMeta.mods=mods;
+  currentMeta.player={x:p.pos.x,y:p.pos.y,z:p.pos.z,yaw:p.yaw,pitch:p.pitch,hp:p.hp,hunger:p.hunger,
+    sel:p.sel,inv:G.inv,offhand:G.offhand,craft:G.craft};
+  currentMeta.saved=Date.now();
+  const metas=loadMeta();
+  const i=metas.findIndex(m=>m.id===currentMeta.id);
+  if(i>=0) metas[i]=currentMeta; else metas.push(currentMeta);
+  saveMetas(metas);
+  if(!silent) toast('Dünya kaydedildi');
+}
+
+/* ================= INVENTORY UI ================= */
+function slotHTML(parent,type,idx,cls){
+  const d=document.createElement('div');
+  d.className='slot '+(cls||'');
+  d.dataset.type=type; d.dataset.idx=idx;
+  d.addEventListener('mousedown',e=>{ e.preventDefault(); slotClick(type,idx,e); });
+  d.addEventListener('contextmenu',e=>e.preventDefault());
+  parent.appendChild(d);
+  return d;
+}
+function buildInventoryDOM(){
+  const mg=$('mainGrid'); mg.innerHTML='';
+  for(let i=9;i<36;i++) slotHTML(mg,'inv',i);
+  const hr=$('invHotRow'); hr.innerHTML='';
+  for(let i=0;i<9;i++) slotHTML(hr,'inv',i);
+  const cg=$('craftGrid'); cg.innerHTML='';
+  for(let i=0;i<4;i++) slotHTML(cg,'craft',i);
+  slotHTML($('slotOff').parentElement,'off',0);
+  $('slotOff').remove();
+  $('slotOut').dataset.type='out';
+  $('slotOut').addEventListener('mousedown',e=>{ e.preventDefault(); slotClick('out',0,e); });
+  // kitap ikonu
+  const bc=$('bookCanvas'), bx=bc.getContext('2d');
+  bx.fillStyle='#7a1f1f'; bx.fillRect(4,2,24,28);
+  bx.fillStyle='#a83232'; bx.fillRect(6,2,20,28);
+  bx.fillStyle='#e8dcc0'; bx.fillRect(9,4,16,24);
+  bx.fillStyle='#7a1f1f'; bx.fillRect(4,2,3,28);
+  bx.fillStyle='#c9a227'; bx.fillRect(12,10,10,3); bx.fillRect(12,16,10,2);
+  $('bookBtn').addEventListener('click',()=>toast('Tarif Kitabı — Yakında!'));
+  drawDonkeyPortrait($('donkeyCanvas'));
+}
+function drawDonkeyPortrait(cv){
+  const c=cv.getContext('2d'); c.imageSmoothingEnabled=false;
+  c.clearRect(0,0,cv.width,cv.height);
+  const s=5; const px=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x*s,y*s,w*s,h*s);};
+  const Gc='#9a9a9a',D='#6b6b6b',L='#c9c4bb',K='#1a1a1a';
+  // kulaklar
+  px(5,1,1,3,Gc); px(7,1,1,3,Gc); px(5,2,1,1,D); px(7,2,1,1,D);
+  // kafa (sola bakiyor)
+  px(4,4,5,4,Gc); px(3,6,2,2,L); px(3,7,1,1,D); px(5,5,1,1,K);
+  px(8,5,2,1,D); // yele
+  // boyun + govde
+  px(8,7,2,3,Gc);
+  px(9,9,7,5,Gc);
+  px(9,9,7,1,D); // sirt
+  // bacaklar
+  px(10,14,1,5,Gc); px(12,14,1,5,D); px(14,14,1,5,Gc); px(15,14,1,4,D);
+  px(10,19,1,1,K); px(12,19,1,1,K); px(14,19,1,1,K); px(15,18,1,1,K);
+  // kuyruk
+  px(16,10,1,4,D); px(16,14,1,1,K);
+  // goz
+  px(4,5,1,1,K);
+}
+function getSlotRef(type,idx){
+  if(type==='inv') return {arr:G.inv,idx};
+  if(type==='craft') return {arr:G.craft,idx};
+  if(type==='off') return {arr:{0:G.offhand},idx:0,off:true};
+  return null;
+}
+function getSlot(type,idx){
+  if(type==='off') return G.offhand;
+  return getSlotRef(type,idx).arr[idx];
+}
+function setSlot(type,idx,v){
+  if(type==='off'){ G.offhand=v; return; }
+  getSlotRef(type,idx).arr[idx]=v;
+}
+function computeCraftOut(){
+  const occ=G.craft.filter(s=>s);
+  if(occ.length===1&&occ[0].id===LOG) return {id:PLANKS,count:4};
+  return null;
+}
+function fillSlotDiv(div,st,clickable){
+  div.innerHTML='';
+  if(st){
+    const img=document.createElement('img'); img.src=itemIcon(st.id); img.width=32; img.height=32;
+    div.appendChild(img);
+    if(st.count>1){ const s=document.createElement('span'); s.className='cnt'; s.textContent=st.count; div.appendChild(s); }
+    div.title=BLOCKS[st.id]?BLOCKS[st.id].name:'';
+  } else div.title='';
+}
+function renderInv(){
+  document.querySelectorAll('#invPanel .slot').forEach(d=>{
+    const type=d.dataset.type, idx=+d.dataset.idx;
+    if(type==='out'){ fillSlotDiv(d,computeCraftOut()); return; }
+    if(!type) return;
+    fillSlotDiv(d,getSlot(type,idx));
+  });
+  const hi=$('heldItem');
+  if(held){
+    hi.style.display='block';
+    hi.innerHTML=`<img src="${itemIcon(held.id)}" width="40" height="40">${held.count>1?`<span class="cnt">${held.count}</span>`:''}`;
+  } else { hi.style.display='none'; hi.innerHTML=''; }
+  updateHotbar();
+}
+function slotClick(type,idx,e){
+  audioInit();
+  if(type==='out'){
+    const out=computeCraftOut();
+    if(!out) return;
+    if(held&&held.id!==out.id) return;
+    if(held&&held.count+out.count>MAXSTACK) return;
+    if(!held) held={id:out.id,count:0};
+    held.count+=out.count;
+    for(let i=0;i<4;i++){ if(G.craft[i]){ G.craft[i].count--; if(G.craft[i].count<=0) G.craft[i]=null; } }
+    SFX.craft();
+    renderInv(); return;
+  }
+  const right=e.button===2;
+  const st=getSlot(type,idx);
+  if(right){
+    if(held){
+      if(st&&st.id===held.id&&st.count<MAXSTACK){ st.count++; held.count--; if(held.count<=0)held=null; }
+      else if(!st){ setSlot(type,idx,{id:held.id,count:1}); held.count--; if(held.count<=0)held=null; }
+    } else if(st){
+      const half=Math.ceil(st.count/2);
+      held={id:st.id,count:half};
+      st.count-=half; if(st.count<=0) setSlot(type,idx,null);
+    }
+  } else {
+    if(held){
+      if(st&&st.id===held.id){
+        const mv=Math.min(MAXSTACK-st.count,held.count);
+        st.count+=mv; held.count-=mv; if(held.count<=0)held=null;
+      } else { setSlot(type,idx,held); held=st||null; }
+    } else if(st){ held=st; setSlot(type,idx,null); }
+  }
+  SFX.click();
+  renderInv();
+}
+function openInventory(){
+  if(state!=='playing') return;
+  state='inventory';
+  if(document.pointerLockElement) document.exitPointerLock();
+  show($('invOverlay'));
+  renderInv();
+}
+function closeInventory(){
+  // craft + elde tutulanlari envantere geri koy
+  if(held){ const left=addToInventory(held.id,held.count); if(left>0) spawnDrop(G.player.pos.x,G.player.pos.y+1,G.player.pos.z,held.id,left); held=null; }
+  for(let i=0;i<4;i++){ if(G.craft[i]){ const left=addToInventory(G.craft[i].id,G.craft[i].count); if(left>0) spawnDrop(G.player.pos.x,G.player.pos.y+1,G.player.pos.z,G.craft[i].id,left); G.craft[i]=null; } }
+  hide($('invOverlay'));
+  state='playing';
+  updateHotbar();
+  requestLock();
+}
+document.addEventListener('mousemove',e=>{
+  if(held){
+    const hi=$('heldItem');
+    hi.style.left=(e.clientX-20)+'px'; hi.style.top=(e.clientY-20)+'px';
+  }
+});
+
+/* ================= WORLD FLOW ================= */
+function requestLock(){
+  const el=renderer?renderer.domElement:null;
+  if(!el) return;
+  try{
+    const pr=el.requestPointerLock();
+    if(pr&&pr.catch) pr.catch(()=>{});
+  }catch(e){}
+}
+function startGame(meta){
+  currentMeta=meta;
+  const p=G.player;
+  if(meta.player){
+    p.pos={x:meta.player.x,y:meta.player.y,z:meta.player.z};
+    p.yaw=meta.player.yaw||0; p.pitch=meta.player.pitch||0;
+    p.hp=meta.player.hp??18; p.hunger=meta.player.hunger??18; p.sel=meta.player.sel||0;
+    G.inv=meta.player.inv||new Array(36).fill(null);
+    G.offhand=meta.player.offhand||null;
+    G.craft=meta.player.craft||[null,null,null,null];
+  } else {
+    const sx=SX/2+0.5, sz=SZ/2+0.5;
+    p.pos={x:sx,y:topSolid(Math.floor(sx),Math.floor(sz))+1.2,z:sz};
+    p.yaw=0; p.pitch=0; p.hp=18; p.hunger=18; p.sel=0;
+    G.inv=new Array(36).fill(null);
+    G.offhand=null; G.craft=[null,null,null,null];
+  }
+  p.vel={x:0,y:0,z:0}; p.onGround=false; p.exh=0; p.regenT=0; p.starveT=0; p.fallStart=p.pos.y;
+  held=null; drops.forEach(d=>scene.remove(d.mesh)); drops=[];
+  breaking=null; breakProgress=0; swingT=-1;
+  updateHUD();
+  hide($('screen-gen')); show($('gameWrap'));
+  camera.fov=settings.fov; camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  state='paused';
+  $('pauseTitle').textContent='Dünya hazır — devam etmek için tıkla';
+  show($('pauseOverlay'));
+}
+function enterWorldLoading(meta){
+  state='gen';
+  hide($('screen-worlds')); hide($('screen-create')); hide($('gameWrap'));
+  hide($('pauseOverlay')); hide($('deathOverlay')); hide($('invOverlay'));
+  show($('screen-gen'));
+  world=new Uint8Array(SX*SY*SZ);
+  mods=meta.mods?Object.assign({},meta.mods):{};
+  const seedNum=hashStr(meta.seed);
+  const bar=$('genBar'), txt=$('genText');
+  const total=SX*SZ, batches=14;
+  let b=0;
+  function step(){
+    const from=Math.floor(total*b/batches), to=Math.floor(total*(b+1)/batches);
+    generateColumns(from,to,seedNum);
+    b++;
+    bar.style.width=Math.round(b/batches*70)+'%';
+    txt.textContent='Arazi oluşturuluyor... %'+Math.round(b/batches*70);
+    if(b<batches){ setTimeout(step,12); return; }
+    txt.textContent='Ağaçlar dikiliyor...';
+    bar.style.width='78%';
+    setTimeout(()=>{
+      generateTrees(seedNum);
+      for(const k in mods) world[+k]=mods[k];
+      txt.textContent='Dünya inşa ediliyor...';
+      bar.style.width='88%';
+      setTimeout(()=>{
+        buildWorldMesh();
+        bar.style.width='100%';
+        txt.textContent='Hazır!';
+        setTimeout(()=>startGame(meta),250);
+      },60);
+    },60);
+  }
+  step();
+}
+function renderWorldList(){
+  const list=$('worldList');
+  list.innerHTML='';
+  const metas=loadMeta();
+  if(!metas.length){
+    list.innerHTML='<div class="emptyNote">Henüz dünya yok. "Dünya Oluştur" ile bir tane yap!</div>';
+    return;
+  }
+  metas.forEach((m,i)=>{
+    const d=document.createElement('div');
+    d.className='worldItem'+(worldSelIdx===i?' sel':'');
+    const date=new Date(m.saved||m.created);
+    d.innerHTML=`<div style="flex:1"><div class="wname">${escapeHtml(m.name)}</div>
+      <div class="winfo">${DIFF_NAMES[m.difficulty]} · Seed: ${escapeHtml(String(m.seed))} · ${date.toLocaleDateString('tr-TR')}</div></div>
+      <div class="wdel" title="Sil">X</div>`;
+    d.addEventListener('click',e=>{
+      if(e.target.classList.contains('wdel')){
+        if(confirm('"'+m.name+'" silinsin mi?')){ const arr=loadMeta(); arr.splice(i,1); saveMetas(arr); renderWorldList(); }
+        return;
+      }
+      worldSelIdx=i; renderWorldList();
+    });
+    d.addEventListener('dblclick',()=>{ worldSelIdx=i; playSelectedWorld(); });
+    list.appendChild(d);
+  });
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let worldSelIdx=-1;
+function playSelectedWorld(){
+  const metas=loadMeta();
+  if(worldSelIdx<0||worldSelIdx>=metas.length){ toast('Önce bir dünya seç!'); return; }
+  enterWorldLoading(metas[worldSelIdx]);
+}
+
+/* ================= UI FLOW ================= */
+function switchScreen(id){
+  ['screen-boot','screen-title','screen-settings','screen-play','screen-worlds','screen-create','screen-gen'].forEach(s=>hide($(s)));
+  if(id) show($(id));
+}
+function gotoTitle(){
+  state='menu';
+  hide($('gameWrap'));
+  hide($('pauseOverlay')); hide($('deathOverlay')); hide($('invOverlay'));
+  switchScreen('screen-title');
+}
+function applySettingsUI(){
+  $('setSens').value=Math.round(settings.sens*100);
+  $('setFov').value=settings.fov;
+  $('setVol').value=Math.round(settings.vol*100);
+  $('setView').value=settings.third?1:0;
+  updSetLabels();
+}
+function updSetLabels(){
+  $('setSensV').textContent=(settings.sens).toFixed(1);
+  $('setFovV').textContent=settings.fov;
+  $('setVolV').textContent=Math.round(settings.vol*100)+'%';
+  $('setViewV').textContent=settings.third?'Açık':'Kapalı';
+}
+function openSettings(from){
+  settingsBackTarget=from;
+  applySettingsUI();
+  show($('screen-settings'));
+}
+
+/* random seed words */
+const SEED_WORDS=['esek','arpа','nал','semер','equk','madеn','еlmаs','orman','kаyа','tohum'];
+function randomSeed(){
+  const r=mulberry32(Date.now()^(Math.random()*1e9));
+  const w=SEED_WORDS[Math.floor(r()*SEED_WORDS.length)];
+  return w+'-'+Math.floor(r()*999999);
+}
+
+/* ---------------- input ---------------- */
+function setupInput(){
+  document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+    keys[e.code]=true;
+    if(state==='playing'){
+      if(e.code==='KeyE'){ e.preventDefault(); openInventory(); }
+      else if(e.code==='F5'){ e.preventDefault(); settings.third=!settings.third; saveSettings(); applySettingsUI(); toast(settings.third?'3. Şahıs görünüm':'1. Şahıs görünüm'); }
+      else if(e.code==='F3'){ e.preventDefault(); $('debugInfo').classList.toggle('hidden'); }
+      else if(e.code==='KeyQ'){
+        const st=selectedItem();
+        if(st){ const d=lookDir(); spawnDrop(G.player.pos.x+d.x,G.player.pos.y+1.2,G.player.pos.z+d.z,st.id,1);
+          const dm=drops[drops.length-1]; dm.vel={x:d.x*6,y:4,z:d.z*6};
+          st.count--; if(st.count<=0)G.inv[G.player.sel]=null; updateHotbar(); }
+      }
+      else if(/^Digit[1-9]$/.test(e.code)){ G.player.sel=+e.code.slice(5)-1; updateHotbar(); }
+      if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+    } else if(state==='inventory'){
+      if(e.code==='KeyE'||e.code==='Escape'){ e.preventDefault(); closeInventory(); }
+    }
+  });
+  document.addEventListener('keyup',e=>{ keys[e.code]=false; });
+  window.addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; mouseL=mouseR=false; });
+
+  document.addEventListener('mousedown',e=>{
+    if(state!=='playing') return;
+    if(!document.pointerLockElement){ requestLock(); return; }
+    if(e.button===0){ mouseL=true; if(swingT<0)swingT=0; }
+    if(e.button===2){ mouseR=true; }
+  });
+  document.addEventListener('mouseup',e=>{
+    if(e.button===0){ mouseL=false; }
+    if(e.button===2){ mouseR=false; }
+  });
+  document.addEventListener('contextmenu',e=>{ if(state==='playing'||state==='inventory') e.preventDefault(); });
+  document.addEventListener('wheel',e=>{
+    if(state!=='playing') return;
+    G.player.sel=(G.player.sel+(e.deltaY>0?1:-1)+9)%9;
+    updateHotbar();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(state!=='playing'||!document.pointerLockElement) return;
+    const s=settings.sens*0.0022;
+    G.player.yaw-=e.movementX*s;
+    G.player.pitch=clamp(G.player.pitch-e.movementY*s,-1.55,1.55);
+  });
+  document.addEventListener('pointerlockchange',()=>{
+    if(!document.pointerLockElement&&state==='playing'){
+      state='paused';
+      mouseL=mouseR=false;
+      for(const k in keys) keys[k]=false;
+      $('pauseTitle').textContent='Oyun Duraklatıldı';
+      show($('pauseOverlay'));
+    }
+  });
+  window.addEventListener('beforeunload',()=>{ if(currentMeta&&(state==='playing'||state==='paused'||state==='inventory')) saveWorld(true); });
+
+  // buttons
+  $('btnOyna').addEventListener('click',()=>{ audioInit(); SFX.click(); switchScreen('screen-play'); });
+  $('btnAyarlar').addEventListener('click',()=>{ audioInit(); SFX.click(); openSettings('title'); });
+  $('btnSetBack').addEventListener('click',()=>{
+    SFX.click(); hide($('screen-settings'));
+    if(settingsBackTarget==='title') switchScreen('screen-title');
+  });
+  $('btnSingle').addEventListener('click',()=>{ SFX.click(); worldSelIdx=-1; renderWorldList(); switchScreen('screen-worlds'); });
+  $('btnPlayBack').addEventListener('click',()=>{ SFX.click(); switchScreen('screen-title'); });
+  $('btnNewWorld').addEventListener('click',()=>{
+    SFX.click();
+    $('cwName').value=''; $('cwSeed').placeholder='(boş = rastgele)'; $('cwDiff').value='1';
+    switchScreen('screen-create');
+  });
+  $('btnWorldsBack').addEventListener('click',()=>{ SFX.click(); switchScreen('screen-play'); });
+  $('btnWorldPlay').addEventListener('click',()=>{ SFX.click(); playSelectedWorld(); });
+  $('cwBack').addEventListener('click',()=>{ SFX.click(); switchScreen('screen-worlds'); });
+  $('cwCreate').addEventListener('click',()=>{
+    SFX.click();
+    const name=$('cwName').value.trim()||'Yeni Dünya';
+    const seed=$('cwSeed').value.trim()||randomSeed();
+    const diff=+$('cwDiff').value;
+    const meta={ id:'w'+Date.now(), name, seed, difficulty:diff, created:Date.now(), saved:Date.now(), mods:{}, player:null };
+    const metas=loadMeta(); metas.push(meta); saveMetas(metas);
+    enterWorldLoading(meta);
+  });
+  $('btnResume').addEventListener('click',()=>{
+    SFX.click(); hide($('pauseOverlay')); state='playing'; requestLock();
+  });
+  $('btnPauseSettings').addEventListener('click',()=>{ SFX.click(); openSettings('pause'); });
+  $('btnSaveQuit').addEventListener('click',()=>{ SFX.click(); saveWorld(); gotoTitle(); });
+  $('btnRespawn').addEventListener('click',()=>{
+    SFX.click();
+    const p=G.player;
+    p.hp=18; p.hunger=18;
+    const sx=SX/2+0.5, sz=SZ/2+0.5;
+    p.pos={x:sx,y:topSolid(Math.floor(sx),Math.floor(sz))+1.2,z:sz};
+    p.vel={x:0,y:0,z:0}; p.fallStart=p.pos.y;
+    hide($('deathOverlay'));
+    updateHUD();
+    state='paused';
+    $('pauseTitle').textContent='Yeniden doğdun — devam etmek için tıkla';
+    show($('pauseOverlay'));
+  });
+  $('btnDeathQuit').addEventListener('click',()=>{ SFX.click(); saveWorld(true); gotoTitle(); });
+  $('invClose').addEventListener('click',()=>{ closeInventory(); });
+
+  // settings inputs
+  const bind=(id,fn)=>{ $(id).addEventListener('input',()=>{ fn(); updSetLabels(); saveSettings(); }); };
+  bind('setSens',()=>settings.sens=+$('setSens').value/100);
+  bind('setFov',()=>{ settings.fov=+$('setFov').value; if(camera){ camera.fov=settings.fov; camera.updateProjectionMatrix(); } });
+  bind('setVol',()=>{ settings.vol=+$('setVol').value/100; if(masterGain) masterGain.gain.value=settings.vol; });
+  bind('setView',()=>settings.third=+$('setView').value===1);
+  // ayarlardan geri (pause uzerinden geldi ise)
+  $('screen-settings').addEventListener('transitionend',()=>{});
+}
+
+/* ---------------- boot ---------------- */
+function boot(){
+  if(typeof THREE==='undefined'){
+    hide($('bootBar'));
+    $('errBox').classList.remove('hidden');
+    $('errBox').innerHTML='Three.js yüklenemedi!<br>Bu oyun internetten Three.js kütüphanesini indirir.<br>İnternet bağlantını kontrol edip sayfayı yenile (F5).';
+    return;
+  }
+  loadSettings();
+  const bar=$('bootBar'), txt=$('bootText');
+  function step(pct,msg,fn,next){
+    bar.style.width=pct+'%'; txt.textContent=msg;
+    setTimeout(()=>{ fn(); setTimeout(next,90); },180);
+  }
+  step(15,'Dokular hazırlanıyor...',()=>{ buildAtlas(); buildCrackTextures(); },
+  ()=>step(45,'Sesler ayarlanıyor...',()=>{ if(masterGain) masterGain.gain.value=settings.vol; },
+  ()=>step(70,'Dünya motoru kuruluyor...',()=>{ initThree(); buildInventoryDOM(); buildHotbarDOM(); buildStatusRows(); setupInput(); },
+  ()=>step(90,'Menüler hazırlanıyor...',()=>{
+    // baslik ekrani icin blok ikonlari
+    const tb=$('titleBlocks'); tb.innerHTML='';
+    [GRASS,DIRT,STONE,LOG,PLANKS,COBBLE].forEach(id=>{
+      const img=document.createElement('img'); img.src=itemIcon(id); img.width=40; img.height=40;
+      img.style.imageRendering='pixelated'; tb.appendChild(img);
+    });
+    const splashes=['EsekCraft 0.1! At degil, ESEK!','%100 Esek!','Katman kayasi kirilmaz!','Online mod yakinda!','EsekGames sunar!','Bol elmasli gunler! (elmas yok gerçi)'];
+    $('splashText').textContent=splashes[Math.floor(Math.random()*splashes.length)];
+  },
+  ()=>{ bar.style.width='100%'; txt.textContent='Hazır!';
+    setTimeout(()=>{ gotoTitle(); },300);
+    lastTime=performance.now();
+    requestAnimationFrame(animate);
+  }))));
+}
+
+// Ayarlar ekrani pause'dan acildiysa geri donusu ayri bagla
+document.addEventListener('DOMContentLoaded',()=>{
+  $('btnSetBack').addEventListener('click',()=>{
+    if(settingsBackTarget==='pause'){
+      hide($('screen-settings'));
+      show($('pauseOverlay'));
+    }
+  });
+  boot();
+});
+</script>
+</body>
+</html>
