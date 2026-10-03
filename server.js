@@ -21,6 +21,161 @@ const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 10000;
 const SERVER_VERSION = "1.0.0";
 
+
+// ============================================================
+// SUNUCU LOBİLERİ / HARİTALAR
+// ============================================================
+const ROOM_MAPS = Object.freeze({
+    forest: {
+        id: "forest", name: "Ormanlık Alan", icon: "🌲",
+        description: "Sık orman, kayalık geçitler ve dağ sırtları.",
+        boundary: "Dağlar ve sık orman", boundaryRadius: 500
+    },
+    city: {
+        id: "city", name: "Şehir", icon: "🏙️",
+        description: "Binalar, çevre yolu ve şehir çıkış bariyerleri.",
+        boundary: "Binalar ve beton çevre duvarları", boundaryRadius: 455
+    },
+    farm: {
+        id: "farm", name: "Çiftlik", icon: "🚜",
+        description: "Çitler, taş setler, tepeler ve açık kır arazisi.",
+        boundary: "Ahşap çitler, taş setler ve tepeler", boundaryRadius: 495
+    },
+    military: {
+        id: "military", name: "Askerî Alan", icon: "🪖",
+        description: "Beton duvarlar, tel örgüler ve dağlık kontrol hattı.",
+        boundary: "Beton duvar, tel örgü ve dağlık arazi", boundaryRadius: 475
+    }
+});
+const rooms = new Map();
+const ROOM_NAME_MAX = 32;
+const ROOM_TTL_MS = 30 * 60 * 1000;
+const ROOM_MAX_PLAYERS = 10;
+
+function normalizeRoomName(value) {
+    return String(value || "").trim().replace(/\s+/g, " ").slice(0, ROOM_NAME_MAX);
+}
+function makeRoomId() {
+    let id = "";
+    do { id = `E${crypto.randomBytes(2).toString("hex").toUpperCase()}`; } while (rooms.has(id));
+    return id;
+}
+function roomPlayerCount(room) {
+    for (const id of [...room.members]) if (!players.has(id)) room.members.delete(id);
+    return room.members.size;
+}
+function publicRoom(room) {
+    const map = ROOM_MAPS[room.mapId] || ROOM_MAPS.farm;
+    const host = players.get(room.hostId);
+    const currentPlayers = roomPlayerCount(room);
+    return {
+        id: room.id,
+        name: room.name,
+        maxPlayers: room.maxPlayers,
+        currentPlayers,
+        mapId: map.id,
+        mapName: map.name,
+        mapIcon: map.icon,
+        mapDescription: map.description,
+        boundary: map.boundary,
+        hostName: host && host.name ? host.name : "Oyuncu",
+        isOpen: currentPlayers < room.maxPlayers
+    };
+}
+function sendRoomList(player) {
+    if (!player) return;
+    const list = [...rooms.values()]
+        .filter(room => roomPlayerCount(room) > 0)
+        .sort((a, b) => b.lastActivityAt - a.lastActivityAt)
+        .map(publicRoom);
+    sendTo(player, { type: "rooms_list", rooms: list, maps: ROOM_MAPS });
+}
+function broadcastRoomLists() {
+    for (const player of players.values()) if (!player.inGame) sendRoomList(player);
+}
+function removePlayerFromRoom(player) {
+    if (!player || !player.roomId) return;
+    const room = rooms.get(player.roomId);
+    player.roomId = null;
+    player.mapId = null;
+    if (!room) return;
+    room.members.delete(player.id);
+    if (room.hostId === player.id) room.hostId = [...room.members][0] || null;
+    room.lastActivityAt = Date.now();
+    if (!room.members.size) rooms.delete(room.id);
+    broadcastRoomLists();
+}
+function getPlayerRoom(player) {
+    return player && player.roomId ? rooms.get(player.roomId) || null : null;
+}
+function handleRoomsRequest(player) {
+    sendRoomList(player);
+}
+function handleCreateRoom(player, data) {
+    if (!player || player.inGame) return;
+    const name = normalizeRoomName(data && data.name);
+    const maxPlayers = Math.max(1, Math.min(ROOM_MAX_PLAYERS, Math.round(Number(data && data.maxPlayers) || 1)));
+    const mapId = String((data && data.mapId) || "farm");
+    if (name.length < 2) {
+        sendTo(player, { type: "room_error", message: "Sunucu adı en az 2 karakter olmalı." });
+        return;
+    }
+    if (!ROOM_MAPS[mapId]) {
+        sendTo(player, { type: "room_error", message: "Bu harita seçimi geçersiz." });
+        return;
+    }
+    if (player.roomId) removePlayerFromRoom(player);
+    const room = {
+        id: makeRoomId(), name, maxPlayers, mapId,
+        hostId: player.id, members: new Set([player.id]), lastActivityAt: Date.now()
+    };
+    rooms.set(room.id, room);
+    player.roomId = room.id;
+    player.mapId = mapId;
+    sendTo(player, { type: "room_created", room: publicRoom(room) });
+    broadcastRoomLists();
+}
+function handleJoinRoom(player, data) {
+    if (!player || player.inGame) return;
+    const roomId = String((data && data.roomId) || "").trim().toUpperCase();
+    const room = rooms.get(roomId);
+    if (!room) {
+        sendTo(player, { type: "room_error", message: "Bu sunucu artık mevcut değil." });
+        sendRoomList(player);
+        return;
+    }
+    if (roomPlayerCount(room) >= room.maxPlayers && !room.members.has(player.id)) {
+        sendTo(player, { type: "room_error", message: "Bu sunucu dolu. Başka bir sunucu seç." });
+        return;
+    }
+    if (player.roomId && player.roomId !== room.id) removePlayerFromRoom(player);
+    room.members.add(player.id);
+    player.roomId = room.id;
+    player.mapId = room.mapId;
+    room.lastActivityAt = Date.now();
+    sendTo(player, { type: "room_joined", room: publicRoom(room) });
+    joinGame(player, { ...data, roomId: room.id });
+    broadcastRoomLists();
+}
+function handleLeaveRoom(player) {
+    if (!player) return;
+    if (player.inGame) leaveGame(player);
+    removePlayerFromRoom(player);
+    sendRoomList(player);
+}
+function getRoomBoundaryRadius(player) {
+    const room = getPlayerRoom(player);
+    const map = room ? ROOM_MAPS[room.mapId] : ROOM_MAPS.farm;
+    return Math.max(60, Number(map && map.boundaryRadius) || ROOM_MAPS.farm.boundaryRadius);
+}
+function clampPlayerToRoom(player, x, z) {
+    const radius = getRoomBoundaryRadius(player) - 5;
+    const distance = Math.hypot(x, z);
+    if (!Number.isFinite(distance) || distance <= radius) return { x, z };
+    const scale = radius / distance;
+    return { x: x * scale, z: z * scale };
+}
+
 // ============================================================
 // DOSYALAR
 // ============================================================
@@ -699,6 +854,9 @@ function createPlayer(ws) {
         nextBearBiteAt: 0,
         lastDamageAt: Date.now(),
 
+        roomId: null,
+        mapId: "farm",
+
         connectedAt: Date.now()
     };
 
@@ -797,6 +955,11 @@ function getAnimal(animalId) {
 // ============================================================
 
 let chatHistory = [];
+const roomChatHistories = new Map();
+function getRoomChatHistory(roomId) {
+    if (!roomChatHistories.has(roomId)) roomChatHistories.set(roomId, []);
+    return roomChatHistories.get(roomId);
+}
 
 // ============================================================
 // WEBSOCKET YARDIMCILARI
@@ -833,10 +996,18 @@ function broadcast(data) {
         send(p.ws, data);
     }
 }
+function broadcastToRoom(roomId, data) {
+    for (const p of players.values()) {
+        if (!p.inGame || p.roomId !== roomId) continue;
+        send(p.ws, data);
+    }
+}
 
 function broadcastExcept(data, exceptId) {
+    const source = players.get(exceptId);
+    const roomId = source && source.roomId;
     for (const p of players.values()) {
-        if (!p.inGame || p.id === exceptId) continue;
+        if (!p.inGame || p.id === exceptId || (roomId && p.roomId !== roomId)) continue;
         send(p.ws, data);
     }
 }
@@ -861,6 +1032,8 @@ function getPublicPlayer(p) {
         stamina: p.progress ? p.progress.stamina : 100,
         maxStamina: getMaxStamina(p),
         petId: p.progress ? p.progress.petId : null,
+        roomId: p.roomId,
+        mapId: p.mapId,
         level: p.progress ? getPlayerLevel(p.progress.xp) : 1,
         equippedArmor: p.progress ? p.progress.equippedArmor : null,
         alive: p.alive
@@ -868,17 +1041,17 @@ function getPublicPlayer(p) {
 }
 
 function broadcastPlayers() {
-    const obj = {};
-    let count = 0;
+    const byRoom = new Map();
     for (const p of players.values()) {
         if (!p.inGame) continue;
-        obj[p.id] = getPublicPlayer(p);
-        count++;
+        if (!byRoom.has(p.roomId)) byRoom.set(p.roomId, []);
+        byRoom.get(p.roomId).push(p);
     }
-    const payload = JSON.stringify({ type: "players", players: obj, count });
-    for (const p of players.values()) {
-        if (!p.inGame) continue;
-        sendSerialized(p.ws, payload, true);
+    for (const roomPlayers of byRoom.values()) {
+        const obj = {};
+        for (const p of roomPlayers) obj[p.id] = getPublicPlayer(p);
+        const payload = JSON.stringify({ type: "players", players: obj, count: roomPlayers.length });
+        for (const p of roomPlayers) sendSerialized(p.ws, payload, true);
     }
 }
 
@@ -941,6 +1114,21 @@ function allocateGuestName() {
 // ============================================================
 
 function joinGame(player, data) {
+    const roomId = String((data && data.roomId) || player.roomId || "").trim().toUpperCase();
+    const room = rooms.get(roomId);
+    if (!room) {
+        sendTo(player, { type: "join_denied", message: "Önce bir sunucu oluşturmalı veya listeden bir sunucuya katılmalısın." });
+        return;
+    }
+    if (roomPlayerCount(room) >= room.maxPlayers && !room.members.has(player.id)) {
+        sendTo(player, { type: "join_denied", message: "Bu sunucu dolu." });
+        return;
+    }
+    room.members.add(player.id);
+    room.lastActivityAt = Date.now();
+    player.roomId = room.id;
+    player.mapId = room.mapId;
+
     const token = String((data && data.token) || "");
     const platform = data && data.platform === "mobile" ? "mobile" : "pc";
 
@@ -1014,14 +1202,18 @@ function joinGame(player, data) {
             maxHealth: getMaxHealth(player),
             stamina: player.progress.stamina,
             maxStamina: getMaxStamina(player),
-            petId: player.progress.petId
+            petId: player.progress.petId,
+            roomId: room.id,
+            mapId: room.mapId,
+            mapName: (ROOM_MAPS[room.mapId] || ROOM_MAPS.farm).name,
+            boundary: (ROOM_MAPS[room.mapId] || ROOM_MAPS.farm).boundary
         }
     });
 
     sendRpgState(player);
     sendHostileDonkeyStates(player);
 
-    sendTo(player, { type: "chat_history", messages: chatHistory.slice(-CHAT_HISTORY_LIMIT) });
+    sendTo(player, { type: "chat_history", messages: getRoomChatHistory(player.roomId).slice(-CHAT_HISTORY_LIMIT) });
 
     broadcastPlayers();
     broadcastOnlineCount();
@@ -1060,7 +1252,7 @@ function damagePlayer(target, amount, attackerId, killerName, reason) {
 
     applyPlayerDamage(target, amount);
 
-    broadcast({
+    broadcastToRoom(target.roomId, {
         type: "combat_hit",
         attackerId: attackerId || null,
         targetId: target.id,
@@ -1073,7 +1265,7 @@ function damagePlayer(target, amount, attackerId, killerName, reason) {
     if (target.health <= 0) {
         target.alive = false;
 
-        broadcast({
+        broadcastToRoom(target.roomId, {
             type: "player_death",
             id: target.id,
             reason: reason || (killerName ? `${killerName} seni yendi.` : "Canın tükendi."),
@@ -1122,10 +1314,15 @@ function handleMove(player, data) {
     }
     player.lastStaminaUpdateAt = now;
 
-    if (typeof data.x === "number") player.x = data.x;
-    if (typeof data.y === "number") player.y = data.y;
-    if (typeof data.z === "number") player.z = data.z;
-    if (typeof data.yaw === "number") player.yaw = data.yaw;
+    const requestedX = Number(data.x);
+    const requestedZ = Number(data.z);
+    if (Number.isFinite(requestedX) && Number.isFinite(requestedZ)) {
+        const safePosition = clampPlayerToRoom(player, requestedX, requestedZ);
+        player.x = safePosition.x;
+        player.z = safePosition.z;
+    }
+    if (typeof data.y === "number" && Number.isFinite(data.y)) player.y = Math.max(-30, Math.min(120, data.y));
+    if (typeof data.yaw === "number" && Number.isFinite(data.yaw)) player.yaw = data.yaw;
     if (typeof data.pitch === "number") player.pitch = data.pitch;
 
     player.isMoving = !!data.isMoving;
@@ -1171,7 +1368,7 @@ function handleChat(player, data) {
 
         let target = null;
         for (const p of players.values()) {
-            if (p.inGame && p.name && p.name.toLowerCase() === toName.toLowerCase()) {
+            if (p.inGame && p.roomId === player.roomId && p.name && p.name.toLowerCase() === toName.toLowerCase()) {
                 target = p;
                 break;
             }
@@ -1198,12 +1395,13 @@ function handleChat(player, data) {
 
     const message = { name: player.name, text, time, clientId };
 
-    chatHistory.push(message);
-    if (chatHistory.length > CHAT_HISTORY_LIMIT) {
-        chatHistory = chatHistory.slice(-CHAT_HISTORY_LIMIT);
+    const roomHistory = getRoomChatHistory(player.roomId);
+    roomHistory.push(message);
+    if (roomHistory.length > CHAT_HISTORY_LIMIT) {
+        roomHistory.splice(0, roomHistory.length - CHAT_HISTORY_LIMIT);
     }
 
-    broadcast({ type: "chat_message", message });
+    broadcastToRoom(player.roomId, { type: "chat_message", message });
 }
 
 function handleAppleStateRequest(player, data) {
@@ -1425,7 +1623,7 @@ function handleAnimalAttack(player, data) {
     if (!Number.isFinite(x) || !Number.isFinite(z)) return;
 
     for (const p of players.values()) {
-        if (!p.inGame || !p.alive) continue;
+        if (!p.inGame || !p.alive || p.roomId !== player.roomId) continue;
 
         const d = Math.hypot(p.x - x, p.z - z);
         if (d <= 4.5) {
@@ -1443,7 +1641,7 @@ function handleAnimalAttack(player, data) {
 
             if (p.health <= 0) {
                 p.alive = false;
-                broadcast({ type: "player_death", id: p.id, reason: "Vahşi bir hayvan seni alt etti.", killerName: null });
+                broadcastToRoom(p.roomId, { type: "player_death", id: p.id, reason: "Vahşi bir hayvan seni alt etti.", killerName: null });
                 broadcastPlayers();
             }
             break;
@@ -1457,7 +1655,7 @@ function handleAttackPlayer(player, data) {
     const targetId = String((data && data.targetId) || "");
     const target = players.get(targetId);
 
-    if (!target || !target.inGame || !target.alive) return;
+    if (!target || !target.inGame || !target.alive || target.roomId !== player.roomId) return;
 
     damagePlayer(target, FIST_DAMAGE, player.id, player.name);
 }
@@ -1590,7 +1788,7 @@ function handleWeaponAttack(player, data) {
         const targetHostileDonkeyId = data.targetHostileDonkeyId ? String(data.targetHostileDonkeyId) : null;
         if (targetId) {
             const target = players.get(targetId);
-            if (target && target.inGame && target.alive) damagePlayer(target, GUN_DAMAGE, player.id, player.name);
+            if (target && target.inGame && target.alive && target.roomId === player.roomId) damagePlayer(target, GUN_DAMAGE, player.id, player.name);
         } else if (targetHostileDonkeyId) {
             damageHostileDonkey(player, targetHostileDonkeyId, GUN_DAMAGE, "gun");
         } else if (targetAnimalId) {
@@ -1614,7 +1812,7 @@ function handleWeaponAttack(player, data) {
 
         if (targetId) {
             const target = players.get(targetId);
-            if (target && target.inGame && target.alive) {
+            if (target && target.inGame && target.alive && target.roomId === player.roomId) {
                 damagePlayer(target, SWORD_DAMAGE, player.id, player.name);
             }
         } else if (targetHostileDonkeyId) {
@@ -1669,7 +1867,8 @@ wss.on("connection", (ws, req) => {
 
     console.log(`[WS] Bağlandı: ${player.id} ${req.socket.remoteAddress || ""}`);
 
-    sendTo(player, { type: "init", id: player.id });
+    sendTo(player, { type: "init", id: player.id, maps: ROOM_MAPS });
+    sendRoomList(player);
     broadcastOnlineCount();
 
     ws.on("message", (raw) => {
@@ -1686,6 +1885,22 @@ wss.on("connection", (ws, req) => {
         const type = String(data.type || "");
 
         switch (type) {
+            case "rooms_request":
+                handleRoomsRequest(player);
+                break;
+
+            case "create_room":
+                handleCreateRoom(player, data);
+                break;
+
+            case "join_room":
+                handleJoinRoom(player, data);
+                break;
+
+            case "leave_room":
+                handleLeaveRoom(player);
+                break;
+
             case "join_request":
                 joinGame(player, data);
                 break;
@@ -1835,6 +2050,7 @@ wss.on("connection", (ws, req) => {
     ws.on("close", () => {
         console.log(`[WS] Ayrıldı: ${player.id}`);
         leaveGame(player);
+        removePlayerFromRoom(player);
         players.delete(player.id);
         broadcastPlayers();
         broadcastOnlineCount();
@@ -1848,6 +2064,20 @@ wss.on("connection", (ws, req) => {
 // ============================================================
 // SUNUCU DÖNGÜLERİ
 // ============================================================
+
+// Boş veya uzun süre dokunulmayan odaları temizle.
+setInterval(() => {
+    const now = Date.now();
+    let changed = false;
+    for (const [id, room] of rooms) {
+        roomPlayerCount(room);
+        if (!room.members.size || now - room.lastActivityAt > ROOM_TTL_MS) {
+            rooms.delete(id);
+            changed = true;
+        }
+    }
+    if (changed) broadcastRoomLists();
+}, 60 * 1000);
 
 // Pozisyon yayını (~100ms); istemcilerdeki enterpolasyon hareketi yumuşatır.
 setInterval(() => {
@@ -1983,6 +2213,7 @@ setInterval(() => {
 // Sohbet 10 dakikada bir temizlenir
 setInterval(() => {
     chatHistory = [];
+    roomChatHistories.clear();
     broadcast({ type: "chat_reset" });
 }, CHAT_RESET_MS);
 
