@@ -26,25 +26,10 @@ const SERVER_VERSION = "1.0.0";
 // SUNUCU LOBİLERİ / HARİTALAR
 // ============================================================
 const ROOM_MAPS = Object.freeze({
-    forest: {
-        id: "forest", name: "Ormanlık Alan", icon: "🌲",
-        description: "Sık orman, kayalık geçitler ve dağ sırtları.",
-        boundary: "Dağlar ve sık orman", boundaryRadius: 500
-    },
     city: {
         id: "city", name: "Şehir", icon: "🏙️",
-        description: "Binalar, çevre yolu ve şehir çıkış bariyerleri.",
-        boundary: "Binalar ve beton çevre duvarları", boundaryRadius: 455
-    },
-    farm: {
-        id: "farm", name: "Çiftlik", icon: "🚜",
-        description: "Çitler, taş setler, tepeler ve açık kır arazisi.",
-        boundary: "Ahşap çitler, taş setler ve tepeler", boundaryRadius: 495
-    },
-    military: {
-        id: "military", name: "Askerî Alan", icon: "🪖",
-        description: "Beton duvarlar, tel örgüler ve dağlık kontrol hattı.",
-        boundary: "Beton duvar, tel örgü ve dağlık arazi", boundaryRadius: 475
+        description: "Apartmanlar, ara sokaklar ve şehir çöpleri.",
+        boundary: "Şehir sınırı", boundaryRadius: 110
     }
 });
 const rooms = new Map();
@@ -65,7 +50,7 @@ function roomPlayerCount(room) {
     return room.members.size;
 }
 function publicRoom(room) {
-    const map = ROOM_MAPS[room.mapId] || ROOM_MAPS.farm;
+    const map = ROOM_MAPS[room.mapId] || ROOM_MAPS.city;
     const host = players.get(room.hostId);
     const currentPlayers = roomPlayerCount(room);
     return {
@@ -115,7 +100,7 @@ function handleCreateRoom(player, data) {
     if (!player || player.inGame) return;
     const name = normalizeRoomName(data && data.name);
     const maxPlayers = Math.max(1, Math.min(ROOM_MAX_PLAYERS, Math.round(Number(data && data.maxPlayers) || 1)));
-    const mapId = String((data && data.mapId) || "farm");
+    const mapId = String((data && data.mapId) || "city");
     if (name.length < 2) {
         sendTo(player, { type: "room_error", message: "Sunucu adı en az 2 karakter olmalı." });
         return;
@@ -165,8 +150,8 @@ function handleLeaveRoom(player) {
 }
 function getRoomBoundaryRadius(player) {
     const room = getPlayerRoom(player);
-    const map = room ? ROOM_MAPS[room.mapId] : ROOM_MAPS.farm;
-    return Math.max(60, Number(map && map.boundaryRadius) || ROOM_MAPS.farm.boundaryRadius);
+    const map = room ? ROOM_MAPS[room.mapId] : ROOM_MAPS.city;
+    return Math.max(60, Number(map && map.boundaryRadius) || ROOM_MAPS.city.boundaryRadius);
 }
 function clampPlayerToRoom(player, x, z) {
     const radius = getRoomBoundaryRadius(player) - 5;
@@ -531,7 +516,7 @@ app.get("/api/version", (req, res) => {
 // ============================================================
 
 const MAX_NEED = 9;
-const SPAWN = { x: 151.2, y: 0.28, z: 211.2 }; // Çiftlik girişi (istemcideki barnSpawn)
+const SPAWN = { x: 0, y: 0, z: 3 }; // Şehir ara sokağı; çöp kutularının yanı
 
 const APPLE_MAX = 4;
 const APPLE_RESPAWN_MS = 45000;
@@ -1205,8 +1190,8 @@ function joinGame(player, data) {
             petId: player.progress.petId,
             roomId: room.id,
             mapId: room.mapId,
-            mapName: (ROOM_MAPS[room.mapId] || ROOM_MAPS.farm).name,
-            boundary: (ROOM_MAPS[room.mapId] || ROOM_MAPS.farm).boundary
+            mapName: (ROOM_MAPS[room.mapId] || ROOM_MAPS.city).name,
+            boundary: (ROOM_MAPS[room.mapId] || ROOM_MAPS.city).boundary
         }
     });
 
