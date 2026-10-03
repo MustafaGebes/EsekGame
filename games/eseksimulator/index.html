@@ -78,20 +78,12 @@ function buildCity(){
   const sidewalkOpenings=[],alleyCrossings=[];
   const addSidewalkOpening=(axis,p,side,center,width)=>sidewalkOpenings.push({axis,p,side,center,half:width/2+.22});
   for(let ix=0;ix<roadLines.length-1;ix++)for(let iz=0;iz<roadLines.length-1;iz++){
+    if(ix!==2||iz!==2)continue;
     const left=roadLines[ix]+roadWidth(roadLines[ix])/2+4.15,right=roadLines[ix+1]-roadWidth(roadLines[ix+1])/2-4.15;
-    const front=roadLines[iz]+roadWidth(roadLines[iz])/2+4.15,back=roadLines[iz+1]-roadWidth(roadLines[iz+1])/2-4.15;
-    const midX=(left+right)/2,midZ=(front+back)/2;
-    if(ix===2&&iz===2){
-      const width=4.0;
-      addSidewalkOpening('x',roadLines[iz],1,midX,width);addSidewalkOpening('x',roadLines[iz+1],-1,midX,width);
-      alleyCrossings.push({axis:'z',x:midX,z:roadLines[iz],width},{axis:'z',x:midX,z:roadLines[iz+1],width});
-    }else if((ix+iz)%2===0){
-      const width=2.55;
-      addSidewalkOpening('x',roadLines[iz],1,midX,width);addSidewalkOpening('x',roadLines[iz+1],-1,midX,width);
-      addSidewalkOpening('z',roadLines[ix],1,midZ,width);addSidewalkOpening('z',roadLines[ix+1],-1,midZ,width);
-      alleyCrossings.push({axis:'z',x:midX,z:roadLines[iz],width},{axis:'z',x:midX,z:roadLines[iz+1],width});
-      alleyCrossings.push({axis:'x',x:roadLines[ix],z:midZ,width},{axis:'x',x:roadLines[ix+1],z:midZ,width});
-    }
+    const midX=(left+right)/2,width=4.0;
+    // Only open the north end of the starting alley; keep every other sidewalk intact.
+    addSidewalkOpening('x',roadLines[iz+1],-1,midX,width);
+    alleyCrossings.push({axis:'z',x:midX,z:roadLines[iz+1],width});
   }
   // Split pavement at every junction so the raised sidewalk never runs across a road.
   function addPedestrianStrip(axis,p,side,width){
@@ -137,21 +129,7 @@ function buildCity(){
       if(width>12){roadMark(p-2.8,t,.09,3.4);roadMark(p+2.8,t,.09,3.4);roadMark(t,p-2.8,3.4,.09);roadMark(t,p+2.8,3.4,.09)}
     }
   }
-  // Four broad zebra crossings at each junction, with stop lines set back from the stripes.
-  for(const px of roadLines)for(const pz of roadLines){
-    const wx=roadWidth(px),wz=roadWidth(pz);
-    for(const side of [-1,1]){
-      const crossZ=pz+side*(wz/2+2.25),crossX=px+side*(wx/2+2.25);
-      for(let i=0;i<7;i++){
-        const offset=(i-3)*.66;
-        roadMark(px,crossZ+offset,wx-.85,.42);
-        roadMark(crossX+offset,pz,.42,wz-.85);
-      }
-      roadMark(px,pz+side*(wz/2+5.0),wx*.78,.16);
-      roadMark(px+side*(wx/2+5.0),pz,.16,wz*.78);
-    }
-  }
-  // Mark every service-alley mouth across the intersecting street, including the main spawn lane.
+  // One zebra crossing at the starting alley mouth; no extra crossings on the other roads.
   for(const crossing of alleyCrossings){
     const count=Math.max(5,Math.round(crossing.width/.55));
     for(let i=0;i<count;i++){
