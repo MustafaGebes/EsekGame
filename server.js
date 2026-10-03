@@ -516,7 +516,7 @@ app.get("/api/version", (req, res) => {
 // ============================================================
 
 const MAX_NEED = 9;
-const SPAWN = { x: 0, y: 0, z: 3 }; // Şehir ara sokağı; çöp kutularının yanı
+const SPAWN = { x: 22, y: 0, z: 18 }; // Şehir merkezindeki iki bina arasındaki çöp kutulu ara sokak
 
 const APPLE_MAX = 4;
 const APPLE_RESPAWN_MS = 45000;
@@ -1178,6 +1178,7 @@ function joinGame(player, data) {
     player.nextBearBiteAt = 0;
     sendTo(player, {
         type: "join_accepted",
+        spawn: { x: SPAWN.x, y: SPAWN.y, z: SPAWN.z },
         state: {
             name: player.name,
             health: player.health,
