@@ -123,13 +123,17 @@ function buildCity(){
       }
     }
   }
-  // Zebra crossings only at the square signalized junctions, not along straight road sections.
+  // Mark all four open pedestrian approaches at the central signalized junctions only.
   for(const px of roadLines)for(const pz of roadLines){
     if(Math.abs(px)>42||Math.abs(pz)>42)continue;
-    const crossZ=pz+roadWidth(pz)/2+2.25;
-    for(let i=0;i<7;i++){
-      const offset=(i-3)*.66;
-      roadMark(px,crossZ+offset,roadWidth(px)-.85,.42);
+    const wx=roadWidth(px),wz=roadWidth(pz);
+    for(const side of [-1,1]){
+      const crossZ=pz+side*(wz/2+2.25),crossX=px+side*(wx/2+2.25);
+      for(let i=0;i<7;i++){
+        const offset=(i-3)*.66;
+        roadMark(px,crossZ+offset,wx-.85,.42);
+        roadMark(crossX+offset,pz,.42,wz-.85);
+      }
     }
   }
   const frameMat=new THREE.MeshStandardMaterial({color:0x4d473e,roughness:.78});
