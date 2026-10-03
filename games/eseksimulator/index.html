@@ -75,18 +75,56 @@ function buildCity(){
     matrices.forEach((matrix,i)=>mesh.setMatrixAt(i,matrix));mesh.instanceMatrix.needsUpdate=true;
     mesh.castShadow=false;mesh.receiveShadow=true;scene.add(mesh);
   }
+  const sidewalkOpenings=[],alleyCrossings=[];
+  const addSidewalkOpening=(axis,p,side,center,width)=>sidewalkOpenings.push({axis,p,side,center,half:width/2+.22});
+  for(let ix=0;ix<roadLines.length-1;ix++)for(let iz=0;iz<roadLines.length-1;iz++){
+    const left=roadLines[ix]+roadWidth(roadLines[ix])/2+4.15,right=roadLines[ix+1]-roadWidth(roadLines[ix+1])/2-4.15;
+    const front=roadLines[iz]+roadWidth(roadLines[iz])/2+4.15,back=roadLines[iz+1]-roadWidth(roadLines[iz+1])/2-4.15;
+    const midX=(left+right)/2,midZ=(front+back)/2;
+    if(ix===2&&iz===2){
+      const width=4.0;
+      addSidewalkOpening('x',roadLines[iz],1,midX,width);addSidewalkOpening('x',roadLines[iz+1],-1,midX,width);
+      alleyCrossings.push({axis:'z',x:midX,z:roadLines[iz],width},{axis:'z',x:midX,z:roadLines[iz+1],width});
+    }else if((ix+iz)%2===0){
+      const width=2.55;
+      addSidewalkOpening('x',roadLines[iz],1,midX,width);addSidewalkOpening('x',roadLines[iz+1],-1,midX,width);
+      addSidewalkOpening('z',roadLines[ix],1,midZ,width);addSidewalkOpening('z',roadLines[ix+1],-1,midZ,width);
+      alleyCrossings.push({axis:'z',x:midX,z:roadLines[iz],width},{axis:'z',x:midX,z:roadLines[iz+1],width});
+      alleyCrossings.push({axis:'x',x:roadLines[ix],z:midZ,width},{axis:'x',x:roadLines[ix+1],z:midZ,width});
+    }
+  }
+  // Split pavement at every junction so the raised sidewalk never runs across a road.
+  function addPedestrianStrip(axis,p,side,width){
+    const sidewalkCenter=p+side*(width/2+2.25),curbCenter=p+side*(width/2+.28),edgeCenter=p+side*(width/2+4.15);
+    const addSegment=(from,to)=>{
+      const length=to-from;if(length<.35)return;const middle=(from+to)/2;
+      if(axis==='z'){
+        box(scene,sidewalkWidth,.19,length,0xa7a195,sidewalkCenter,.09,middle,sidewalk);
+        box(scene,.42,.30,length,0xc0b8a7,curbCenter,.13,middle,curb);
+        box(scene,.18,.14,length,0x4b4b46,edgeCenter,.07,middle,roadEdge);
+      }else{
+        box(scene,length,.19,sidewalkWidth,0xa7a195,middle,.09,sidewalkCenter,sidewalk);
+        box(scene,length,.30,.42,0xc0b8a7,middle,.13,curbCenter,curb);
+        box(scene,length,.14,.18,0x4b4b46,middle,.07,edgeCenter,roadEdge);
+      }
+    };
+    const cuts=roadLines.map(crossing=>({center:crossing,half:roadWidth(crossing)/2+.22}));
+    for(const opening of sidewalkOpenings)if(opening.axis===axis&&opening.p===p&&opening.side===side)cuts.push(opening);
+    cuts.sort((a,b)=>a.center-b.center);
+    let start=-130;
+    for(const cut of cuts){
+      if(cut.center+cut.half<=start)continue;
+      addSegment(start,cut.center-cut.half);start=Math.max(start,cut.center+cut.half);
+    }
+    addSegment(start,130);
+  }
   for(const p of roadLines){
     const width=roadWidth(p);
     box(scene,width,.13,260,0x34383a,p,.015,0,asphalt);
     box(scene,260,.13,width,0x34383a,0,.015,p,asphalt);
     for(const side of [-1,1]){
       const vx=p+side*(width/2+2.25),vz=p+side*(width/2+2.25);
-      box(scene,sidewalkWidth,.19,260,0xa7a195,vx,.09,0,sidewalk);
-      box(scene,260,.19,sidewalkWidth,0xa7a195,0,.09,vz,sidewalk);
-      box(scene,.42,.30,260,0xc0b8a7,p+side*(width/2+.28),.13,0,curb);
-      box(scene,260,.30,.42,0xc0b8a7,0,.13,p+side*(width/2+.28),curb);
-      box(scene,.18,.14,260,0x4b4b46,p+side*(width/2+4.15),.07,0,roadEdge);
-      box(scene,260,.14,.18,0x4b4b46,0,.07,p+side*(width/2+4.15),roadEdge);
+      addPedestrianStrip('z',p,side,width);addPedestrianStrip('x',p,side,width);
       for(let t=-116;t<=116;t+=4.2){
         if(roadLines.some(q=>Math.abs(t-q)<roadWidth(q)/2+3))continue;
         paverSeam(vx,t,sidewalkWidth-.46,.045);
@@ -99,18 +137,27 @@ function buildCity(){
       if(width>12){roadMark(p-2.8,t,.09,3.4);roadMark(p+2.8,t,.09,3.4);roadMark(t,p-2.8,3.4,.09);roadMark(t,p+2.8,3.4,.09)}
     }
   }
-  // Zebra crossings at the main intersections and painted lane guides.
+  // Four broad zebra crossings at each junction, with stop lines set back from the stripes.
   for(const px of roadLines)for(const pz of roadLines){
     const wx=roadWidth(px),wz=roadWidth(pz);
     for(const side of [-1,1]){
-      const crossZ=pz+side*(wz/2+1.7),crossX=px+side*(wx/2+1.7);
+      const crossZ=pz+side*(wz/2+2.25),crossX=px+side*(wx/2+2.25);
       for(let i=0;i<7;i++){
-        const ox=-wx*.36+i*(wx*.72/6),oz=-wz*.36+i*(wz*.72/6);
-        roadMark(px+ox,crossZ,.62,.44);roadMark(px+ox,pz-side*(wz/2+1.7),.62,.44);
-        roadMark(crossX,pz+oz,.44,.62);roadMark(px-side*(wx/2+1.7),pz+oz,.44,.62);
+        const offset=(i-3)*.66;
+        roadMark(px,crossZ+offset,wx-.85,.42);
+        roadMark(crossX+offset,pz,.42,wz-.85);
       }
-      roadMark(px,pz+side*(wz/2+4.9),wx*.72,.16);
-      roadMark(px+side*(wx/2+4.9),pz, .16,wz*.72);
+      roadMark(px,pz+side*(wz/2+5.0),wx*.78,.16);
+      roadMark(px+side*(wx/2+5.0),pz,.16,wz*.78);
+    }
+  }
+  // Mark every service-alley mouth across the intersecting street, including the main spawn lane.
+  for(const crossing of alleyCrossings){
+    const count=Math.max(5,Math.round(crossing.width/.55));
+    for(let i=0;i<count;i++){
+      const offset=((i+.5)/count-.5)*crossing.width;
+      if(crossing.axis==='z')roadMark(crossing.x+offset,crossing.z,.36,roadWidth(crossing.z)-.85);
+      else roadMark(crossing.x,crossing.z+offset,roadWidth(crossing.x)-.85,.36);
     }
   }
   const frameMat=new THREE.MeshStandardMaterial({color:0x4d473e,roughness:.78});
@@ -207,6 +254,28 @@ function buildCity(){
     const planter=box(scene,2.25,.24,2.25,0x69665c,x,.16,z,mat(0x69665c,.94));
     const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.15,.23,2.1,7),mat(0x65513c,.97));trunk.position.set(x,1.25,z);trunk.castShadow=true;scene.add(trunk);
     const crown=new THREE.Mesh(new THREE.ConeGeometry(1.35,2.55,8),mat(0x596a50,.98));crown.position.set(x,3.28,z);crown.castShadow=true;scene.add(crown);
+  }
+  const signalPoleMaterial=mat(0x30383a,.52),signalHousingMaterial=mat(0x202628,.46);
+  const signalRedMaterial=new THREE.MeshStandardMaterial({color:0xb83c35,emissive:0x4f0805,emissiveIntensity:.55,roughness:.35});
+  const signalAmberMaterial=new THREE.MeshStandardMaterial({color:0xd1a23c,emissive:0x49300a,emissiveIntensity:.42,roughness:.35});
+  const signalGreenMaterial=new THREE.MeshStandardMaterial({color:0x4a9b62,emissive:0x092b12,emissiveIntensity:.42,roughness:.35});
+  const signalPoleGeometry=new THREE.CylinderGeometry(.075,.12,4.5,7),signalHousingGeometry=new THREE.BoxGeometry(.55,1.42,.34),signalLensGeometry=new THREE.SphereGeometry(.13,8,6);
+  function trafficLight(x,z,targetX,targetZ){
+    const group=new THREE.Group();group.position.set(x,0,z);group.rotation.y=Math.atan2(targetX-x,targetZ-z);
+    const pole=new THREE.Mesh(signalPoleGeometry,signalPoleMaterial);pole.position.y=2.25;group.add(pole);
+    const housing=new THREE.Mesh(signalHousingGeometry,signalHousingMaterial);housing.position.set(0,4.12,.12);group.add(housing);
+    [signalRedMaterial,signalAmberMaterial,signalGreenMaterial].forEach((material,i)=>{
+      const lens=new THREE.Mesh(signalLensGeometry,material);lens.position.set(0,4.53-i*.40,.315);group.add(lens);
+    });
+    scene.add(group);
+  }
+  // Keep traffic lights on the central nine junctions, on the corner pavements and facing traffic.
+  for(const px of roadLines)for(const pz of roadLines){
+    if(Math.abs(px)>42||Math.abs(pz)>42)continue;
+    for(const sx of [-1,1])for(const sz of [-1,1]){
+      const x=px+sx*(roadWidth(px)/2+2.25),z=pz+sz*(roadWidth(pz)/2+2.25);
+      trafficLight(x,z,px,pz);
+    }
   }
   const nearSpawnCorridor=(x,z)=>Math.abs(x-CITY_SPAWN.x)<14&&z>CITY_SPAWN.z-15&&z<CITY_SPAWN.z+22;
   for(let i=0;i<roadLines.length;i++)for(const t of [-63,-21,21,63]){
