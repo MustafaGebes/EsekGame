@@ -150,6 +150,39 @@
         #settingsPanel .value-display { float: right; color: #ffd700; font-weight: bold; }
         #settingsPanel .close-btn { width: 100%; margin-top: 20px; padding: 12px; background: #4CAF50; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
         #settingsPanel .close-btn:hover { background: #45a049; }
+        #serverLobby { display:none; width:min(980px,94vw); max-height:90vh; overflow:auto; padding:22px; border:1px solid rgba(255,214,94,.32); border-radius:22px; background:linear-gradient(145deg,rgba(18,29,27,.97),rgba(8,15,19,.97)); box-shadow:0 24px 90px rgba(0,0,0,.65); color:#f4f7ef; }
+        .server-lobby-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:18px; text-align:left; }
+        .server-lobby-head h3 { margin:0; color:#ffe18b; font-size:clamp(24px,4vw,34px); }
+        .server-lobby-head p { margin:7px 0 0; color:#aebdb2; font-size:13px; line-height:1.5; }
+        .server-lobby-badge { flex:0 0 auto; padding:8px 11px; border:1px solid #ffffff22; border-radius:999px; background:#ffffff0b; color:#dcebdc; font-size:12px; font-weight:800; }
+        .server-lobby-grid { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr); gap:16px; align-items:start; }
+        .server-panel { padding:15px; border:1px solid #ffffff1b; border-radius:16px; background:#ffffff06; text-align:left; }
+        .server-panel h4 { margin:0 0 12px; color:#ffe7a0; font-size:16px; }
+        #roomList { display:flex; flex-direction:column; gap:9px; max-height:42vh; overflow:auto; }
+        .room-empty { padding:25px 15px; border:1px dashed #ffffff24; border-radius:12px; color:#a5b2ab; text-align:center; line-height:1.5; }
+        .room-card { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; padding:12px; border:1px solid #ffffff1b; border-radius:13px; background:linear-gradient(135deg,#ffffff0b,#ffffff04); }
+        .room-card:hover { border-color:#ffd45a66; background:#ffd45a0b; }
+        .room-card strong { display:block; color:#fff4c3; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .room-card small { display:block; margin-top:5px; color:#aebbb3; line-height:1.45; }
+        .room-card-meta { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; color:#d9e5dc; font-size:11px; }
+        .room-card-meta span { padding:4px 7px; border:1px solid #ffffff18; border-radius:999px; background:#ffffff08; }
+        .room-join-btn { min-width:78px; padding:9px 10px; border:0; border-radius:9px; background:#35b979; color:#08150f; font-size:11px; font-weight:900; cursor:pointer; }
+        .room-join-btn:disabled { background:#ffffff18; color:#829087; cursor:not-allowed; }
+        #createRoomForm { display:flex; flex-direction:column; gap:10px; }
+        #createRoomForm label { color:#d5e2d8; font-size:12px; font-weight:800; }
+        #createRoomForm input, #createRoomForm select { width:100%; margin-top:5px; padding:10px 11px; border:1px solid #53645b; border-radius:9px; outline:none; background:#0d1717; color:#f7fff8; font:inherit; }
+        #createRoomForm input:focus, #createRoomForm select:focus { border-color:#ffd45a; box-shadow:0 0 0 2px #ffd45a22; }
+        .room-range-row { display:flex; align-items:center; gap:10px; }
+        .room-range-row input { margin:5px 0 0; accent-color:#ffd45a; }
+        #roomMaxValue { flex:0 0 42px; padding:8px; border-radius:8px; background:#ffd45a18; color:#ffe7a0; text-align:center; font-weight:900; }
+        .map-detail { min-height:62px; margin-top:2px; padding:10px; border-radius:10px; background:#0b1516; color:#aebdb2; font-size:11px; line-height:1.45; }
+        .map-detail strong { display:block; margin-bottom:3px; color:#ffe18b; font-size:12px; }
+        #roomNotice { min-height:18px; margin:4px 0 12px; color:#9de3a9; font-size:12px; font-weight:800; }
+        .server-lobby-actions { display:flex; gap:9px; margin-top:14px; }
+        .server-lobby-actions button { flex:1; min-width:0; padding:10px 12px; border:0; border-radius:10px; font-weight:900; cursor:pointer; }
+        #createRoomBtn { background:linear-gradient(135deg,#ffd45a,#ffad2f); color:#22190a; }
+        #backToControlsBtn { background:#26353a; color:#dce9df; }
+        @media(max-width:760px){ #serverLobby{padding:16px;border-radius:16px} .server-lobby-head{flex-direction:column;gap:8px} .server-lobby-grid{grid-template-columns:1fr} #roomList{max-height:31vh} .room-card{grid-template-columns:1fr} .room-join-btn{width:100%} }
         #onlineBadge { position: fixed; top: 18px; left: 50%; right: auto; transform: translateX(-50%); z-index: 35; padding: 10px 14px; border: 1px solid rgba(255,255,255,.25); border-radius: 22px; background: rgba(15,20,27,.9); color: #fff; font-weight: 700; box-shadow: 0 4px 16px #0008; white-space: nowrap; }
         #onlineBadge .online-dot { display: inline-block; width: 9px; height: 9px; margin-right: 7px; border-radius: 50%; background: #36d478; box-shadow: 0 0 8px #36d478; }
         #nameCard { display:none !important; margin: 8px 0 10px; padding: 12px 16px; width: 300px; max-width: 82vw; border: 1px solid #ffffff30; border-radius: 10px; background: rgba(15,20,27,.8); color: #eee; }
@@ -229,6 +262,41 @@
             <button id="pcSelectBtn" class="btn btn-blue">💻 PC KONTROLÜ</button><br>
             <button id="mobileSelectBtn" class="btn" style="background-color: #ff9800;">📱 MOBİL KONTROLÜ</button>
         </div>
+        <section id="serverLobby" aria-label="Sunucular">
+            <div class="server-lobby-head">
+                <div><h3>🌐 Sunucular</h3><p>Kontrolünü seçtin. Bir sunucuya katıl veya kendi sunucunu oluştur.</p></div>
+                <span class="server-lobby-badge" id="lobbyControlBadge">💻 PC kontrolü</span>
+            </div>
+            <div id="roomNotice" role="status" aria-live="polite">Sunucular yükleniyor…</div>
+            <div class="server-lobby-grid">
+                <section class="server-panel">
+                    <h4>Mevcut sunucular</h4>
+                    <div id="roomList"><div class="room-empty">Sunucular yükleniyor…</div></div>
+                </section>
+                <section class="server-panel">
+                    <h4>Sunucu oluştur</h4>
+                    <form id="createRoomForm">
+                        <label for="roomNameInput">Sunucu adı
+                            <input id="roomNameInput" name="name" maxlength="32" placeholder="Örn. Eşek Takımı" autocomplete="off" required>
+                        </label>
+                        <label for="roomMaxInput">Kişi sınırı <span style="color:#9aa99e;font-weight:400">(en az 1, en fazla 10)</span>
+                            <div class="room-range-row"><input id="roomMaxInput" type="range" name="maxPlayers" min="1" max="10" value="5"><output id="roomMaxValue">5 kişi</output></div>
+                        </label>
+                        <label for="roomMapInput">Harita seçimi
+                            <select id="roomMapInput" name="mapId">
+                                <option value="forest">🌲 Ormanlık Alan</option>
+                                <option value="city">🏙️ Şehir</option>
+                                <option value="farm" selected>🚜 Çiftlik</option>
+                                <option value="military">🪖 Askerî Alan</option>
+                            </select>
+                        </label>
+                        <div class="map-detail" id="mapDetail"><strong>🚜 Çiftlik sınırı</strong>Ahşap çitler, taş setler ve tepeler. Oyuncular haritanın dışına çıkamaz.</div>
+                        <button id="createRoomBtn" type="submit">＋ SUNUCU OLUŞTUR</button>
+                    </form>
+                </section>
+            </div>
+            <div class="server-lobby-actions"><button id="backToControlsBtn" type="button">← Kontrol seçimine dön</button></div>
+        </section>
         <div id="pauseButtons" style="display: none; flex-direction: column; align-items: center;">
             <div style="font-size:28px;font-weight:800;margin-bottom:18px;">OYUN DURAKLATILDI</div>
             <button id="resumeBtn" class="btn">🏠 MENÜYE DÖN</button>
@@ -342,6 +410,17 @@
         const otherPlayers = {};
         let controlMode = 'pc';
         const MAP_LIMIT = 510;
+        const MAP_CATALOG = Object.freeze({
+            forest: { id: 'forest', name: 'Ormanlık Alan', icon: '🌲', description: 'Sık orman, kayalık geçitler ve dağ sırtları.', boundary: 'Dağlar ve sık orman', boundaryRadius: 500, style: 'forest' },
+            city: { id: 'city', name: 'Şehir', icon: '🏙️', description: 'Binalar, çevre yolu ve şehir çıkış bariyerleri.', boundary: 'Binalar ve beton çevre duvarları', boundaryRadius: 455, style: 'city' },
+            farm: { id: 'farm', name: 'Çiftlik', icon: '🚜', description: 'Çitler, taş setler, tepeler ve açık kır arazisi.', boundary: 'Ahşap çitler, taş setler ve tepeler', boundaryRadius: 495, style: 'farm' },
+            military: { id: 'military', name: 'Askerî Alan', icon: '🪖', description: 'Beton duvarlar, tel örgüler ve dağlık kontrol hattı.', boundary: 'Beton duvar, tel örgü ve dağlık arazi', boundaryRadius: 475, style: 'military' }
+        });
+        let activeRoomId = null;
+        let activeMapId = 'farm';
+        let roomBoundaryGroup = null;
+        function activeMapConfig() { return MAP_CATALOG[activeMapId] || MAP_CATALOG.farm; }
+        function activeMapBoundaryRadius() { return Number(activeMapConfig().boundaryRadius) || MAP_LIMIT; }
         const CAMP_SITE = { x: 245, z: -205 };
         const CAMPFIRE_INTERACT_RANGE = 8;
         const PET_SHOP = { x: 177, z: 247 };
@@ -586,6 +665,49 @@
             new THREE.MeshBasicMaterial({ color: 0x71c8d0, transparent: true, opacity: 0.32, side: THREE.DoubleSide })
         );
         seaGlint.rotation.x = -Math.PI / 2; seaGlint.position.y = -2.32; scene.add(seaGlint);
+
+        function disposeRoomBoundary() {
+            if (!roomBoundaryGroup) return;
+            scene.remove(roomBoundaryGroup);
+            roomBoundaryGroup.traverse(node => {
+                if (node.geometry) node.geometry.dispose();
+                if (node.material) for (const material of Array.isArray(node.material) ? node.material : [node.material]) material.dispose();
+            });
+            roomBoundaryGroup = null;
+        }
+        function applyMapBoundaryTheme(mapId) {
+            activeMapId = MAP_CATALOG[mapId] ? mapId : 'farm';
+            disposeRoomBoundary();
+            const cfg = activeMapConfig();
+            const radius = cfg.boundaryRadius - 18;
+            roomBoundaryGroup = new THREE.Group();
+            roomBoundaryGroup.name = `${cfg.name} doğal harita sınırı`;
+            const count = 42;
+            for (let i = 0; i < count; i++) {
+                const angle = i / count * Math.PI * 2;
+                const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
+                const tangent = -angle;
+                if (cfg.style === 'forest') {
+                    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(5 + (i % 3) * 1.4, 0), new THREE.MeshLambertMaterial({ color: i % 2 ? 0x5b665d : 0x77806d }));
+                    rock.position.set(x, 3 + (i % 3), z); rock.scale.y = 1.2 + (i % 2) * .35; roomBoundaryGroup.add(rock);
+                    if (i % 2 === 0) { const tree = new THREE.Mesh(new THREE.ConeGeometry(3.6, 16 + (i % 4) * 2, 7), new THREE.MeshLambertMaterial({ color: 0x214b31 })); tree.position.set(x + Math.cos(angle) * 4, 9, z + Math.sin(angle) * 4); roomBoundaryGroup.add(tree); }
+                } else if (cfg.style === 'city') {
+                    const building = new THREE.Mesh(new THREE.BoxGeometry(9 + (i % 3) * 3, 9 + (i % 4) * 2, 5), new THREE.MeshLambertMaterial({ color: [0x687787, 0x8a7160, 0x526779][i % 3] }));
+                    building.position.set(x, building.geometry.parameters.height / 2, z); building.rotation.y = tangent; roomBoundaryGroup.add(building);
+                } else if (cfg.style === 'military') {
+                    const wall = new THREE.Mesh(new THREE.BoxGeometry(13, 3.3, 1.4), new THREE.MeshLambertMaterial({ color: 0x687078 }));
+                    wall.position.set(x, 1.65, z); wall.rotation.y = tangent; roomBoundaryGroup.add(wall);
+                    if (i % 2 === 0) { const post = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, 4.2, 6), new THREE.MeshLambertMaterial({ color: 0x30383b })); post.position.set(x + Math.cos(angle) * 5, 4.8, z + Math.sin(angle) * 5); roomBoundaryGroup.add(post); }
+                } else {
+                    const post = new THREE.Mesh(new THREE.BoxGeometry(.35, 1.7, .35), new THREE.MeshLambertMaterial({ color: 0x8a5b31 }));
+                    post.position.set(x, .85, z); roomBoundaryGroup.add(post);
+                    if (i % 2 === 0) { const rail = new THREE.Mesh(new THREE.BoxGeometry(15, .18, .18), new THREE.MeshLambertMaterial({ color: 0xb8864d })); rail.position.set(x, 1.05, z); rail.rotation.y = tangent; roomBoundaryGroup.add(rail); }
+                }
+            }
+            scene.add(roomBoundaryGroup);
+        }
+        window.applyEsekMapBoundaryTheme = applyMapBoundaryTheme;
+        applyMapBoundaryTheme('farm');
 
         // ==========================================
         // OTLAR
@@ -3989,6 +4111,16 @@ function stepCar(c,dt){
 
         const menuEl = document.getElementById('menu');
         const mainButtons = document.getElementById('mainButtons');
+        const serverLobbyEl = document.getElementById('serverLobby');
+        const roomListEl = document.getElementById('roomList');
+        const roomNoticeEl = document.getElementById('roomNotice');
+        const roomNameInput = document.getElementById('roomNameInput');
+        const roomMaxInput = document.getElementById('roomMaxInput');
+        const roomMaxValue = document.getElementById('roomMaxValue');
+        const roomMapInput = document.getElementById('roomMapInput');
+        const mapDetailEl = document.getElementById('mapDetail');
+        const lobbyControlBadge = document.getElementById('lobbyControlBadge');
+        let lobbyRooms = [];
         const pauseButtons = document.getElementById('pauseButtons');
         const resumeBtn = document.getElementById('resumeBtn');
         const returnMenuBtn = document.getElementById('returnMenuBtn');
@@ -4154,6 +4286,7 @@ function stepCar(c,dt){
             nameCardEl.style.display = 'block';
             mainButtons.style.display = 'block';
             pauseButtons.style.display = 'none';
+            if (serverLobbyEl) serverLobbyEl.style.display = 'none';
         }
         // ===== DURAKLATMA MENÜSÜ DÜZENLEMESİ BİTİŞ =====
 
@@ -4807,8 +4940,9 @@ function stepCar(c,dt){
                 }
 
                 const distFromCenter = Math.sqrt(playerDonkey.position.x ** 2 + playerDonkey.position.z ** 2);
-                if (distFromCenter > MAP_LIMIT - 5) {
-                    const scale = (MAP_LIMIT - 5) / distFromCenter;
+                const activeBoundaryLimit = activeMapBoundaryRadius() - 5;
+                if (distFromCenter > activeBoundaryLimit) {
+                    const scale = activeBoundaryLimit / distFromCenter;
                     playerDonkey.position.x *= scale;
                     playerDonkey.position.z *= scale;
                 }
@@ -5071,6 +5205,93 @@ function stepCar(c,dt){
             joinPending.sent = true;
             sendSocketMessage('join_request',{token:getAuthToken(),platform:joinPending.mode,progressId:getProgressId()});
         }
+        function escapeLobbyText(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function setRoomNotice(text, good = true) {
+            if (!roomNoticeEl) return;
+            roomNoticeEl.textContent = String(text || '');
+            roomNoticeEl.style.color = good ? '#9de3a9' : '#ff8585';
+        }
+        function renderMapDetail() {
+            const cfg = MAP_CATALOG[roomMapInput && roomMapInput.value] || MAP_CATALOG.farm;
+            if (mapDetailEl) mapDetailEl.innerHTML = `<strong>${cfg.icon} ${escapeLobbyText(cfg.name)} sınırı</strong>${escapeLobbyText(cfg.description)} ${escapeLobbyText(cfg.boundary)}. Oyuncular haritanın dışına çıkamaz.`;
+        }
+        function renderRoomList(roomsToRender = lobbyRooms) {
+            if (!roomListEl) return;
+            roomListEl.replaceChildren();
+            if (!roomsToRender.length) {
+                const empty = document.createElement('div'); empty.className = 'room-empty';
+                empty.innerHTML = 'Henüz sunucu yok.<br><strong>Sağdaki formdan ilk sunucuyu oluştur.</strong>';
+                roomListEl.appendChild(empty); return;
+            }
+            for (const room of roomsToRender) {
+                const card = document.createElement('article'); card.className = 'room-card';
+                const copy = document.createElement('div');
+                const title = document.createElement('strong'); title.textContent = `${room.mapIcon || '🌐'} ${room.name}`;
+                const desc = document.createElement('small'); desc.textContent = `${room.mapName} · ${room.mapDescription} Sınır: ${room.boundary}.`;
+                const meta = document.createElement('div'); meta.className = 'room-card-meta';
+                meta.innerHTML = `<span>👥 ${Number(room.currentPlayers) || 0}/${Number(room.maxPlayers) || 10}</span><span>👑 ${escapeLobbyText(room.hostName || 'Oyuncu')}</span>`;
+                copy.append(title, desc, meta);
+                const button = document.createElement('button'); button.type = 'button'; button.className = 'room-join-btn';
+                const isFull = Number(room.currentPlayers) >= Number(room.maxPlayers);
+                button.disabled = isFull && room.id !== activeRoomId;
+                button.textContent = room.id === activeRoomId ? 'OYUNA GİR' : isFull ? 'DOLU' : 'KATIL';
+                button.addEventListener('click', () => joinRoom(room.id));
+                card.append(copy, button); roomListEl.appendChild(card);
+            }
+        }
+        function requestRoomList() {
+            if (ws && ws.readyState === WebSocket.OPEN) sendSocketMessage('rooms_request', {});
+        }
+        function openServerLobby(mode) {
+            controlMode = mode;
+            activeRoomId = null;
+            menuEl.classList.remove('pause-mode');
+            menuEl.style.display = 'flex';
+            nameCardEl.style.display = 'none';
+            mainButtons.style.display = 'none';
+            pauseButtons.style.display = 'none';
+            serverLobbyEl.style.display = 'block';
+            lobbyControlBadge.textContent = mode === 'mobile' ? '📱 Mobil kontrolü' : '💻 PC kontrolü';
+            setRoomNotice('Sunucular yükleniyor…', true);
+            renderRoomList([]);
+            renderMapDetail();
+            initWebSocket();
+            if (ws && ws.readyState === WebSocket.OPEN) requestRoomList();
+            else if (ws) ws.addEventListener('open', requestRoomList, { once: true });
+        }
+        function leaveCurrentRoom() {
+            if (ws && ws.readyState === WebSocket.OPEN) sendSocketMessage('leave_room', {});
+            activeRoomId = null;
+        }
+        function closeServerLobby() {
+            leaveCurrentRoom();
+            serverLobbyEl.style.display = 'none';
+            mainButtons.style.display = 'block';
+            nameCardEl.style.display = 'block';
+            setNameError('');
+        }
+        function createRoomFromForm(event) {
+            event.preventDefault();
+            const name = String(roomNameInput.value || '').trim();
+            if (name.length < 2) { setRoomNotice('Sunucu adı en az 2 karakter olmalı.', false); roomNameInput.focus(); return; }
+            if (!ws || ws.readyState !== WebSocket.OPEN) { setRoomNotice('Sunucu bağlantısı henüz hazır değil.', false); return; }
+            setRoomNotice('Sunucu oluşturuluyor…', true);
+            sendSocketMessage('create_room', { name, maxPlayers: Number(roomMaxInput.value), mapId: roomMapInput.value });
+        }
+        function joinRoom(roomId) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) { setRoomNotice('Sunucu bağlantısı henüz hazır değil.', false); return; }
+            setRoomNotice('Sunucuya katılınıyor…', true);
+            sendSocketMessage('join_room', { roomId, token: getAuthToken(), platform: controlMode, progressId: getProgressId() });
+        }
+        roomMaxInput.addEventListener('input', () => { roomMaxValue.textContent = `${roomMaxInput.value} kişi`; });
+        roomMapInput.addEventListener('change', renderMapDetail);
+        document.getElementById('createRoomForm').addEventListener('submit', createRoomFromForm);
+        document.getElementById('backToControlsBtn').addEventListener('click', closeServerLobby);
+
         function beginJoin(mode,isResume=false) {
             setNameError('Sunucuya bağlanılıyor…',true);
             joinPending={mode,isResume,oldX:playerDonkey.position.x,oldY:playerDonkey.position.y,oldZ:playerDonkey.position.z,sent:false};
@@ -5079,8 +5300,8 @@ function stepCar(c,dt){
             if (ws && ws.readyState === WebSocket.OPEN) sendPendingJoin();
             else if (ws) ws.addEventListener('open',sendPendingJoin,{once:true});
         }
-        pcSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('pc',false);},true);
-        mobileSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();beginJoin('mobile',false);},true);
+        pcSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();openServerLobby('pc');},true);
+        mobileSelectBtn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();openServerLobby('mobile');},true);
         document.getElementById('chatHideBtn').addEventListener
 ('click',()=>setChatVisible(false));
         chatReopenBtn.addEventListener('click',()=>setChatVisible(true));
@@ -5153,7 +5374,7 @@ function stepCar(c,dt){
             setGameUiVisible(false);chatPanelEl.style.display='none';chatReopenBtn.style.display='none';mobOpenBtn.style.display='none';
         }
         function leaveAfterDeath() {
-            sendPresence(false);playerIsDead=false;deathScreenShowing=false;gameStarted=false;releaseFirstPersonPointerLock();deathOverlayEl.style.display='none';
+            sendPresence(false);leaveCurrentRoom();playerIsDead=false;deathScreenShowing=false;gameStarted=false;releaseFirstPersonPointerLock();deathOverlayEl.style.display='none';
             playerDonkey.visible=false;playerDonkey.rotation.z=0;mobileControlsEl.style.display='none';hudEl.style.display='none';infoEl.style.display='none';crosshairEl.style.display='none';survivalHudEl.style.display='none';
             chatPanelEl.style.display='none';chatReopenBtn.style.display='none';openMainMenu();setNameError('');
         }
@@ -5161,8 +5382,27 @@ function stepCar(c,dt){
         deathMenuBtnEl.addEventListener('click',leaveAfterDeath);
         function onExtendedMessage(event) {
             let data;try{data=JSON.parse(event.data);}catch(e){return;}
+            if(data.type==='rooms_list'){
+                lobbyRooms = Array.isArray(data.rooms) ? data.rooms : [];
+                if (serverLobbyEl && serverLobbyEl.style.display !== 'none') renderRoomList();
+                return;
+            } else if(data.type==='room_created'){
+                activeRoomId = data.room && data.room.id ? data.room.id : null;
+                setRoomNotice(`"${data.room && data.room.name ? data.room.name : 'Sunucu'}" oluşturuldu. Listeden OYUNA GİR diyerek başlayabilirsin.`, true);
+                requestRoomList();
+                return;
+            } else if(data.type==='room_joined'){
+                activeRoomId = data.room && data.room.id ? data.room.id : activeRoomId;
+                activeMapId = data.room && data.room.mapId ? data.room.mapId : activeMapId;
+                if (typeof window.applyEsekMapBoundaryTheme === 'function') window.applyEsekMapBoundaryTheme(activeMapId);
+                return;
+            } else if(data.type==='room_error'){
+                setRoomNotice(data.message || 'Sunucu işlemi başarısız.', false);
+                requestRoomList();
+                return;
+            }
             if(data.type==='join_accepted'){
-                const pending=joinPending||{mode:controlMode,isResume:false};joinPending=null;currentPlayerName=String((data.state&&data.state.name)||'Guest-000');setNameError('');applyNeeds(data.state||{});applyPetState(data.state&&data.state.petId);sendSocketMessage('berry_state_request',{});
+                const pending=joinPending||{mode:controlMode,isResume:false};joinPending=null;currentPlayerName=String((data.state&&data.state.name)||'Guest-000');activeRoomId=data.state&&data.state.roomId?data.state.roomId:activeRoomId;activeMapId=data.state&&data.state.mapId?data.state.mapId:activeMapId;if(typeof window.applyEsekMapBoundaryTheme==='function')window.applyEsekMapBoundaryTheme(activeMapId);setNameError('');applyNeeds(data.state||{});applyPetState(data.state&&data.state.petId);sendSocketMessage('berry_state_request',{});
                 if(pending.isResume)completeResume(pending.mode);else startGameOriginal(pending.mode);
                 setGameUiVisible(true);sendSocketMessage('animal_states_request',{ids:[...wildlife.map(a=>a.userData.id),...caveBears.map(a=>a.userData.id)]});
                 sendSocketMessage('hunter_state_request',{});sendSocketMessage('campfire_state_request',{});
@@ -5172,7 +5412,7 @@ function stepCar(c,dt){
                 if(data.message)showFullWarning(data.message);
             } else if(data.type==='join_denied'){
                 if(joinPending&&joinPending.isResume){gameStarted=false;releaseFirstPersonPointerLock();}
-                joinPending=null;setNameError(data.message||'Bu oyuncu adı şu an kullanılıyor. Başka bir ad dene.');menuEl.style.display='flex';deathOverlayEl.style.display='none';
+                joinPending=null;if(serverLobbyEl&&serverLobbyEl.style.display!=='none'){setRoomNotice(data.message||'Sunucuya katılamadın.',false);requestRoomList();}else{setNameError(data.message||'Bu oyuncu adı şu an kullanılıyor. Başka bir ad dene.');menuEl.style.display='flex';}deathOverlayEl.style.display='none';
             } else if(data.type==='profile_error') setNameError(data.message||'Oyuncu adı güncellenemedi.');
             else if(data.type==='needs'){
                 applyNeeds(data);if(data.alive===false&&!playerIsDead)showDeath('Canın tükendi. Yeniden doğabilir veya menüye dönebilirsin.');
@@ -5716,6 +5956,9 @@ function backToGameMenu() {
     if (typeof releaseFirstPersonPointerLock === 'function') releaseFirstPersonPointerLock();
     if (typeof sendPresence === 'function') {
         try { sendPresence(false); } catch (e) {}
+    }
+    if (typeof leaveCurrentRoom === 'function') {
+        try { leaveCurrentRoom(); } catch (e) {}
     }
 
     if (typeof openMainMenu === 'function') {
